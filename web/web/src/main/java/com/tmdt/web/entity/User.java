@@ -4,21 +4,25 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 @Table(name = "users")
 public class User {
-    public enum Gender{
+    public enum Gender {
         male, female
     }
-    public enum RoleAcc{
-        student,tutor,admin
+
+    public enum RoleAcc {
+        student, tutor, admin
     }
-    public enum Provider{
-        LOCAL,FACEBOOK,GOOGLE
+
+    public enum Provider {
+        LOCAL, FACEBOOK, GOOGLE
     }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
@@ -37,4 +41,3 @@ public class User {
 
 
 }
-
