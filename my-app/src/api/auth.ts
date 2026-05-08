@@ -57,4 +57,4 @@ export async function resetPassword(payload: ResetPasswordPayload) {
 
   return res.data
 }
-}
+
