@@ -112,6 +112,74 @@ export function Login() {
     }
   };
 
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-100">
+            <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg">
+
+                <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+
+                <form onSubmit={handleLogin} className="space-y-4">
+                    {error ? (
+                        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            {error}
+                        </div>
+                    ) : null}
+
+                    {/* Email */}
+                    <div>
+                        <label className="block text-sm mb-1">Email</label>
+                        <input
+                            type="email"
+                            placeholder="example@gmail.com"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                        />
+                    </div>
+
+                    {/* Password */}
+                    <div>
+                        <label className="block text-sm mb-1">Password</label>
+                        <input
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(event) => setPassword(event.target.value)}
+                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                        />
+                    </div>
+
+                    {/* Remember me */}
+                    <div className="flex items-center justify-between text-sm">
+                        <label className="flex items-center gap-2">
+                            <input type="checkbox" />
+                            Remember me
+                        </label>
+
+                        <a href="/forgot-password" className="text-blue-600 hover:underline">
+                            Forgot password?
+                        </a>
+                    </div>
+
+                    {/* Login button */}
+                    <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+                    >
+                        {isLoading ? 'Đang đăng nhập...' : 'Login'}
+                    </button>
+                </form>
+
+                {/* Divider */}
+                <div className="flex items-center my-6">
+                    <div className="flex-1 border-t"></div>
+                    <span className="px-3 text-gray-400 text-sm">or</span>
+                    <div className="flex-1 border-t"></div>
+
   const loginGoogle = () => {
     window.location.href = "http://localhost:8080/oauth2/authorization/google";
   };
@@ -177,6 +245,7 @@ export function Login() {
               {error ? (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {error}
+
                 </div>
               ) : null}
 
