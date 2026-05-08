@@ -1,7 +1,7 @@
 
 import "./App.css";
 import { Login } from "./pages/Login";
-import { ResetPassword } from './pages/ResetPassword
+import { ResetPassword } from './pages/ResetPassword';
 import { ForgotPassword } from './pages/ForgotPassword'
 import { OAuth2Redirect } from "./pages/OAuth2Redirect";
 import { Register } from "./pages/Register";
