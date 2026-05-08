@@ -90,7 +90,7 @@ export function Login() {
                             Remember me
                         </label>
 
-                        <a href="#" className="text-blue-600 hover:underline">
+                        <a href="/forgot-password" className="text-blue-600 hover:underline">
                             Forgot password?
                         </a>
                     </div>
