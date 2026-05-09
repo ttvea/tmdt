@@ -1,5 +1,11 @@
-import { useState, useRef, type ChangeEvent, type DragEvent } from 'react'
+import { useState, useRef, useEffect, type ChangeEvent, type DragEvent } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
+import {
+  getTutorProfileForEdit,
+  saveTutorProfile,
+  uploadAvatar as uploadAvatarApi,
+  uploadCertificate as uploadCertificateApi,
+} from '../../api/tutorProfile'
 
 const EXPERIENCE_OPTIONS = [
   'Dưới 1 năm',
@@ -20,10 +26,14 @@ interface UploadedFile {
 }
 
 export function TutorInfo() {
-  const [fullName, setFullName] = useState('')
-  const [gender, setGender] = useState('')
-  const [phone, setPhone] = useState('')
-  const [birthYear, setBirthYear] = useState('')
+  const userRaw = localStorage.getItem('user')
+  const user = userRaw ? JSON.parse(userRaw) : null
+  const userId: number = user?.id
+
+  const [fullName, setFullName] = useState(user?.fullName ?? user?.username ?? user?.name ?? '')
+  const [gender, setGender] = useState(user?.gender ?? '')
+  const [phone, setPhone] = useState(user?.phone ?? '')
+  const [birthYear, setBirthYear] = useState(user?.birthday ? String(user.birthday) : '')
   const [occupation, setOccupation] = useState('')
   const [studentUniversity, setStudentUniversity] = useState('')
   const [studentYear, setStudentYear] = useState('')
@@ -35,15 +45,56 @@ export function TutorInfo() {
   const [experience, setExperience] = useState('')
   const [university, setUniversity] = useState('')
   const [major, setMajor] = useState('')
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(['Toán học', 'Tiếng Anh'])
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([])
   const [allSubjects, setAllSubjects] = useState<string[]>(DEFAULT_SUBJECTS)
   const [newSubject, setNewSubject] = useState('')
   const [showAddSubject, setShowAddSubject] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.avatar ?? null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [certificateFiles, setCertificateFiles] = useState<File[]>([])
   const [bio, setBio] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loadError, setLoadError] = useState('')
+
+  useEffect(() => {
+    if (!userId) return
+    getTutorProfileForEdit(userId)
+      .then((data) => {
+        if (data.fullName) setFullName(data.fullName)
+        if (data.phone) setPhone(data.phone)
+        if (data.birthday) setBirthYear(String(data.birthday))
+        if (data.gender) setGender(data.gender)
+        if (data.occupationType) setOccupation(data.occupationType)
+        if (data.university) setUniversity(data.university)
+        if (data.major) setMajor(data.major)
+        if (data.bio) setBio(data.bio)
+        if (data.experience) setExperience(data.experience)
+        if (data.subjects) {
+          const subs = data.subjects.split(',').map((s: string) => s.trim()).filter(Boolean)
+          setSelectedSubjects(subs)
+          const extra = subs.filter((s: string) => !DEFAULT_SUBJECTS.includes(s))
+          if (extra.length > 0) setAllSubjects((prev) => [...prev, ...extra])
+        }
+
+        if (data.occupationType === 'student') {
+          if (data.university) setStudentUniversity(data.university)
+          if (data.studentYear) setStudentYear(`Năm ${data.studentYear}`)
+          if (data.major) setStudentMajor(data.major)
+        }
+
+        if (data.occupationType === 'teacher' || data.occupationType === 'worker' || data.occupationType === 'lecturer') {
+          if (data.graduatedSchool) setGraduatedUniversity(data.graduatedSchool)
+          if (data.graduatedYear) setGraduationYear(String(data.graduatedYear))
+          if (data.teachMajor) setWorkerMajor(data.teachMajor)
+          if (data.schoolName) setStudentUniversity(data.schoolName)
+        }
+      })
+      .catch(() => {
+        setLoadError('Không thể tải dữ liệu cũ. Bạn có thể điền mới.')
+      })
+  }, [userId])
 
   const isStudent = occupation === 'student'
   const isWorker = ['teacher', 'lecturer', 'worker'].includes(occupation)
@@ -69,6 +120,7 @@ export function TutorInfo() {
     if (!files) return
     const newFiles: UploadedFile[] = Array.from(files).map((f) => ({ name: f.name, size: f.size }))
     setUploadedFiles((prev) => [...prev, ...newFiles])
+    setCertificateFiles((prev) => [...prev, ...Array.from(files)])
   }
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -80,12 +132,16 @@ export function TutorInfo() {
   const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setAvatarFile(file)
     const reader = new FileReader()
     reader.onload = () => setAvatarPreview(reader.result as string)
     reader.readAsDataURL(file)
   }
 
-  const removeFile = (index: number) => setUploadedFiles((prev) => prev.filter((_, i) => i !== index))
+  const removeFile = (index: number) => {
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index))
+    setCertificateFiles((prev) => prev.filter((_, i) => i !== index))
+  }
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
@@ -94,22 +150,55 @@ export function TutorInfo() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
-    await new Promise((r) => setTimeout(r, 800))
-
-    const tutorData = {
-      fullName, gender, phone, birthYear, occupation,
-      studentUniversity, studentYear, studentMajor,
-      graduatedUniversity, graduationYear, workerMajor,
-      experience, university, major,
-      subjects: selectedSubjects,
-      avatarPreview,
-      bio,
+    if (!userId) {
+      alert('Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.')
+      return
     }
-    localStorage.setItem('tutor_profile', JSON.stringify(tutorData))
+    setIsSubmitting(true)
 
-    setIsSubmitting(false)
-    window.location.href = '/tutor/profile'
+    try {
+      const studentYearNum = studentYear ? parseInt(studentYear.replace('Năm ', '')) : null
+
+      const request = {
+        fullName,
+        phone,
+        birthday: birthYear ? parseInt(birthYear) : null,
+        gender,
+        occupationType: occupation,
+        university: occupation === 'student' ? studentUniversity : university,
+        studentYear: occupation === 'student' ? studentYearNum : null,
+        major: occupation === 'student' ? studentMajor : major,
+        schoolName: occupation === 'teacher' ? studentUniversity : '',
+        teachMajor: ['teacher', 'lecturer', 'worker'].includes(occupation) ? workerMajor : '',
+        graduatedSchool: ['teacher', 'lecturer', 'worker'].includes(occupation) ? graduatedUniversity : '',
+        graduatedYear: ['teacher', 'lecturer', 'worker'].includes(occupation) && graduationYear
+          ? parseInt(graduationYear) : null,
+        experience,
+        subjects: selectedSubjects.join(','),
+        bio,
+      }
+
+      await saveTutorProfile(userId, request)
+
+      if (userRaw) {
+        const updatedUser = { ...user, fullName, phone, birthday: request.birthday, gender }
+        localStorage.setItem('user', JSON.stringify(updatedUser))
+      }
+
+      if (avatarFile) {
+        await uploadAvatarApi(userId, avatarFile)
+      }
+
+      for (const certFile of certificateFiles) {
+        await uploadCertificateApi(userId, certFile)
+      }
+
+      window.location.href = '/tutor/profile'
+    } catch {
+      alert('Lưu thông tin thất bại. Vui lòng thử lại.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -124,6 +213,12 @@ export function TutorInfo() {
                 Vui lòng cung cấp chi tiết về chuyên môn để học viên có thể hiểu rõ hơn về bạn.
               </p>
             </div>
+
+            {loadError && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-sm text-yellow-700">
+                {loadError}
+              </div>
+            )}
 
             <div className="flex flex-col gap-4">
               <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wide border-b border-slate-100 pb-2">

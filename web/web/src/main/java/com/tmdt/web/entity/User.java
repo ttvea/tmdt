@@ -31,7 +31,7 @@ public class User {
     private String fullName;
     private String phone;
     private String avatar;
-
+    private Integer birthday;
     @Enumerated(EnumType.STRING)
     private Gender gender;
     @Enumerated(EnumType.STRING)
