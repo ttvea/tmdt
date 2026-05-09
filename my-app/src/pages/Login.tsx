@@ -92,11 +92,7 @@ export function Login() {
         localStorage.setItem("user", JSON.stringify(data.user));
       }
 
-      if (data.token) {
-        window.location.href = `/oauth2/redirect?token=${encodeURIComponent(data.token)}`;
-      } else {
-        window.location.href = "/";
-      }
+      window.location.href = "/";
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Đăng nhập thất bại.");
     } finally {

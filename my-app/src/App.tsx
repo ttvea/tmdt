@@ -8,11 +8,11 @@ import { Register } from "./pages/Register";
 import HomePage from "./pages/HomePage";
 import { TutorInfo } from "./pages/Tutor/TutorInfo";
 import { TutorProfile } from "./pages/Tutor/profile";
+import { StudentProfile } from "./pages/Student/StudentProfile";
 
 
 function App() {
   const pathname = window.location.pathname;
-
 
   if (pathname === "/") return <HomePage />;
   if (pathname === "/login") return <Login />;
@@ -22,7 +22,7 @@ function App() {
   if (pathname === "/oauth2/redirect") return <OAuth2Redirect />;
   if (pathname === "/tutor/info") return <TutorInfo />;
   if (pathname === "/tutor/profile") return <TutorProfile />;
-
+  if (pathname === "/student/profile") return <StudentProfile />;
 
   return <HomePage />;
 }
