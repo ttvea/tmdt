@@ -1,4 +1,6 @@
+import { useEffect, useMemo, useState } from "react";
 import heroImage from "../assets/hero.png";
+import { getCategories, type GradeLevel, type SubjectCategory } from "../api/category";
 import Footer from "../layouts/Footer";
 import Navbar from "../layouts/Navbar";
 
@@ -19,8 +21,6 @@ type Step = {
   title: string;
   description: string;
 };
-
-const subjects = ["Tất cả môn học", "Toán học", "Vật lý", "Tiếng Anh"];
 
 const tutors: Tutor[] = [
   {
@@ -254,6 +254,38 @@ function ProcessCard({
 }
 
 function HomePage() {
+  const [categories, setCategories] = useState<SubjectCategory[]>([]);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
+  const [selectedGradeLevelId, setSelectedGradeLevelId] = useState<string>("");
+
+  useEffect(() => {
+    getCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, []);
+
+  const gradeLevelOptions: GradeLevel[] = useMemo(() => {
+    if (!selectedSubjectId) {
+      return [];
+    }
+
+    for (const category of categories) {
+      const selectedSubject = category.subjects.find(
+        (subject) => String(subject.id) === selectedSubjectId
+      );
+
+      if (selectedSubject) {
+        return selectedSubject.gradeLevels;
+      }
+    }
+
+    return [];
+  }, [categories, selectedSubjectId]);
+
+  useEffect(() => {
+    setSelectedGradeLevelId("");
+  }, [selectedSubjectId]);
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-slate-50 text-left text-slate-900">
       <Navbar />
@@ -289,12 +321,41 @@ function HomePage() {
                 />
               </label>
 
-              <label className="md:w-52">
+              <label className="md:w-40">
                 <span className="sr-only">Chọn môn học</span>
-                <select className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100">
-                  {subjects.map((subject) => (
-                    <option key={subject} value={subject}>
-                      {subject}
+                <select
+                  value={selectedSubjectId}
+                  onChange={(event) => setSelectedSubjectId(event.target.value)}
+                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                >
+                  <option value="" disabled hidden>
+                    Chọn môn học
+                  </option>
+                  {categories.map((category) => (
+                    <optgroup key={category.id} label={category.name}>
+                      {category.subjects.map((subject) => (
+                        <option key={subject.id} value={subject.id}>
+                          {subject.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+
+              <label className="md:w-40">
+                <span className="sr-only">Chọn cấp học</span>
+                <select
+                  value={selectedGradeLevelId}
+                  onChange={(event) => setSelectedGradeLevelId(event.target.value)}
+                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                >
+                  <option value="" disabled hidden>
+                    Chọn cấp học
+                  </option>
+                  {gradeLevelOptions.map((level) => (
+                    <option key={level.id} value={level.id}>
+                      {level.name}
                     </option>
                   ))}
                 </select>
@@ -304,7 +365,7 @@ function HomePage() {
                 type="submit"
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-blue-700 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-100"
               >
-                Tìm gia sư
+                Tìm kiếm
                 <ArrowRightIcon />
               </button>
             </form>
