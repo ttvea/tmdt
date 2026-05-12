@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
-import { getTutorProfile, type TutorProfileResponse } from '../../api/tutorProfile'
+import { getUserProfile, type UserProfileResponse } from '../../api/userProfile.ts'
 
 const GENDER_LABELS: Record<string, string> = {
   male: 'Nam', female: 'Nữ', other: 'Khác',
@@ -11,17 +11,27 @@ export function StudentProfile() {
   const user = userRaw ? JSON.parse(userRaw) : null
   const userId: number = user?.id
 
-  const [profile, setProfile] = useState<TutorProfileResponse | null>(null)
+  const [profile, setProfile] = useState<UserProfileResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [showEmailTooltip, setShowEmailTooltip] = useState(false)
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
 
-  useEffect(() => {
-    if (!userId) { setLoading(false); return }
-    getTutorProfile(userId)
-      .then((data) => { setProfile(data); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [userId])
+useEffect(() => {
+  if (!userId) { 
+    setLoading(false); 
+    return; 
+  }
+
+  getUserProfile(userId)
+    .then((data: UserProfileResponse) => { 
+      setProfile(data); 
+      setLoading(false); 
+    })
+    .catch((error) => {
+      console.error("Lỗi khi lấy thông tin học viên:", error);
+      setLoading(false);
+    });
+}, [userId]);
 
   const displayName = profile?.fullName || user?.fullName || user?.username || user?.name || 'Học viên'
   const avatarUrl = profile?.avatar || user?.avatar || null
