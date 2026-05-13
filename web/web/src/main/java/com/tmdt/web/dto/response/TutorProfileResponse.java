@@ -1,5 +1,7 @@
 package com.tmdt.web.dto.response;
+
 import lombok.Data;
+import java.util.List;
 
 @Data
 public class TutorProfileResponse {
@@ -19,8 +21,15 @@ public class TutorProfileResponse {
     private String graduatedSchool;
     private Integer graduatedYear;
     private String experience;
-    private String subjects;
+    private List<SubjectInfo> subjects;
     private String bio;
     private String certificateUrl;
     private Boolean isVerified;
+
+    @Data
+    public static class SubjectInfo {
+        private Integer id;
+        private String name;
+        private String categoryName;
+    }
 }

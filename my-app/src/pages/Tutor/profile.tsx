@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
 import { getTutorProfile, type TutorProfileResponse } from '../../api/tutorProfile'
-
-const SUBJECT_ICONS: Record<string, string> = {
-  'Toán học': '📐', 'Vật lý': '⚛️', 'Tiếng Anh': '🌐', 'Hóa học': '🧪',
-  'Ngữ văn': '📖', 'Sinh học': '🧬', 'Lịch sử': '🏛️', 'Địa lý': '🗺️',
-}
+import { getMediaUrl } from '../../api/axios'
 
 const OCCUPATION_LABELS: Record<string, string> = {
   student: 'Sinh viên',
@@ -18,6 +14,12 @@ const GENDER_LABELS: Record<string, string> = {
   male: 'Nam', female: 'Nữ', other: 'Khác',
 }
 
+const CATEGORY_COLORS: Record<string, string> = {
+  'Phổ thông': 'bg-green-200 text-green-700 border-green-200',
+  'Năng khiếu':   'bg-amber-100 text-amber-700 border-amber-200',
+  'Ngoại ngữ':         'bg-sky-100 text-sky-700 border-sky-200',
+}
+const DEFAULT_SUBJECT_COLOR = 'bg-slate-100 text-slate-700 border-slate-200'
 export function TutorProfile() {
   const userRaw = localStorage.getItem('user')
   const user = userRaw ? JSON.parse(userRaw) : null
@@ -46,9 +48,7 @@ export function TutorProfile() {
       })
   }, [userId])
 
-  const subjects = profile?.subjects
-    ? profile.subjects.split(',').map((s) => s.trim()).filter(Boolean)
-    : []
+  const subjects = profile?.subjects ?? []
 
   const schoolInfo = profile?.occupationType === 'student'
     ? [profile.university, profile.studentYear ? `Năm ${profile.studentYear}` : ''].filter(Boolean).join(' · ')
@@ -59,13 +59,12 @@ export function TutorProfile() {
     : profile?.teachMajor
 
   const displayName = profile?.fullName || user?.fullName || user?.username || user?.name || 'Chưa cập nhật tên'
-  const avatarUrl = profile?.avatar || user?.avatar || null
+  const avatarUrl = getMediaUrl(profile?.avatar || user?.avatar)
 
   return (
     <AccountLayout activePath="/tutor/profile">
       <div className="min-h-screen bg-slate-50 text-left">
 
-        {/* Header */}
         <div className="bg-white border-b border-slate-200 px-8 py-6">
           <div className="max-w-5xl mx-auto flex items-center gap-8">
             <div className="relative shrink-0">
@@ -201,23 +200,34 @@ export function TutorProfile() {
 
                 <section>
                   <h2 className="text-lg font-bold text-slate-900 mb-3">Môn học giảng dạy</h2>
-                  <div className="grid grid-cols-2 gap-3">
-                    {subjects.length > 0 ? subjects.map((s) => (
-                      <div key={s} className="border border-slate-200 rounded-xl p-4 bg-white flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0 text-base">
-                          {SUBJECT_ICONS[s] ?? '📚'}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-800">{s}</p>
-                          <p className="text-xs text-slate-400">
-                            {majorInfo || OCCUPATION_LABELS[profile?.occupationType ?? ''] || ''}
-                          </p>
-                        </div>
-                      </div>
-                    )) : (
-                      <p className="text-sm text-slate-400 italic col-span-2">Chưa cập nhật môn dạy.</p>
-                    )}
-                  </div>
+                  {subjects.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {subjects.map((s) => {
+                        const colorClass = CATEGORY_COLORS[s.categoryName ?? ''] ?? DEFAULT_SUBJECT_COLOR
+                        return (
+                          <span
+                            key={s.id}
+                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border ${colorClass}`}
+                          >
+                            {s.name}
+                            {s.categoryName && (
+                              <span className="text-xs font-normal opacity-60">· {s.categoryName}</span>
+                            )}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="border border-dashed border-slate-200 rounded-xl p-6 bg-white text-center">
+                      <p className="text-sm text-slate-400 italic">Chưa cập nhật môn dạy.</p>
+                      <button
+                        onClick={() => window.location.href = '/tutor/info'}
+                        className="mt-3 text-xs text-blue-600 hover:underline font-medium"
+                      >
+                        Cập nhật ngay →
+                      </button>
+                    </div>
+                  )}
                 </section>
 
               </div>

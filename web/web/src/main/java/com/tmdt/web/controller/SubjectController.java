@@ -21,6 +21,11 @@ public class SubjectController {
     private final CategoryRep categoryRep;
     private final GradeLevelRep gradeLevelRep;
 
+    @GetMapping("/all")
+    public List<Subject> getAll() {
+        return subjectRep.findAll();
+    }
+
     @PostMapping("/create")
     public Subject create(@RequestBody SubjectRequest request) {
 

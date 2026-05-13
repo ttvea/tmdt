@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useState } from 'react'
 import Navbar from '../layouts/Navbar'
 import { getTutorProfile, type TutorProfileResponse } from '../api/tutorProfile'
+import { getMediaUrl } from '../api/axios'
 
 interface MenuItem {
   label: string
@@ -129,7 +130,7 @@ export function AccountLayout({ children, activePath }: AccountLayoutProps) {
   }, [userId])
 
   const displayName = profile?.fullName || user?.fullName || user?.username || user?.name || 'Người dùng'
-  const avatarUrl = profile?.avatar || user?.avatar || null
+  const avatarUrl = getMediaUrl(profile?.avatar || user?.avatar)
   const roleLabel = isTutor ? 'Gia sư' : 'Học viên'
   const menuItems = isTutor ? tutorMenuItems : studentMenuItems
 
@@ -139,7 +140,7 @@ export function AccountLayout({ children, activePath }: AccountLayoutProps) {
       <div className="flex flex-1">
         <aside className="w-60 bg-white border-r border-slate-200 flex flex-col shrink-0 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-100">
-            <div className="w-11 h-11 rounded-full bg-orange-400 flex items-center justify-center overflow-hidden shrink-0 text-white font-bold text-lg">
+            <div className="w-11 h-11 rounded-full flex items-center justify-center overflow-hidden shrink-0 text-white font-bold text-lg">
               {avatarUrl ? (
                 <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
               ) : (

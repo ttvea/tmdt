@@ -30,11 +30,9 @@ public class SecurityConfig {
                                 "/",
                                 "/api/**",
                                 "/oauth2/**",
-                                "/login/oauth2/**"
+                                "/login/oauth2/**",
+                                "/uploads/**"
                         ).permitAll()
-
-//                        .requestMatchers("/api/**").authenticated()
-
                         .anyRequest().permitAll()
                 )
 

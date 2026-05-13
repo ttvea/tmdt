@@ -1,7 +1,7 @@
 package com.tmdt.web.dto.request;
 
-
 import lombok.Data;
+import java.util.List;
 
 @Data
 public class TutorProfileRequest {
@@ -18,6 +18,6 @@ public class TutorProfileRequest {
     private String graduatedSchool;
     private Integer graduatedYear;
     private String experience;
-    private String subjects;
+    private List<Integer> subjectIds;
     private String bio;
 }

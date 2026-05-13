@@ -2,10 +2,14 @@ import { useState, useRef, useEffect, type ChangeEvent, type DragEvent } from 'r
 import { AccountLayout } from '../../components/AccountLayout'
 import {
   getTutorProfileForEdit,
+  getTutorProfile,
   saveTutorProfile,
+  getAllSubjects,
   uploadAvatar as uploadAvatarApi,
   uploadCertificate as uploadCertificateApi,
+  type SubjectOption,
 } from '../../api/tutorProfile'
+import { getMediaUrl } from '../../api/axios'
 
 const EXPERIENCE_OPTIONS = [
   'Dưới 1 năm',
@@ -13,11 +17,6 @@ const EXPERIENCE_OPTIONS = [
   '2 - 3 năm',
   '3 - 5 năm',
   'Trên 5 năm',
-]
-
-const DEFAULT_SUBJECTS = [
-  'Toán học', 'Vật lý', 'Tiếng Anh', 'Hóa học',
-  'Ngữ văn', 'Sinh học', 'Lịch sử', 'Địa lý',
 ]
 
 interface UploadedFile {
@@ -45,13 +44,11 @@ export function TutorInfo() {
   const [experience, setExperience] = useState('')
   const [university, setUniversity] = useState('')
   const [major, setMajor] = useState('')
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([])
-  const [allSubjects, setAllSubjects] = useState<string[]>(DEFAULT_SUBJECTS)
-  const [newSubject, setNewSubject] = useState('')
-  const [showAddSubject, setShowAddSubject] = useState(false)
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<number[]>([])
+  const [allSubjects, setAllSubjects] = useState<SubjectOption[]>([])
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.avatar ?? null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(getMediaUrl(user?.avatar))
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [certificateFiles, setCertificateFiles] = useState<File[]>([])
   const [bio, setBio] = useState('')
@@ -59,6 +56,11 @@ export function TutorInfo() {
   const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
+    // Load tất cả môn học từ backend
+    getAllSubjects()
+      .then(setAllSubjects)
+      .catch(() => {})
+
     if (!userId) return
     getTutorProfileForEdit(userId)
       .then((data) => {
@@ -71,12 +73,7 @@ export function TutorInfo() {
         if (data.major) setMajor(data.major)
         if (data.bio) setBio(data.bio)
         if (data.experience) setExperience(data.experience)
-        if (data.subjects) {
-          const subs = data.subjects.split(',').map((s: string) => s.trim()).filter(Boolean)
-          setSelectedSubjects(subs)
-          const extra = subs.filter((s: string) => !DEFAULT_SUBJECTS.includes(s))
-          if (extra.length > 0) setAllSubjects((prev) => [...prev, ...extra])
-        }
+        if (data.subjectIds?.length) setSelectedSubjectIds(data.subjectIds)
 
         if (data.occupationType === 'student') {
           if (data.university) setStudentUniversity(data.university)
@@ -94,6 +91,10 @@ export function TutorInfo() {
       .catch(() => {
         setLoadError('Không thể tải dữ liệu cũ. Bạn có thể điền mới.')
       })
+
+    getTutorProfile(userId).then((profile) => {
+      if (profile.avatar) setAvatarPreview(getMediaUrl(profile.avatar))
+    }).catch(() => {})
   }, [userId])
 
   const isStudent = occupation === 'student'
@@ -101,19 +102,10 @@ export function TutorInfo() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
 
-  const toggleSubject = (subject: string) => {
-    setSelectedSubjects((prev) =>
-      prev.includes(subject) ? prev.filter((s) => s !== subject) : [...prev, subject]
+  const toggleSubject = (id: number) => {
+    setSelectedSubjectIds((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     )
-  }
-
-  const addCustomSubject = () => {
-    const trimmed = newSubject.trim()
-    if (!trimmed || allSubjects.includes(trimmed)) return
-    setAllSubjects((prev) => [...prev, trimmed])
-    setSelectedSubjects((prev) => [...prev, trimmed])
-    setNewSubject('')
-    setShowAddSubject(false)
   }
 
   const processFiles = (files: FileList | null) => {
@@ -174,7 +166,7 @@ export function TutorInfo() {
         graduatedYear: ['teacher', 'lecturer', 'worker'].includes(occupation) && graduationYear
           ? parseInt(graduationYear) : null,
         experience,
-        subjects: selectedSubjects.join(','),
+        subjectIds: selectedSubjectIds,
         bio,
       }
 
@@ -266,7 +258,7 @@ export function TutorInfo() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold text-slate-700">
+                  <label className="text-m font-semibold text-slate-700">
                     Số điện thoại <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -279,7 +271,7 @@ export function TutorInfo() {
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold text-slate-700">
+                  <label className="text-m font-semibold text-slate-700">
                     Năm sinh <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -306,12 +298,12 @@ export function TutorInfo() {
             </div>
 
             <div className="flex flex-col gap-4">
-              <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wide border-b border-slate-100 pb-2">
+              <h2 className="text-m font-bold text-slate-500 uppercase tracking-wide border-b border-slate-100 pb-2">
                 Thông tin chuyên môn
               </h2>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-slate-700">
+              <label className="text-m font-semibold text-slate-700">
                 Nghề nghiệp <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -339,7 +331,7 @@ export function TutorInfo() {
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-700">
+                    <label className="text-m font-semibold text-slate-700">
                       Trường đang học <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -351,7 +343,7 @@ export function TutorInfo() {
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-700">
+                    <label className="text-m font-semibold text-slate-700">
                       Sinh viên năm <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
@@ -374,7 +366,7 @@ export function TutorInfo() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold text-slate-700">
+                  <label className="text-m font-semibold text-slate-700">
                     Chuyên ngành <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -392,7 +384,7 @@ export function TutorInfo() {
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-700">
+                    <label className="text-m font-semibold text-slate-700">
                       Trường tốt nghiệp <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -404,7 +396,7 @@ export function TutorInfo() {
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-700">
+                    <label className="text-m font-semibold text-slate-700">
                       Năm tốt nghiệp <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
@@ -427,7 +419,7 @@ export function TutorInfo() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold text-slate-700">
+                  <label className="text-m font-semibold text-slate-700">
                     Chuyên ngành <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -442,7 +434,7 @@ export function TutorInfo() {
             )}
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-slate-700">Kinh nghiệm giảng dạy</label>
+              <label className="text-m font-semibold text-slate-700">Kinh nghiệm giảng dạy</label>
               <div className="relative">
                 <select
                   value={experience}
@@ -462,68 +454,61 @@ export function TutorInfo() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-slate-700">
+            <div className="flex flex-col gap-2">
+              <label className="text-m font-semibold text-slate-700">
                 Môn dạy <span className="text-slate-400 font-normal">(Có thể chọn nhiều)</span>
               </label>
-              <div className="flex flex-wrap gap-2">
-                {allSubjects.map((subject) => {
-                  const active = selectedSubjects.includes(subject)
+              {allSubjects.length === 0 ? (
+                <p className="text-sm text-slate-400 italic">Đang tải danh sách môn học...</p>
+              ) : (
+                (() => {
+
+                  const grouped: Record<string, SubjectOption[]> = {}
+                  allSubjects.forEach((s) => {
+                    const cat = s.category?.name ?? 'Khác'
+                    if (!grouped[cat]) grouped[cat] = []
+                    grouped[cat].push(s)
+                  })
                   return (
-                    <button
-                      key={subject}
-                      type="button"
-                      onClick={() => toggleSubject(subject)}
-                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                        active
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-slate-600 border-slate-300 hover:border-blue-400 hover:text-blue-600'
-                      }`}
-                    >
-                      {subject}
-                      {active && (
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
+                    <div className="flex flex-col gap-4">
+                      {Object.entries(grouped).map(([catName, subjects]) => (
+                        <div key={catName} className="flex flex-col gap-2">
+                          <p className="text-sm font-bold text-slate-700">{catName}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {subjects.map((subject) => {
+                              const active = selectedSubjectIds.includes(subject.id)
+                              return (
+                                <button
+                                  key={subject.id}
+                                  type="button"
+                                  onClick={() => toggleSubject(subject.id)}
+                                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                                    active
+                                      ? 'bg-blue-600 text-white border-blue-600'
+                                      : 'bg-white text-slate-600 border-slate-300 hover:border-blue-400 hover:text-blue-600'
+                                  }`}
+                                >
+                                  {subject.name}
+                                  {active && (
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )
-                })}
-                {showAddSubject ? (
-                  <div className="flex items-center gap-1">
-                    <input
-                      autoFocus
-                      type="text"
-                      value={newSubject}
-                      onChange={(e) => setNewSubject(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') { e.preventDefault(); addCustomSubject() }
-                        if (e.key === 'Escape') setShowAddSubject(false)
-                      }}
-                      placeholder="Tên môn..."
-                      className="border border-blue-400 rounded-full px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 w-28"
-                    />
-                    <button type="button" onClick={addCustomSubject} className="text-blue-600 hover:text-blue-800 text-sm font-semibold">OK</button>
-                    <button type="button" onClick={() => setShowAddSubject(false)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddSubject(true)}
-                    className="flex items-center gap-1 px-3.5 py-1.5 rounded-full text-sm font-medium border border-dashed border-slate-300 text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Thêm môn
-                  </button>
-                )}
-              </div>
+                })()
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold text-slate-700">Ảnh bản thân</label>
+                <label className="text-m font-semibold text-slate-700">Ảnh bản thân</label>
                 <div
                   onClick={() => avatarInputRef.current?.click()}
                   className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50 overflow-hidden"
@@ -554,7 +539,7 @@ export function TutorInfo() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold text-slate-700">Tải lên chứng chỉ</label>
+                <label className="text-m font-semibold text-slate-700">Tải lên chứng chỉ</label>
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   onDrop={handleDrop}
@@ -610,7 +595,7 @@ export function TutorInfo() {
 
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-semibold text-slate-700">Giới thiệu bản thân</label>
+                <label className="text-m font-semibold text-slate-700">Giới thiệu bản thân</label>
                 <span className="text-xs text-slate-400">{bio.length}/500</span>
               </div>
               <textarea
