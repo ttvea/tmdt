@@ -1,5 +1,11 @@
 import api from './axios'
 
+export interface SubjectInfo {
+  id: number
+  name: string
+  categoryName: string | null
+}
+
 export interface TutorProfileResponse {
   userId: number
   fullName: string
@@ -17,7 +23,7 @@ export interface TutorProfileResponse {
   graduatedSchool: string
   graduatedYear: number
   experience: string
-  subjects: string
+  subjects: SubjectInfo[]
   bio: string
   certificateUrl: string
   isVerified: boolean
@@ -37,8 +43,34 @@ export interface TutorProfileRequest {
   graduatedSchool: string
   graduatedYear: number | null
   experience: string
-  subjects: string
+  subjectIds: number[]
   bio: string
+}
+
+export interface TutorProfileEditResponse {
+  fullName: string
+  phone: string
+  birthday: number | null
+  gender: string
+  occupationType: string
+  university: string
+  studentYear: number | null
+  major: string
+  schoolName: string
+  teachMajor: string
+  graduatedSchool: string
+  graduatedYear: number | null
+  experience: string
+  subjectIds: number[]
+  bio: string
+}
+
+export interface SubjectOption {
+  id: number
+  name: string
+  description: string | null
+  category: { id: number; name: string } | null
+  gradeLevels: { id: number; name: string }[]
 }
 
 function getAuthHeader() {
@@ -53,7 +85,7 @@ export async function getTutorProfile(userId: number): Promise<TutorProfileRespo
   return res.data
 }
 
-export async function getTutorProfileForEdit(userId: number): Promise<TutorProfileRequest> {
+export async function getTutorProfileForEdit(userId: number): Promise<TutorProfileEditResponse> {
   const res = await api.get(`/api/tutor-profile/${userId}/edit`, {
     headers: getAuthHeader(),
   })
@@ -70,14 +102,16 @@ export async function saveTutorProfile(
   return res.data
 }
 
+export async function getAllSubjects(): Promise<SubjectOption[]> {
+  const res = await api.get('/api/subject/all')
+  return res.data
+}
+
 export async function uploadAvatar(userId: number, file: File): Promise<string> {
   const formData = new FormData()
   formData.append('file', file)
   const res = await api.post(`/api/tutor-profile/${userId}/avatar`, formData, {
-    headers: {
-      ...getAuthHeader(),
-      'Content-Type': 'multipart/form-data',
-    },
+    headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' },
   })
   return res.data
 }
@@ -86,10 +120,7 @@ export async function uploadCertificate(userId: number, file: File): Promise<str
   const formData = new FormData()
   formData.append('file', file)
   const res = await api.post(`/api/tutor-profile/${userId}/certificate`, formData, {
-    headers: {
-      ...getAuthHeader(),
-      'Content-Type': 'multipart/form-data',
-    },
+    headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' },
   })
   return res.data
 }

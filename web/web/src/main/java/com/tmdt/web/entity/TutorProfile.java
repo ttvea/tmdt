@@ -5,6 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "tutor_profiles")
 @Data
@@ -23,6 +26,7 @@ public class TutorProfile {
     @OneToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;
+
     @Enumerated(EnumType.STRING)
     private OccupationType occupationType;
     private String university;
@@ -32,9 +36,18 @@ public class TutorProfile {
     private String teachMajor;
     private String graduatedSchool;
     private Integer graduatedYear;
+
     @Column(length = 50)
     private String experience;
-    private String subjects;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "tutor_subjects",
+        joinColumns = @JoinColumn(name = "tutor_profile_id"),
+        inverseJoinColumns = @JoinColumn(name = "subject_id")
+    )
+    private List<Subject> subjects = new ArrayList<>();
+
     @Column(columnDefinition = "TEXT")
     private String bio;
     private String certificateUrl;

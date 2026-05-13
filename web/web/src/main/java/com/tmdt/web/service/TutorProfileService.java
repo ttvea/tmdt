@@ -2,8 +2,10 @@ package com.tmdt.web.service;
 
 import com.tmdt.web.dto.request.TutorProfileRequest;
 import com.tmdt.web.dto.response.TutorProfileResponse;
+import com.tmdt.web.entity.Subject;
 import com.tmdt.web.entity.TutorProfile;
 import com.tmdt.web.entity.User;
+import com.tmdt.web.repository.SubjectRep;
 import com.tmdt.web.repository.TutorProfileRep;
 import com.tmdt.web.repository.UserRep;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +16,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,23 +27,21 @@ public class TutorProfileService {
 
     private final TutorProfileRep tutorProfileRep;
     private final UserRep userRep;
+    private final SubjectRep subjectRep;
 
-    private static final String UPLOAD_DIR = "uploads/";
+    private static final String UPLOAD_DIR = System.getProperty("user.dir") + "/uploads/";
 
     public TutorProfileResponse getProfile(int userId) {
         User user = userRep.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
-
         TutorProfile profile = tutorProfileRep.findByUserId(userId)
                 .orElse(new TutorProfile());
-
         return mapToResponse(user, profile);
     }
 
     public TutorProfileRequest getProfileForEdit(int userId) {
         User user = userRep.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
-
         TutorProfile profile = tutorProfileRep.findByUserId(userId)
                 .orElse(new TutorProfile());
 
@@ -50,8 +53,7 @@ public class TutorProfileService {
         req.setGender(user.getGender() != null ? user.getGender().name() : null);
 
         req.setOccupationType(
-                profile.getOccupationType() != null ? profile.getOccupationType().name() : null
-        );
+                profile.getOccupationType() != null ? profile.getOccupationType().name() : null);
         req.setUniversity(profile.getUniversity());
         req.setStudentYear(profile.getStudentYear());
         req.setMajor(profile.getMajor());
@@ -60,8 +62,15 @@ public class TutorProfileService {
         req.setGraduatedSchool(profile.getGraduatedSchool());
         req.setGraduatedYear(profile.getGraduatedYear());
         req.setExperience(profile.getExperience());
-        req.setSubjects(profile.getSubjects());
         req.setBio(profile.getBio());
+
+        if (profile.getSubjects() != null) {
+            List<Integer> ids = profile.getSubjects().stream()
+                    .map(Subject::getId)
+                    .collect(Collectors.toList());
+            req.setSubjectIds(ids);
+        }
+
         return req;
     }
 
@@ -69,15 +78,12 @@ public class TutorProfileService {
         User user = userRep.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
 
-        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+        if (request.getFullName() != null && !request.getFullName().isBlank())
             user.setFullName(request.getFullName());
-        }
-        if (request.getPhone() != null) {
+        if (request.getPhone() != null)
             user.setPhone(request.getPhone());
-        }
-        if (request.getBirthday() != null) {
+        if (request.getBirthday() != null)
             user.setBirthday(request.getBirthday());
-        }
         if (request.getGender() != null && !request.getGender().isBlank()) {
             try {
                 user.setGender(User.Gender.valueOf(request.getGender()));
@@ -92,9 +98,7 @@ public class TutorProfileService {
         profile.setOccupationType(
                 request.getOccupationType() != null
                         ? TutorProfile.OccupationType.valueOf(request.getOccupationType())
-                        : null
-        );
-
+                        : null);
         profile.setUniversity(request.getUniversity());
         profile.setStudentYear(request.getStudentYear());
         profile.setMajor(request.getMajor());
@@ -103,8 +107,14 @@ public class TutorProfileService {
         profile.setGraduatedSchool(request.getGraduatedSchool());
         profile.setGraduatedYear(request.getGraduatedYear());
         profile.setExperience(request.getExperience());
-        profile.setSubjects(request.getSubjects());
         profile.setBio(request.getBio());
+
+        if (request.getSubjectIds() != null && !request.getSubjectIds().isEmpty()) {
+            List<Subject> subjects = subjectRep.findAllById(request.getSubjectIds());
+            profile.setSubjects(subjects);
+        } else {
+            profile.setSubjects(new ArrayList<>());
+        }
 
         tutorProfileRep.save(profile);
         return mapToResponse(user, profile);
@@ -148,9 +158,9 @@ public class TutorProfileService {
         res.setAvatar(user.getAvatar());
         res.setBirthday(user.getBirthday());
         res.setGender(user.getGender() != null ? user.getGender().name() : null);
+
         res.setOccupationType(
-                profile.getOccupationType() != null ? profile.getOccupationType().name() : null
-        );
+                profile.getOccupationType() != null ? profile.getOccupationType().name() : null);
         res.setUniversity(profile.getUniversity());
         res.setStudentYear(profile.getStudentYear());
         res.setMajor(profile.getMajor());
@@ -159,10 +169,24 @@ public class TutorProfileService {
         res.setGraduatedSchool(profile.getGraduatedSchool());
         res.setGraduatedYear(profile.getGraduatedYear());
         res.setExperience(profile.getExperience());
-        res.setSubjects(profile.getSubjects());
         res.setBio(profile.getBio());
         res.setCertificateUrl(profile.getCertificateUrl());
         res.setIsVerified(profile.getIsVerified());
+
+        if (profile.getSubjects() != null) {
+            List<TutorProfileResponse.SubjectInfo> subjectInfos = profile.getSubjects().stream()
+                    .map(s -> {
+                        TutorProfileResponse.SubjectInfo info = new TutorProfileResponse.SubjectInfo();
+                        info.setId(s.getId());
+                        info.setName(s.getName());
+                        info.setCategoryName(s.getCategory() != null ? s.getCategory().getName() : null);
+                        return info;
+                    })
+                    .collect(Collectors.toList());
+            res.setSubjects(subjectInfos);
+        } else {
+            res.setSubjects(new ArrayList<>());
+        }
 
         return res;
     }
