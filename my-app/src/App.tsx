@@ -9,12 +9,14 @@ import HomePage from "./pages/HomePage";
 import { TutorInfo } from "./pages/Tutor/TutorInfo";
 import { TutorProfile } from "./pages/Tutor/profile";
 import { StudentProfile } from "./pages/Student/StudentProfile";
+import AboutPage from "./pages/AboutPage";
 
 
 function App() {
   const pathname = window.location.pathname;
 
   if (pathname === "/") return <HomePage />;
+  if (pathname === "/about") return <AboutPage />;
   if (pathname === "/login") return <Login />;
   if (pathname === "/register") return <Register />;
   if (pathname === '/forgot-password') return <ForgotPassword />
