@@ -1,5 +1,7 @@
 package com.tmdt.web.service;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.tmdt.web.dto.request.TutorProfileRequest;
 import com.tmdt.web.dto.response.TutorProfileResponse;
 import com.tmdt.web.entity.Subject;
@@ -13,13 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,8 +27,7 @@ public class TutorProfileService {
     private final TutorProfileRep tutorProfileRep;
     private final UserRep userRep;
     private final SubjectRep subjectRep;
-
-    private static final String UPLOAD_DIR = System.getProperty("user.dir") + "/uploads/";
+    private final Cloudinary cloudinary;
 
     public TutorProfileResponse getProfile(int userId) {
         User user = userRep.findById(userId)
@@ -47,12 +44,10 @@ public class TutorProfileService {
                 .orElse(new TutorProfile());
 
         TutorProfileRequest req = new TutorProfileRequest();
-
         req.setFullName(user.getFullName());
         req.setPhone(user.getPhone());
         req.setBirthday(user.getBirthday());
         req.setGender(user.getGender() != null ? user.getGender().name() : null);
-
         req.setOccupationType(
                 profile.getOccupationType() != null ? profile.getOccupationType().name() : null);
         req.setUniversity(profile.getUniversity());
@@ -71,7 +66,6 @@ public class TutorProfileService {
                     .collect(Collectors.toList());
             req.setSubjectIds(ids);
         }
-
         return req;
     }
 
@@ -87,7 +81,7 @@ public class TutorProfileService {
             user.setBirthday(request.getBirthday());
         if (request.getGender() != null && !request.getGender().isBlank()) {
             try {
-                user.setGender(User.Gender.valueOf(request.getGender().trim().toUpperCase(Locale.ROOT)));
+                user.setGender(User.Gender.valueOf(request.getGender()));
             } catch (IllegalArgumentException ignored) {}
         }
         userRep.save(user);
@@ -98,8 +92,7 @@ public class TutorProfileService {
         profile.setUser(user);
         profile.setOccupationType(
                 request.getOccupationType() != null
-                        ? TutorProfile.OccupationType.valueOf(request.getOccupationType())
-                        : null);
+                        ? TutorProfile.OccupationType.valueOf(request.getOccupationType()) : null);
         profile.setUniversity(request.getUniversity());
         profile.setStudentYear(request.getStudentYear());
         profile.setMajor(request.getMajor());
@@ -121,37 +114,48 @@ public class TutorProfileService {
         return mapToResponse(user, profile);
     }
 
+    @SuppressWarnings("unchecked")
     public String uploadAvatar(int userId, MultipartFile file) throws IOException {
         User user = userRep.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
 
-        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-        Path path = Paths.get(UPLOAD_DIR + "avatars/" + fileName);
-        Files.createDirectories(path.getParent());
-        Files.write(path, file.getBytes());
+        Map<String, Object> result = cloudinary.uploader().upload(
+                file.getBytes(),
+                ObjectUtils.asMap(
+                        "folder", "edumatch/avatars",
+                        "public_id", "user_" + userId,
+                        "overwrite", true,
+                        "resource_type", "image"
+                )
+        );
 
-        user.setAvatar("/uploads/avatars/" + fileName);
+        String url = (String) result.get("secure_url");
+        user.setAvatar(url);
         userRep.save(user);
-        return user.getAvatar();
+        return url;
     }
 
+    @SuppressWarnings("unchecked")
     public String uploadCertificate(int userId, MultipartFile file) throws IOException {
         TutorProfile profile = tutorProfileRep.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Chưa có profile, hãy điền thông tin trước"));
 
-        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-        Path path = Paths.get(UPLOAD_DIR + "certificates/" + fileName);
-        Files.createDirectories(path.getParent());
-        Files.write(path, file.getBytes());
+        Map<String, Object> result = cloudinary.uploader().upload(
+                file.getBytes(),
+                ObjectUtils.asMap(
+                        "folder", "edumatch/certificates",
+                        "resource_type", "auto"
+                )
+        );
 
-        profile.setCertificateUrl("/uploads/certificates/" + fileName);
+        String url = (String) result.get("secure_url");
+        profile.setCertificateUrl(url);
         tutorProfileRep.save(profile);
-        return profile.getCertificateUrl();
+        return url;
     }
 
     private TutorProfileResponse mapToResponse(User user, TutorProfile profile) {
         TutorProfileResponse res = new TutorProfileResponse();
-
         res.setUserId(user.getId());
         res.setFullName(user.getFullName());
         res.setEmail(user.getEmail());
@@ -159,7 +163,6 @@ public class TutorProfileService {
         res.setAvatar(user.getAvatar());
         res.setBirthday(user.getBirthday());
         res.setGender(user.getGender() != null ? user.getGender().name() : null);
-
         res.setOccupationType(
                 profile.getOccupationType() != null ? profile.getOccupationType().name() : null);
         res.setUniversity(profile.getUniversity());
