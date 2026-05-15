@@ -1,20 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import heroImage from "../assets/hero.png";
+import { getMediaUrl } from "../api/axios";
 import { getCategories, type GradeLevel, type SubjectCategory } from "../api/category";
-import Footer from "../layouts/Footer";
+import {
+  searchTutorProfiles,
+  type TutorProfileSearchItem,
+} from "../api/tutorProfile";
 import Navbar from "../layouts/Navbar";
 
-type Tutor = {
+type SearchMode = "tutor" | "class";
+
+type ClassPost = {
   id: number;
-  name: string;
-  subject: string;
-  rating: number;
-  reviews: number;
-  price: number;
+  title: string;
+  subjectId: number;
+  gradeLevelId: number;
+  budget: string;
+  location: string;
+  schedule: string;
   description: string;
-  avatar: string;
-  tags: string[];
-  verified: boolean;
 };
 
 type Step = {
@@ -22,84 +26,82 @@ type Step = {
   description: string;
 };
 
-const tutors: Tutor[] = [
+const OCCUPATION_LABELS: Record<string, string> = {
+  student: "Sinh viên",
+  teacher: "Giáo viên",
+  lecturer: "Giảng viên",
+  worker: "Người đi làm",
+};
+
+const mockClassPosts: ClassPost[] = [
   {
     id: 1,
-    name: "Dr. Sarah Jenkins",
-    subject: "Toán cao cấp",
-    rating: 4.9,
-    reviews: 124,
-    price: 45,
+    title: "Cần gia sư Toán lớp 9 tại Cầu Giấy",
+    subjectId: 1,
+    gradeLevelId: 6,
+    budget: "200k/buổi",
+    location: "Cầu Giấy, Hà Nội",
+    schedule: "T2 - T4 - T6, 19:00",
     description:
-      "Tiến sĩ Toán học, chuyên về giải tích, đại số và luyện thi chuẩn hóa. Các khái niệm khó được giải thích bằng cách dễ hiểu.",
-    avatar:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=256&q=80",
-    tags: ["Giải tích", "Luyện thi SAT"],
-    verified: true,
+      "Học sinh mất gốc đại số, cần gia sư kèm lộ trình nền tảng và luyện đề thi vào 10.",
   },
   {
     id: 2,
-    name: "Michael Chen",
-    subject: "Vật lý & Kỹ thuật",
-    rating: 4.8,
-    reviews: 89,
-    price: 40,
+    title: "Tìm gia sư Tiếng Anh lớp 6",
+    subjectId: 8,
+    gradeLevelId: 4,
+    budget: "180k/buổi",
+    location: "Đống Đa, Hà Nội",
+    schedule: "T3 - T5, 18:30",
     description:
-      "Cựu trợ giảng đại học, tập trung vào cơ học và nhiệt động lực học với phương pháp giải quyết vấn đề thực tế.",
-    avatar:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80",
-    tags: ["Vật lý", "Cơ học"],
-    verified: true,
+      "Mục tiêu cải thiện ngữ pháp và kỹ năng nghe nói, ưu tiên gia sư có chứng chỉ IELTS.",
   },
   {
     id: 3,
-    name: "Elena Rodriguez",
-    subject: "Văn học & Viết lách",
-    rating: 5,
-    reviews: 210,
-    price: 35,
+    title: "Lớp Piano cơ bản cho bé 8 tuổi",
+    subjectId: 22,
+    gradeLevelId: 1,
+    budget: "250k/buổi",
+    location: "Ba Đình, Hà Nội",
+    schedule: "Cuối tuần, 9:00",
     description:
-      "Nhà tiểu luận giúp học sinh làm chủ kỹ năng viết học thuật, phân tích văn học và bài luận tuyển sinh đại học.",
-    avatar:
-      "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=256&q=80",
-    tags: ["Viết luận", "Văn học Anh"],
-    verified: true,
+      "Học viên mới bắt đầu, cần chương trình làm quen nhạc lý và luyện ngón căn bản.",
   },
 ];
 
 const studentSteps: Step[] = [
   {
-    title: "Tìm kiếm & so sánh",
+    title: "Tìm kiếm thông minh",
     description:
-      "Duyệt hồ sơ gia sư, đọc đánh giá đã xác minh và so sánh mức giá để tìm người phù hợp nhất.",
+      "Lọc theo môn học, cấp học, nghề nghiệp gia sư và trạng thái xác thực hồ sơ.",
   },
   {
-    title: "Đặt lịch học",
+    title: "So sánh hồ sơ",
     description:
-      "Lên lịch vào thời gian thuận tiện với hệ thống đặt lịch rõ ràng, dễ theo dõi.",
+      "Xem chuyên môn, kinh nghiệm, môn dạy và giới thiệu của từng gia sư trước khi liên hệ.",
   },
   {
-    title: "Học hỏi & phát triển",
+    title: "Kết nối nhanh",
     description:
-      "Tham gia buổi học trực tuyến hoặc trực tiếp và theo dõi tiến bộ qua từng mục tiêu học tập.",
+      "Nhận đề xuất phù hợp và chốt lịch học thử nhanh chóng theo nhu cầu thực tế.",
   },
 ];
 
 const tutorSteps: Step[] = [
   {
-    title: "Tạo hồ sơ",
+    title: "Cập nhật TutorProfile",
     description:
-      "Nêu bật chuyên môn, thiết lập mức giá riêng và cập nhật lịch dạy khả dụng.",
+      "Điền đầy đủ nghề nghiệp, học vấn, kinh nghiệm, môn dạy và thông tin giới thiệu.",
   },
   {
-    title: "Kết nối học viên",
+    title: "Xuất hiện trên tìm kiếm",
     description:
-      "Nhận yêu cầu đặt lịch từ học viên đang tìm kiếm đúng kỹ năng bạn có.",
+      "Hồ sơ được hiển thị để phụ huynh/học viên tìm kiếm theo bộ lọc phù hợp.",
   },
   {
-    title: "Dạy & nhận thanh toán",
+    title: "Nhận lớp phù hợp",
     description:
-      "Cung cấp buổi học chất lượng và nhận thanh toán minh bạch, đúng hạn.",
+      "Ứng tuyển lớp hoặc nhận liên hệ trực tiếp từ nhu cầu học tập phù hợp chuyên môn.",
   },
 ];
 
@@ -137,86 +139,113 @@ function ArrowRightIcon() {
   );
 }
 
-function CheckIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-4 w-4"
-      fill="currentColor"
-      viewBox="0 0 20 20"
-    >
-      <path
-        fillRule="evenodd"
-        d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.32a1 1 0 0 1-1.42.002L3.29 9.226A1 1 0 1 1 4.71 7.82l4.04 4.084 6.54-6.608a1 1 0 0 1 1.414-.006Z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
-}
+function TutorCard({ tutor }: { tutor: TutorProfileSearchItem }) {
+  const avatarUrl =
+    getMediaUrl(tutor.avatar) ??
+    "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=256&q=80";
 
-function StarIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-4 w-4 text-amber-400"
-      fill="currentColor"
-      viewBox="0 0 20 20"
-    >
-      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.17 3.602a1 1 0 0 0 .95.69h3.787c.969 0 1.371 1.24.588 1.81l-3.064 2.226a1 1 0 0 0-.364 1.118l1.17 3.602c.3.921-.755 1.688-1.538 1.118l-3.064-2.226a1 1 0 0 0-1.176 0l-3.064 2.226c-.783.57-1.838-.197-1.538-1.118l1.17-3.602a1 1 0 0 0-.364-1.118L2.55 9.029c-.783-.57-.38-1.81.588-1.81h3.787a1 1 0 0 0 .95-.69l1.174-3.602Z" />
-    </svg>
-  );
-}
+  const headline =
+    tutor.occupationType === "student"
+      ? tutor.major || OCCUPATION_LABELS[tutor.occupationType] || "Gia sư"
+      : tutor.teachMajor || tutor.major || OCCUPATION_LABELS[tutor.occupationType] || "Gia sư";
 
-function TutorCard({ tutor }: { tutor: Tutor }) {
+  const schoolInfo =
+    tutor.occupationType === "student"
+      ? [tutor.university, tutor.studentYear ? `Năm ${tutor.studentYear}` : ""]
+          .filter(Boolean)
+          .join(" · ")
+      : [tutor.schoolName || tutor.graduatedSchool, tutor.graduatedYear]
+          .filter(Boolean)
+          .join(" · ");
+
   return (
     <article className="flex h-full flex-col rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg">
       <div className="mb-4 flex items-start gap-4">
         <img
-          src={tutor.avatar}
-          alt={tutor.name}
+          src={avatarUrl}
+          alt={tutor.fullName}
           className="h-16 w-16 rounded-full object-cover ring-2 ring-slate-100"
         />
 
-        <div>
+        <div className="min-w-0">
           <div className="mb-1 flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-slate-950">{tutor.name}</h3>
-            {tutor.verified ? (
-              <span
-                className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-blue-700"
-                title="Đã xác minh"
-              >
-                <CheckIcon />
+            <h3 className="truncate text-lg font-semibold text-slate-950">{tutor.fullName}</h3>
+            {tutor.isVerified ? (
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                Đã xác thực
               </span>
             ) : null}
           </div>
-          <p className="text-sm text-slate-500">{tutor.subject}</p>
+          <p className="text-sm text-slate-600">{headline}</p>
+          {schoolInfo ? <p className="mt-0.5 text-xs text-slate-500">{schoolInfo}</p> : null}
         </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700">
-        <div className="flex items-center gap-1">
-          <StarIcon />
-          <span className="font-semibold">{tutor.rating.toFixed(1)}</span>
-          <span className="text-slate-400">({tutor.reviews} đánh giá)</span>
-        </div>
-        <span className="h-1 w-1 rounded-full bg-slate-300" />
-        <span className="font-semibold">${tutor.price}/giờ</span>
+        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+          {OCCUPATION_LABELS[tutor.occupationType] ?? "Gia sư"}
+        </span>
+        {tutor.experience ? (
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+            {tutor.experience}
+          </span>
+        ) : null}
       </div>
 
       <p className="mb-6 line-clamp-3 flex-1 text-sm leading-6 text-slate-600">
-        {tutor.description}
+        {tutor.bio || "Gia sư chưa cập nhật phần giới thiệu."}
       </p>
 
       <div className="mt-auto flex flex-wrap gap-2">
-        {tutor.tags.map((tag) => (
-          <span
-            key={tag}
-            className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
-          >
-            {tag}
-          </span>
-        ))}
+        {tutor.subjects.length > 0 ? (
+          tutor.subjects.map((subject) => (
+            <span
+              key={subject.id}
+              className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
+            >
+              {subject.name}
+            </span>
+          ))
+        ) : (
+          <span className="text-xs italic text-slate-400">Chưa cập nhật môn dạy</span>
+        )}
       </div>
+    </article>
+  );
+}
+
+function ClassCard({
+  classPost,
+  subjectName,
+  gradeName,
+}: {
+  classPost: ClassPost;
+  subjectName: string;
+  gradeName: string;
+}) {
+  return (
+    <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-lg font-semibold text-slate-950">{classPost.title}</h3>
+        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+          {classPost.budget}
+        </span>
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-2 text-xs">
+        <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600">
+          {subjectName}
+        </span>
+        <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600">
+          {gradeName}
+        </span>
+        <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600">
+          {classPost.location}
+        </span>
+      </div>
+
+      <p className="mb-4 text-sm leading-6 text-slate-600">{classPost.description}</p>
+      <p className="text-sm font-medium text-slate-700">Lịch học: {classPost.schedule}</p>
     </article>
   );
 }
@@ -255,8 +284,17 @@ function ProcessCard({
 
 function HomePage() {
   const [categories, setCategories] = useState<SubjectCategory[]>([]);
+  const [searchMode, setSearchMode] = useState<SearchMode>("tutor");
+  const [keyword, setKeyword] = useState("");
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [selectedGradeLevelId, setSelectedGradeLevelId] = useState<string>("");
+  const [occupationType, setOccupationType] = useState<string>("");
+  const [experienceFilter, setExperienceFilter] = useState<string>("");
+  const [specialFilter, setSpecialFilter] = useState<string>("");
+  const [verifiedOnly] = useState<boolean>(false);
+  const [tutorResults, setTutorResults] = useState<TutorProfileSearchItem[]>([]);
+  const [isLoadingTutors, setIsLoadingTutors] = useState(false);
+  const [tutorError, setTutorError] = useState("");
 
   useEffect(() => {
     getCategories()
@@ -282,119 +320,426 @@ function HomePage() {
     return [];
   }, [categories, selectedSubjectId]);
 
+  const selectedSubjectName = useMemo(() => {
+    if (!selectedSubjectId) {
+      return "";
+    }
+
+    for (const category of categories) {
+      const selectedSubject = category.subjects.find(
+        (subject) => String(subject.id) === selectedSubjectId
+      );
+
+      if (selectedSubject) {
+        return selectedSubject.name;
+      }
+    }
+
+    return "";
+  }, [categories, selectedSubjectId]);
+
   useEffect(() => {
     setSelectedGradeLevelId("");
   }, [selectedSubjectId]);
 
+  const loadTutorResults = async () => {
+    setIsLoadingTutors(true);
+    setTutorError("");
+
+    try {
+      const data = await searchTutorProfiles({
+        name: keyword.trim() || undefined,
+        occupation: occupationType || undefined,
+        experience: experienceFilter || undefined,
+        subjectName: selectedSubjectName || undefined,
+      });
+
+      setTutorResults(data);
+    } catch {
+      setTutorError("Không thể tải danh sách gia sư. Vui lòng thử lại.");
+      setTutorResults([]);
+    } finally {
+      setIsLoadingTutors(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTutorResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const subjectNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    categories.forEach((category) => {
+      category.subjects.forEach((subject) => map.set(subject.id, subject.name));
+    });
+    return map;
+  }, [categories]);
+
+  const gradeNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    categories.forEach((category) => {
+      category.subjects.forEach((subject) => {
+        subject.gradeLevels.forEach((grade) => map.set(grade.id, grade.name));
+      });
+    });
+    return map;
+  }, [categories]);
+
+  const filteredTutorResults = useMemo(
+    () => tutorResults.filter((tutor) => !verifiedOnly || tutor.isVerified),
+    [tutorResults, verifiedOnly]
+  );
+
+  const filteredClassPosts = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
+
+    return mockClassPosts.filter((item) => {
+      const normalizedTitle = item.title.toLowerCase();
+      const normalizedDescription = item.description.toLowerCase();
+      const normalizedSchedule = item.schedule.toLowerCase();
+      const matchSubject = !selectedSubjectId || String(item.subjectId) === selectedSubjectId;
+      const matchGrade = !selectedGradeLevelId || String(item.gradeLevelId) === selectedGradeLevelId;
+      const matchSpecialFilter =
+        !specialFilter ||
+        (specialFilter === "top-rated" && /ưu tiên|kinh nghiệm|gia sư giỏi|chất lượng/.test(normalizedDescription)) ||
+        (specialFilter === "online" && /online|trực tuyến|zoom|meet/.test(`${normalizedTitle} ${normalizedDescription}`)) ||
+        (specialFilter === "evening" && /buổi tối|ca tối|18h|19h|20h|21h|tối/.test(`${normalizedSchedule} ${normalizedDescription}`));
+      const matchKeyword =
+        !normalizedKeyword ||
+        normalizedTitle.includes(normalizedKeyword) ||
+        normalizedDescription.includes(normalizedKeyword) ||
+        item.location.toLowerCase().includes(normalizedKeyword);
+
+      return matchSubject && matchGrade && matchSpecialFilter && matchKeyword;
+    });
+  }, [keyword, selectedGradeLevelId, selectedSubjectId, specialFilter]);
+
+  const handleSearchSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (searchMode === "tutor") {
+      await loadTutorResults();
+    }
+  };
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-slate-50 text-left text-slate-900">
+     
       <Navbar />
 
       <main className="w-full flex-1">
-        <section className="relative w-full overflow-hidden bg-white">
+        <section className="relative w-full overflow-hidden bg-slate-950 text-white">
           <img
             src={heroImage}
             alt="Học viên đang học cùng gia sư"
-            className="absolute inset-0 h-full w-full object-cover opacity-10"
+            className="absolute inset-0 h-full w-full object-cover opacity-20"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/80 to-white" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 to-slate-950" />
 
           <div className="relative mx-auto flex w-full max-w-7xl flex-col items-center px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-24">
-            <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">
-              Gia sư chuyên gia cho hành trình học tập của bạn
+            <span className="mb-3 rounded-full bg-purple-600/30 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-purple-100">
+              Nền tảng giáo dục 1 kèm 1
+            </span>
+            <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-4xl">
+              <span className="block !text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]">
+            EduMatch Pro - Kết nối gia sư 1 kèm 1
+              </span>
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-              Kết nối với các nhà giáo dục hàng đầu và làm chủ từng môn học bằng
-              lộ trình phù hợp với mục tiêu cá nhân.
-            </p>
+          
 
-            <form className="mt-10 flex w-full max-w-4xl flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xl sm:p-6 md:flex-row">
-              <label className="relative flex-1">
-                <span className="sr-only">Tìm lớp học hoặc gia sư</span>
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <SearchIcon />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Tìm lớp học hoặc gia sư..."
-                  className="h-12 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
-                />
-              </label>
+          <form
+            onSubmit={handleSearchSubmit}
+            className="mt-10 flex w-full max-w-6xl flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-6"
+          >
+            {/* Mode toggle */}
+            <div className="flex w-full flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSearchMode("tutor")}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  searchMode === "tutor"
+                    ? "bg-blue-700 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                Tìm gia sư
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchMode("class")}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  searchMode === "class"
+                    ? "bg-blue-700 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                Tìm lớp học
+              </button>
+            </div>
 
-              <label className="md:w-40">
-                <span className="sr-only">Chọn môn học</span>
-                <select
-                  value={selectedSubjectId}
-                  onChange={(event) => setSelectedSubjectId(event.target.value)}
-                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
-                >
-                  <option value="" disabled hidden>
-                    Chọn môn học
-                  </option>
-                  {categories.map((category) => (
-                    <optgroup key={category.id} label={category.name}>
-                      {category.subjects.map((subject) => (
-                        <option key={subject.id} value={subject.id}>
-                          {subject.name}
+            {searchMode === "tutor" ? (
+              <>
+                <div className="flex w-full gap-3">
+                  <label className="relative flex-1">
+                    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                      <SearchIcon />
+                    </span>
+                    <input
+                      value={keyword}
+                      onChange={(event) => setKeyword(event.target.value)}
+                      type="text"
+                      placeholder="Tên gia sư hoặc môn học..."
+                      className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    className="inline-flex h-12 min-w-[140px] items-center justify-center gap-2 rounded-xl bg-blue-700 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  >
+                    Tìm kiếm
+                    <ArrowRightIcon />
+                  </button>
+                </div>
+
+                <div className="grid w-full  gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+                  <div className="flex w-full  flex-col items-start gap-4 border-t border-slate-100 pt-4">
+                    <label className="w-full max-w-56">
+                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Nghề nghiệp
+                      </span>
+                      <select
+                        value={occupationType}
+                        onChange={(e) => setOccupationType(e.target.value)}
+                        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none focus:border-blue-600"
+                      >
+                        <option value="">Tất cả</option>
+                        <option value="student">Sinh viên</option>
+                        <option value="teacher">Giáo viên</option>
+                        <option value="lecturer">Giảng viên</option>
+                        <option value="worker">Người đi làm</option>
+                      </select>
+                    </label>
+
+                    <label className="w-full max-w-56">
+                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Môn dạy
+                      </span>
+                      <select
+                        value={selectedSubjectId}
+                        onChange={(e) => setSelectedSubjectId(e.target.value)}
+                        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none focus:border-blue-600"
+                      >
+                        <option value="">Tất cả môn học</option>
+                        {categories.map((category) => (
+                          <optgroup key={category.id} label={category.name}>
+                            {category.subjects.map((subject) => (
+                              <option key={subject.id} value={subject.id}>
+                                {subject.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="w-full max-w-56">
+                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Kinh nghiệm
+                      </span>
+                      <select
+                        value={experienceFilter}
+                        onChange={(e) => setExperienceFilter(e.target.value)}
+                        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none focus:border-blue-600"
+                      >
+                        <option value="">Tất cả</option>
+                        <option value="Dưới 1 năm">Dưới 1 năm</option>
+                        <option value="1 - 2 năm">1 - 2 năm</option>
+                        <option value="2 - 3 năm">2 - 3 năm</option>
+                        <option value="3 - 5 năm">3 - 5 năm</option>
+                        <option value="Trên 5 năm">Trên 5 năm</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      
+                      <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-700">
+                        {filteredTutorResults.length} gia sư
+                      </span>
+                    </div>
+
+                    {tutorError ? (
+                      <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        {tutorError}
+                      </div>
+                    ) : null}
+
+                    {isLoadingTutors ? (
+                      <div className="rounded-lg border border-slate-200 bg-white p-10 text-center text-slate-500">
+                        Đang tải dữ liệu gia sư...
+                      </div>
+                    ) : filteredTutorResults.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">
+                        Không có gia sư phù hợp với bộ lọc hiện tại.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                        {filteredTutorResults.map((tutor) => (
+                          <TutorCard key={tutor.userId} tutor={tutor} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex w-full gap-3">
+                  <label className="relative flex-1">
+                    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                      <SearchIcon />
+                    </span>
+                    <input
+                      value={keyword}
+                      onChange={(event) => setKeyword(event.target.value)}
+                      type="text"
+                      placeholder="Tìm lớp học..."
+                      className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    className="inline-flex h-12 w-[20%] min-w-[140px] items-center justify-center gap-2 rounded-xl bg-blue-700 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  >
+                    Tìm kiếm
+                    <ArrowRightIcon />
+                  </button>
+                </div>
+
+                <div className="mt-4 flex w-full flex-col items-start gap-4 border-t border-slate-100 pt-4">
+                  <label className="w-full max-w-56">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Môn học
+                    </span>
+                    <select
+                      value={selectedSubjectId}
+                      onChange={(e) => setSelectedSubjectId(e.target.value)}
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-950 outline-none focus:border-blue-600"
+                    >
+                      <option value="">Tất cả môn học</option>
+                      {categories.map((category) => (
+                        <optgroup key={category.id} label={category.name}>
+                          {category.subjects.map((subject) => (
+                            <option key={subject.id} value={subject.id}>
+                              {subject.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="w-full max-w-56">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Cấp học
+                    </span>
+                    <select
+                      value={selectedGradeLevelId}
+                      onChange={(e) => setSelectedGradeLevelId(e.target.value)}
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-950 outline-none focus:border-blue-600"
+                    >
+                      <option value="">Tất cả cấp học</option>
+                      {gradeLevelOptions.map((level) => (
+                        <option key={level.id} value={level.id}>
+                          {level.name}
                         </option>
                       ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </label>
+                    </select>
+                  </label>
 
-              <label className="md:w-40">
-                <span className="sr-only">Chọn cấp học</span>
-                <select
-                  value={selectedGradeLevelId}
-                  onChange={(event) => setSelectedGradeLevelId(event.target.value)}
-                  className="h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
-                >
-                  <option value="" disabled hidden>
-                    Chọn cấp học
-                  </option>
-                  {gradeLevelOptions.map((level) => (
-                    <option key={level.id} value={level.id}>
-                      {level.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <button
-                type="submit"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-blue-700 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-100"
-              >
-                Tìm kiếm
-                <ArrowRightIcon />
-              </button>
-            </form>
+                  <label className="w-full max-w-56">
+                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Bộ lọc nhanh
+                    </span>
+                    <select
+                      value={specialFilter}
+                      onChange={(e) => setSpecialFilter(e.target.value)}
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-950 outline-none focus:border-blue-600"
+                    >
+                      <option value="">Tất cả</option>
+                      <option value="top-rated">Top đánh giá</option>
+                      <option value="online">Học online</option>
+                      <option value="evening">Có lịch tối</option>
+                    </select>
+                  </label>
+                </div>
+              </>
+            )}
+          </form>
           </div>
         </section>
 
+        
+
+        {searchMode === "class" ? (
         <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-3xl font-bold tracking-tight text-slate-950">
-                Gia sư nổi bật
+                Kết quả tìm lớp học
               </h2>
               <p className="mt-3 max-w-2xl text-slate-600">
-                Những nhà giáo dục được đánh giá cao, sẵn sàng giúp bạn tiến bộ.
+                Danh sách lớp học đang mở để gia sư ứng tuyển nhanh theo môn và cấp học.
               </p>
             </div>
-            <a
-              href="#"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800"
-            >
-              Xem tất cả
-              <ArrowRightIcon />
-            </a>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+              {filteredClassPosts.length} lớp học
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {tutors.map((tutor) => (
-              <TutorCard key={tutor.id} tutor={tutor} />
-            ))}
+          {filteredClassPosts.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">
+              Không tìm thấy lớp học phù hợp.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredClassPosts.map((classPost) => (
+                <ClassCard
+                  key={classPost.id}
+                  classPost={classPost}
+                  subjectName={subjectNameById.get(classPost.subjectId) ?? "Môn học"}
+                  gradeName={gradeNameById.get(classPost.gradeLevelId) ?? "Cấp học"}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+        ) : null}
+
+        <section className="w-full bg-white py-16">
+          <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-4 sm:px-6 lg:grid-cols-3 lg:px-8">
+            <article className="rounded-2xl border border-slate-200 bg-rose-50 p-6">
+              <h3 className="text-lg font-bold text-slate-900">Tìm & đổi gia sư miễn phí</h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Không mất phí tìm hoặc đổi gia sư. Học thử 1 buổi miễn phí để đảm bảo phù hợp.
+              </p>
+            </article>
+            <article className="rounded-2xl border border-slate-200 bg-sky-50 p-6">
+              <h3 className="text-lg font-bold text-slate-900">Học phí minh bạch</h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Bảng giá rõ ràng theo từng môn học, cấp lớp và hình thức học.
+              </p>
+            </article>
+            <article className="rounded-2xl border border-slate-200 bg-emerald-50 p-6">
+              <h3 className="text-lg font-bold text-slate-900">Kết nối nhanh 1-3 ngày</h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Nhận đề xuất gia sư phù hợp nhanh chóng theo đúng nhu cầu học tập.
+              </p>
+            </article>
           </div>
         </section>
 
@@ -402,16 +747,16 @@ function HomePage() {
           <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
             <div className="mx-auto mb-10 max-w-2xl text-center">
               <h2 className="text-3xl font-bold tracking-tight text-slate-950">
-                Cách EduMatch Pro hoạt động
+                Cách nền tảng hoạt động
               </h2>
               <p className="mt-3 text-slate-600">
-                Một quy trình rõ ràng để kết nối học viên với gia sư phù hợp.
+                Quy trình đơn giản để phụ huynh, học viên và gia sư kết nối hiệu quả.
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <ProcessCard
-                title="Dành cho học viên"
+                title="Dành cho phụ huynh & học viên"
                 steps={studentSteps}
                 accentClass="bg-blue-100 text-blue-700"
               />
@@ -423,9 +768,73 @@ function HomePage() {
             </div>
           </div>
         </section>
+
+        <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="rounded-2xl bg-blue-50 px-6 py-10 text-center">
+            <h2 className="text-3xl font-bold text-slate-950">Sẵn sàng tìm gia sư phù hợp?</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-slate-600">
+              Đăng lớp ngay hôm nay — Miễn phí tìm & đổi gia sư, tặng 1 buổi học thử.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <a
+                href="/register"
+                className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800"
+              >
+                Đăng lớp ngay
+              </a>
+              <a
+                href="#"
+                className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Liên hệ tư vấn
+              </a>
+            </div>
+          </div>
+        </section>
       </main>
 
-      <Footer />
+      <footer className="w-full border-t border-slate-200 bg-white">
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 px-4 py-10 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
+          <div>
+            <h4 className="text-lg font-bold text-slate-900">GiasuHome.vn</h4>
+            <p className="mt-2 text-sm text-slate-600">Nền tảng kết nối gia sư 1 kèm 1</p>
+            <p className="mt-1 text-sm text-slate-600">Hotline: 0369 148 660</p>
+            <p className="text-sm text-slate-600">Email: giasuhome.vn@gmail.com</p>
+          </div>
+          <div>
+            <h4 className="text-sm font-bold uppercase tracking-wide text-slate-800">Tài liệu</h4>
+            <ul className="mt-3 space-y-2 text-sm text-slate-600">
+              <li>Hợp đồng giao lớp</li>
+              <li>Hợp đồng gia sư</li>
+              <li>Báo cáo học tập</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-sm font-bold uppercase tracking-wide text-slate-800">Tư vấn</h4>
+            <ul className="mt-3 space-y-2 text-sm text-slate-600">
+              <li>Giới thiệu</li>
+              <li>Blog</li>
+              <li>Hỏi đáp</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-sm font-bold uppercase tracking-wide text-slate-800">Kết nối</h4>
+            <div className="mt-3 flex gap-2">
+              {["Facebook", "Messenger", "YouTube"].map((item) => (
+                <span
+                  key={item}
+                  className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+        <p className="border-t border-slate-200 px-4 py-4 text-center text-sm text-slate-500">
+          © 2026 GiasuHome.vn. All rights reserved.
+        </p>
+      </footer>
     </div>
   );
 }

@@ -6,6 +6,13 @@ export interface SubjectInfo {
   categoryName: string | null
 }
 
+export interface TutorSearchParams {
+  name?: string
+  occupation?: string
+  experience?: string
+  subjectName?: string
+}
+
 export interface TutorProfileResponse {
   userId: number
   fullName: string
@@ -28,6 +35,8 @@ export interface TutorProfileResponse {
   certificateUrl: string
   isVerified: boolean
 }
+
+export type TutorProfileSearchItem = TutorProfileResponse
 
 export interface TutorProfileRequest {
   fullName: string
@@ -123,4 +132,41 @@ export async function uploadCertificate(userId: number, file: File): Promise<str
     headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' },
   })
   return res.data
+}
+
+function isTutorProfileArray(data: unknown): data is TutorProfileSearchItem[] {
+  return Array.isArray(data)
+}
+
+export async function searchTutorProfiles(
+  params: TutorSearchParams = {}
+): Promise<TutorProfileSearchItem[]> {
+  const normalizedParams = {
+    ...(params.name ? { name: params.name } : {}),
+    ...(params.occupation ? { occupation: params.occupation } : {}),
+    ...(params.experience ? { experience: params.experience } : {}),
+    ...(params.subjectName ? { subjectName: params.subjectName } : {}),
+  }
+
+  const res = await api.get('/api/tutor-profile/searchTutor', {
+    params: normalizedParams,
+    headers: getAuthHeader(),
+  })
+
+  const payload = res.data as unknown
+
+  if (isTutorProfileArray(payload)) {
+    return payload
+  }
+
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    'content' in payload &&
+    isTutorProfileArray((payload as { content?: unknown }).content)
+  ) {
+    return (payload as { content: TutorProfileSearchItem[] }).content
+  }
+
+  return []
 }
