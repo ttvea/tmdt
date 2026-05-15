@@ -2,6 +2,8 @@ package com.tmdt.web.controller;
 
 import com.tmdt.web.dto.request.TutorProfileRequest;
 import com.tmdt.web.dto.response.TutorProfileResponse;
+import com.tmdt.web.entity.TutorProfile;
+import com.tmdt.web.repository.TutorProfileRep;
 import com.tmdt.web.service.TutorProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/tutor-profile")
@@ -16,6 +19,7 @@ import java.io.IOException;
 public class TutorProfileController {
 
     private final TutorProfileService tutorProfileService;
+    private final TutorProfileRep tutorProfileRep;
 
     @GetMapping("/{userId}")
     public ResponseEntity<TutorProfileResponse> getProfile(@PathVariable int userId) {
@@ -46,4 +50,23 @@ public class TutorProfileController {
             @RequestParam("file") MultipartFile file) throws IOException {
         return ResponseEntity.ok(tutorProfileService.uploadCertificate(userId, file));
     }
+    @GetMapping("/searchTutor")
+    public List<TutorProfile> searchTutors(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) TutorProfile.OccupationType occupation,
+            @RequestParam(required = false) String experience,
+            @RequestParam(required = false) String subjectName
+    ) {
+        return tutorProfileRep.searchTutors(
+                name,
+                occupation,
+                experience,
+                subjectName
+        );
+    }
+  
+
+
+
+
 }

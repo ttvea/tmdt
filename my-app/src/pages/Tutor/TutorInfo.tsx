@@ -433,14 +433,16 @@ export function TutorInfo() {
             )}
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-m font-semibold text-slate-700">Kinh nghiệm giảng dạy</label>
+              <label className="text-sm font-semibold text-slate-700">Kinh nghiệm giảng dạy</label>
               <div className="relative">
                 <select
                   value={experience}
                   onChange={(e) => setExperience(e.target.value)}
                   className="w-full appearance-none border border-slate-300 rounded-lg px-4 py-3 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">Chọn số năm kinh nghiệm</option>
+                  <option value="" disabled>
+                    Chọn mức kinh nghiệm
+                  </option>
                   {EXPERIENCE_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
