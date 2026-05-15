@@ -2,10 +2,14 @@ package com.tmdt.web.controller;
 
 import com.tmdt.web.dto.request.TutorProfileRequest;
 import com.tmdt.web.dto.response.TutorProfileResponse;
+import com.tmdt.web.dto.response.TutorSearchResponse;
 import com.tmdt.web.entity.TutorProfile;
 import com.tmdt.web.repository.TutorProfileRep;
 import com.tmdt.web.service.TutorProfileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -51,20 +55,29 @@ public class TutorProfileController {
         return ResponseEntity.ok(tutorProfileService.uploadCertificate(userId, file));
     }
     @GetMapping("/searchTutor")
-    public List<TutorProfile> searchTutors(
+    public ResponseEntity<Page<TutorSearchResponse>> searchTutors(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) TutorProfile.OccupationType occupation,
             @RequestParam(required = false) String experience,
-            @RequestParam(required = false) String subjectName
+            @RequestParam(required = false) String subjectName,
+
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
-        return tutorProfileRep.searchTutors(
-                name,
-                occupation,
-                experience,
-                subjectName
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        return ResponseEntity.ok(
+                tutorProfileService.searchTutors(
+                        name,
+                        occupation,
+                        experience,
+                        subjectName,
+                        pageable
+                )
         );
     }
-  
+
 
 
 

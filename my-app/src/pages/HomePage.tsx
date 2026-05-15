@@ -3,7 +3,8 @@ import heroImage from "../assets/hero.png";
 import { getMediaUrl } from "../api/axios";
 import { getCategories, type GradeLevel, type SubjectCategory } from "../api/category";
 import {
-  searchTutorProfiles,
+  searchTutorProfilesPaged,
+  type Page,
   type TutorProfileSearchItem,
 } from "../api/tutorProfile";
 import Navbar from "../layouts/Navbar";
@@ -24,13 +25,6 @@ type ClassPost = {
 type Step = {
   title: string;
   description: string;
-};
-
-const OCCUPATION_LABELS: Record<string, string> = {
-  student: "Sinh viên",
-  teacher: "Giáo viên",
-  lecturer: "Giảng viên",
-  worker: "Người đi làm",
 };
 
 const mockClassPosts: ClassPost[] = [
@@ -105,6 +99,8 @@ const tutorSteps: Step[] = [
   },
 ];
 
+const TUTOR_PAGE_SIZE = 8;
+
 function SearchIcon() {
   return (
     <svg
@@ -144,71 +140,73 @@ function TutorCard({ tutor }: { tutor: TutorProfileSearchItem }) {
     getMediaUrl(tutor.avatar) ??
     "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=256&q=80";
 
-  const headline =
-    tutor.occupationType === "student"
-      ? tutor.major || OCCUPATION_LABELS[tutor.occupationType] || "Gia sư"
-      : tutor.teachMajor || tutor.major || OCCUPATION_LABELS[tutor.occupationType] || "Gia sư";
-
-  const schoolInfo =
-    tutor.occupationType === "student"
-      ? [tutor.university, tutor.studentYear ? `Năm ${tutor.studentYear}` : ""]
-          .filter(Boolean)
-          .join(" · ")
-      : [tutor.schoolName || tutor.graduatedSchool, tutor.graduatedYear]
-          .filter(Boolean)
-          .join(" · ");
-
   return (
-    <article className="flex h-full flex-col rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg">
-      <div className="mb-4 flex items-start gap-4">
+    <article className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg sm:p-6">
+      <div className="flex items-start gap-3">
         <img
           src={avatarUrl}
           alt={tutor.fullName}
-          className="h-16 w-16 rounded-full object-cover ring-2 ring-slate-100"
+          className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-slate-100"
         />
 
-        <div className="min-w-0">
-          <div className="mb-1 flex items-center gap-2">
-            <h3 className="truncate text-lg font-semibold text-slate-950">{tutor.fullName}</h3>
-            {tutor.isVerified ? (
-              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                Đã xác thực
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="truncate text-base font-semibold text-slate-950">
+                {tutor.fullName}
+                {tutor.isVerified ? (
+                  <span className="ml-2 inline-flex rounded-full bg-purple-100 px-2 py-0.5 text-[11px] font-semibold text-purple-700">
+                    Xác thực
+                  </span>
+                ) : null}
+              </h3>
+              <p className="mt-0.5 text-sm text-slate-600">{tutor.major || "Gia sư"}</p>
+            </div>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {tutor.experience ? (
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                {tutor.experience}
               </span>
             ) : null}
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+              {tutor.subjects.length} môn dạy
+            </span>
           </div>
-          <p className="text-sm text-slate-600">{headline}</p>
-          {schoolInfo ? <p className="mt-0.5 text-xs text-slate-500">{schoolInfo}</p> : null}
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700">
-        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-          {OCCUPATION_LABELS[tutor.occupationType] ?? "Gia sư"}
-        </span>
-        {tutor.experience ? (
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-            {tutor.experience}
-          </span>
-        ) : null}
-      </div>
-
-      <p className="mb-6 line-clamp-3 flex-1 text-sm leading-6 text-slate-600">
-        {tutor.bio || "Gia sư chưa cập nhật phần giới thiệu."}
-      </p>
-
-      <div className="mt-auto flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {tutor.subjects.length > 0 ? (
-          tutor.subjects.map((subject) => (
+          tutor.subjects.slice(0, 4).map((subjectName) => (
             <span
-              key={subject.id}
-              className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
+              key={subjectName}
+              className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"
             >
-              {subject.name}
+              {subjectName}
             </span>
           ))
         ) : (
           <span className="text-xs italic text-slate-400">Chưa cập nhật môn dạy</span>
         )}
+      </div>
+
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+        <div>
+          {tutor.isVerified ? (
+            <span className="inline-flex rounded-full bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-700">
+              ✓ Đã xác thực
+            </span>
+          ) : (
+            <span className="text-sm text-slate-500">Chưa xác thực</span>
+          )}
+        </div>
+        <a
+          href="#"
+          className="inline-flex rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
+        >
+          Xem hồ sơ
+        </a>
       </div>
     </article>
   );
@@ -293,6 +291,9 @@ function HomePage() {
   const [specialFilter, setSpecialFilter] = useState<string>("");
   const [verifiedOnly] = useState<boolean>(false);
   const [tutorResults, setTutorResults] = useState<TutorProfileSearchItem[]>([]);
+  const [tutorPage, setTutorPage] = useState(0);
+  const [tutorTotalPages, setTutorTotalPages] = useState(0);
+  const [tutorTotalElements, setTutorTotalElements] = useState(0);
   const [isLoadingTutors, setIsLoadingTutors] = useState(false);
   const [tutorError, setTutorError] = useState("");
 
@@ -342,22 +343,29 @@ function HomePage() {
     setSelectedGradeLevelId("");
   }, [selectedSubjectId]);
 
-  const loadTutorResults = async () => {
+  const loadTutorResults = async (page = 0) => {
     setIsLoadingTutors(true);
     setTutorError("");
 
     try {
-      const data = await searchTutorProfiles({
+      const data: Page<TutorProfileSearchItem> = await searchTutorProfilesPaged({
         name: keyword.trim() || undefined,
         occupation: occupationType || undefined,
         experience: experienceFilter || undefined,
         subjectName: selectedSubjectName || undefined,
+        page,
+        size: TUTOR_PAGE_SIZE,
       });
 
-      setTutorResults(data);
+      setTutorResults(data.content);
+      setTutorPage(data.number);
+      setTutorTotalPages(data.totalPages);
+      setTutorTotalElements(data.totalElements);
     } catch {
       setTutorError("Không thể tải danh sách gia sư. Vui lòng thử lại.");
       setTutorResults([]);
+      setTutorTotalPages(0);
+      setTutorTotalElements(0);
     } finally {
       setIsLoadingTutors(false);
     }
@@ -391,6 +399,14 @@ function HomePage() {
     [tutorResults, verifiedOnly]
   );
 
+  const goToTutorPage = async (nextPage: number) => {
+    if (nextPage < 0 || nextPage >= tutorTotalPages || isLoadingTutors) {
+      return;
+    }
+
+    await loadTutorResults(nextPage);
+  };
+
   const filteredClassPosts = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
@@ -419,7 +435,7 @@ function HomePage() {
     event.preventDefault();
 
     if (searchMode === "tutor") {
-      await loadTutorResults();
+      await loadTutorResults(0);
     }
   };
 
@@ -565,9 +581,8 @@ function HomePage() {
 
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="mb-4 flex items-center justify-between gap-3">
-                      
                       <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-700">
-                        {filteredTutorResults.length} gia sư
+                        {tutorTotalElements || filteredTutorResults.length} gia sư
                       </span>
                     </div>
 
@@ -586,11 +601,70 @@ function HomePage() {
                         Không có gia sư phù hợp với bộ lọc hiện tại.
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                        {filteredTutorResults.map((tutor) => (
-                          <TutorCard key={tutor.userId} tutor={tutor} />
-                        ))}
-                      </div>
+                      <>
+                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                          {filteredTutorResults.map((tutor) => (
+                            <TutorCard key={tutor.id} tutor={tutor} />
+                          ))}
+                        </div>
+
+                        {tutorTotalPages > 1 ? (
+                          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                            <span className="text-sm text-slate-600">
+                              Hiển thị trang <strong>{tutorPage + 1}</strong> / {tutorTotalPages}
+                            </span>
+
+                            <nav aria-label="Pagination">
+                              <ul className="flex items-center gap-1">
+                                <li>
+                                  <button
+                                    type="button"
+                                    onClick={() => goToTutorPage(tutorPage - 1)}
+                                    disabled={tutorPage === 0 || isLoadingTutors}
+                                    className="inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    ‹
+                                  </button>
+                                </li>
+                                {Array.from({ length: Math.min(tutorTotalPages, 3) }, (_, index) => {
+                                  const pageWindowStart = Math.max(
+                                    0,
+                                    Math.min(tutorPage - 1, tutorTotalPages - 3)
+                                  );
+                                  const pageNumber = pageWindowStart + index;
+                                  const isActive = pageNumber === tutorPage;
+
+                                  return (
+                                    <li key={pageNumber}>
+                                      <button
+                                        type="button"
+                                        onClick={() => goToTutorPage(pageNumber)}
+                                        className={`inline-flex h-10 min-w-10 items-center justify-center rounded-full px-3 text-sm font-semibold transition ${
+                                          isActive
+                                            ? "bg-blue-700 text-white"
+                                            : "border border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:text-blue-700"
+                                        }`}
+                                      >
+                                        {pageNumber + 1}
+                                      </button>
+                                    </li>
+                                  );
+                                })}
+                                <li>
+                                  <button
+                                    type="button"
+                                    onClick={() => goToTutorPage(tutorPage + 1)}
+                                    disabled={tutorPage + 1 >= tutorTotalPages || isLoadingTutors}
+                                    className="inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    ›
+                                  </button>
+                                </li>
+                              </ul>
+                            </nav>
+                          </div>
+                        ) : null}
+                      </>
                     )}
                   </div>
                 </div>

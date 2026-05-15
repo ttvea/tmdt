@@ -4,6 +4,7 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.tmdt.web.dto.request.TutorProfileRequest;
 import com.tmdt.web.dto.response.TutorProfileResponse;
+import com.tmdt.web.dto.response.TutorSearchResponse;
 import com.tmdt.web.entity.Subject;
 import com.tmdt.web.entity.TutorProfile;
 import com.tmdt.web.entity.User;
@@ -11,6 +12,8 @@ import com.tmdt.web.repository.SubjectRep;
 import com.tmdt.web.repository.TutorProfileRep;
 import com.tmdt.web.repository.UserRep;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -193,5 +196,40 @@ public class TutorProfileService {
         }
 
         return res;
+    }
+    public Page<TutorSearchResponse> searchTutors(
+            String name,
+            TutorProfile.OccupationType occupation,
+            String experience,
+            String subjectName,
+            Pageable pageable
+    ) {
+
+        Page<TutorProfile> tutors = tutorProfileRep.searchTutors(
+                name,
+                occupation,
+                experience,
+                subjectName,
+                pageable
+        );
+
+        return tutors.map(t -> {
+            TutorSearchResponse dto = new TutorSearchResponse();
+
+            dto.setId(t.getId());
+            dto.setFullName(t.getUser().getFullName());
+            dto.setAvatar(t.getUser().getAvatar());
+            dto.setMajor(t.getMajor());
+            dto.setExperience(t.getExperience());
+            dto.setVerified(t.getIsVerified());
+            dto.setSubjects(
+                    t.getSubjects()
+                            .stream()
+                            .map(Subject::getName)
+                            .toList()
+            );
+
+            return dto;
+        });
     }
 }
