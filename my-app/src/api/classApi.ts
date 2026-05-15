@@ -1,0 +1,142 @@
+import api from './axios'
+
+export type TeachingMode = 'ONLINE' | 'OFFLINE'
+export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+export type ClassStatus = 'OPEN' | 'CLOSED' | 'COMPLETED'
+
+export interface ScheduleRequest {
+  dayOfWeek: number   
+  startTime: string  
+  endTime: string   
+}
+
+export interface ClassCreateRequest {
+  title: string
+  description: string
+  categoryId: number | null
+  subjectId: number | null
+  gradeLevelId: number | null
+  teachingMode: TeachingMode
+  pricePerCourse: number
+  totalSessions: number | null
+  maxStudents: number
+  address: string | null
+  city: string | null
+  thumbnailUrl: string | null
+  schedules: ScheduleRequest[]
+}
+
+export interface ScheduleResponse {
+  id: number
+  dayOfWeek: number
+  dayLabel: string
+  startTime: string
+  endTime: string
+}
+
+export interface ClassResponse {
+  id: number
+  tutorId: number
+  title: string
+  description: string
+  categoryId: number
+  categoryName: string | null
+  subjectId: number
+  subjectName: string
+  gradeLevelId: number
+  gradeLevelName: string
+  teachingMode: TeachingMode
+  pricePerCourse: number
+  totalSessions: number
+  maxStudents: number
+  currentStudents: number
+  approvalStatus: ApprovalStatus
+  rejectReason: string | null
+  status: ClassStatus
+  address: string | null
+  city: string | null
+  thumbnailUrl: string | null
+  schedules: ScheduleResponse[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PageResponse<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+}
+
+function getAuthHeader() {
+  const token = localStorage.getItem('access_token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+
+export async function createClass(request: ClassCreateRequest): Promise<ClassResponse> {
+  const res = await api.post('/api/classes', request, { headers: getAuthHeader() })
+  return res.data
+}
+
+export async function getMyClasses(page = 0, size = 10): Promise<PageResponse<ClassResponse>> {
+  const res = await api.get('/api/classes/my', {
+    headers: getAuthHeader(),
+    params: { page, size },
+  })
+  return res.data
+}
+
+export async function getMyClassDetail(classId: number): Promise<ClassResponse> {
+  const res = await api.get(`/api/classes/my/${classId}`, { headers: getAuthHeader() })
+  return res.data
+}
+
+export async function updateClassStatus(classId: number, status: ClassStatus): Promise<ClassResponse> {
+  const res = await api.patch(`/api/classes/my/${classId}/status`, null, {
+    headers: getAuthHeader(),
+    params: { status },
+  })
+  return res.data
+}
+
+
+export async function searchClasses(params: {
+  subjectId?: number
+  gradeLevelId?: number
+  teachingMode?: string
+  city?: string
+  page?: number
+  size?: number
+}): Promise<PageResponse<ClassResponse>> {
+  const res = await api.get('/api/classes/search', { params })
+  return res.data
+}
+
+export async function getClassDetail(classId: number): Promise<ClassResponse> {
+  const res = await api.get(`/api/classes/${classId}`)
+  return res.data
+}
+
+
+export interface GradeLevelOption {
+  id: number
+  name: string
+}
+
+export async function getAllGradeLevels(): Promise<GradeLevelOption[]> {
+  const res = await api.get('/api/subject-level/all')
+  return res.data
+}
+
+export interface CategoryOption {
+  id: number
+  name: string
+  description: string | null
+}
+
+export async function getAllCategories(): Promise<CategoryOption[]> {
+  const res = await api.get('/api/category/all')
+  return res.data
+}
