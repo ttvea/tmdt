@@ -153,6 +153,11 @@ public class AuthController {
         return ResponseEntity.ok("Đổi mật khẩu thành công");
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        return ResponseEntity.ok("Đăng xuất thành công");
+    }
+
     private User.RoleAcc parseRole(String role) {
         if (role == null || role.isBlank()) {
             return User.RoleAcc.STUDENT;
