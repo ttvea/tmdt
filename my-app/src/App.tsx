@@ -10,6 +10,7 @@ import { TutorInfo } from "./pages/Tutor/TutorInfo";
 import { TutorProfile } from "./pages/Tutor/profile";
 import { StudentProfile } from "./pages/Student/StudentProfile";
 import AboutPage from "./pages/AboutPage";
+import { AdminDashboard } from "./pages/Admin/AdminDashboard";
 
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
   if (pathname === "/tutor/info") return <TutorInfo />;
   if (pathname === "/tutor/profile") return <TutorProfile />;
   if (pathname === "/student/profile") return <StudentProfile />;
+  if (pathname === "/admin") return <AdminDashboard />;
 
   return <HomePage />;
 }

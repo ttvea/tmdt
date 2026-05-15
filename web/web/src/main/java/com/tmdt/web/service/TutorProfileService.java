@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -86,7 +87,7 @@ public class TutorProfileService {
             user.setBirthday(request.getBirthday());
         if (request.getGender() != null && !request.getGender().isBlank()) {
             try {
-                user.setGender(User.Gender.valueOf(request.getGender()));
+                user.setGender(User.Gender.valueOf(request.getGender().trim().toUpperCase(Locale.ROOT)));
             } catch (IllegalArgumentException ignored) {}
         }
         userRep.save(user);

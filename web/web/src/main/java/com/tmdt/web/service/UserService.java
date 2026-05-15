@@ -21,7 +21,8 @@ public class UserService {
                 user.getFullName(),
                 user.getEmail(),
                 user.getPhone(),
-                user.getGender() != null ? user.getGender().name() : null,                user.getBirthday(),
+                user.getGender() != null ? user.getGender().name() : null,
+                user.getBirthday(),
                 user.getAvatar()
         );
     }

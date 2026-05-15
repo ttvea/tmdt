@@ -53,8 +53,8 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         if (user == null) {
             user = new User();
             user.setEmail(email);
-            user.setFullName(name);
-//            user.setRole();
+            user.setFullName(name != null && !name.isBlank() ? name : email);
+            user.setRole(User.RoleAcc.STUDENT);
             user.setProvider(User.Provider.valueOf(provider.toUpperCase()));
 
             userRepository.save(user);

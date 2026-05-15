@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from 'react'
 import Navbar from '../layouts/Navbar'
 import { getTutorProfile, type TutorProfileResponse } from '../api/tutorProfile'
 import { getMediaUrl } from '../api/axios'
+import { isTutorRole } from '../utils/userRole'
 
 interface MenuItem {
   label: string
@@ -118,7 +119,7 @@ export function AccountLayout({ children, activePath }: AccountLayoutProps) {
   const userRaw = localStorage.getItem('user')
   const user = userRaw ? JSON.parse(userRaw) : null
   const userId: number = user?.id
-  const isTutor = user?.role === 'tutor'
+  const isTutor = isTutorRole(user?.role)
 
   const [profile, setProfile] = useState<TutorProfileResponse | null>(null)
 

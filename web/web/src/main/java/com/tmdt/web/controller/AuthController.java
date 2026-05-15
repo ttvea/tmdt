@@ -12,9 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.AuthProvider;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -44,6 +44,13 @@ public class AuthController {
                     .body("Email không tồn tại");
         }
 
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body("Tài khoản này đang đăng nhập bằng " +
+                            (user.getProvider() != null ? user.getProvider().name() : "OAuth2"));
+        }
+
         boolean checkPassword =
                 passwordEncoder.matches(password, user.getPassword());
 
@@ -57,7 +64,7 @@ public class AuthController {
 
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
-        response.put("user", user);
+        response.put("user", toAuthUser(user));
 
         return ResponseEntity.ok(response);
     }
@@ -80,7 +87,7 @@ public class AuthController {
         user.setFullName(username);
 
 
-        user.setRole(User.RoleAcc.valueOf(role.toLowerCase()));
+        user.setRole(parseRole(role));
         user.setProvider(User.Provider.LOCAL);
         userRep.save(user);
 
@@ -89,7 +96,7 @@ public class AuthController {
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Đăng ký thành công");
         response.put("token", token);
-        response.put("user", user);
+        response.put("user", toAuthUser(user));
 
         return ResponseEntity.ok(response);
     }
@@ -144,5 +151,29 @@ public class AuthController {
         tokenRepo.save(resetToken);
 
         return ResponseEntity.ok("Đổi mật khẩu thành công");
+    }
+
+    private User.RoleAcc parseRole(String role) {
+        if (role == null || role.isBlank()) {
+            return User.RoleAcc.STUDENT;
+        }
+
+        return User.RoleAcc.valueOf(role.trim().toUpperCase(Locale.ROOT));
+    }
+
+    private Map<String, Object> toAuthUser(User user) {
+        Map<String, Object> authUser = new HashMap<>();
+        authUser.put("id", user.getId());
+        authUser.put("email", user.getEmail());
+        authUser.put("fullName", user.getFullName());
+        authUser.put("phone", user.getPhone());
+        authUser.put("avatar", user.getAvatar());
+        authUser.put("birthday", user.getBirthday());
+        authUser.put("gender", user.getGender() != null ? user.getGender().name() : null);
+        authUser.put("role", user.getRole() != null ? user.getRole().name() : null);
+        authUser.put("provider", user.getProvider() != null ? user.getProvider().name() : null);
+        authUser.put("enabled", user.getEnabled());
+        authUser.put("verified", user.getVerified());
+        return authUser;
     }
 }
