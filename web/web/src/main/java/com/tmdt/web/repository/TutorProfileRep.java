@@ -1,6 +1,8 @@
 package com.tmdt.web.repository;
 
 import com.tmdt.web.entity.TutorProfile;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,10 +24,11 @@ public interface TutorProfileRep extends JpaRepository<TutorProfile, Integer> {
         AND (:experience IS NULL OR LOWER(t.experience) LIKE LOWER(CONCAT('%', CAST(:experience as string), '%')))
         AND (:subjectName IS NULL OR LOWER(s.name) LIKE LOWER(CONCAT('%', CAST(:subjectName as string), '%')))
 """)
-    List<TutorProfile> searchTutors(
+    Page<TutorProfile> searchTutors(
             @Param("name") String name,
             @Param("occupation") TutorProfile.OccupationType occupation,
             @Param("experience") String experience,
-            @Param("subjectName") String subjectName
+            @Param("subjectName") String subjectName,
+            Pageable pageable
     );
 }

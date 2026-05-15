@@ -36,7 +36,28 @@ export interface TutorProfileResponse {
   isVerified: boolean
 }
 
-export type TutorProfileSearchItem = TutorProfileResponse
+export interface TutorSearchResponse {
+  id: number
+  fullName: string
+  avatar: string
+  major: string
+  experience: string
+  isVerified: boolean
+  subjects: string[]
+}
+
+interface TutorSearchResponseRaw {
+  id: number
+  fullName: string
+  avatar: string
+  major: string
+  experience: string
+  verified?: boolean
+  isVerified?: boolean
+  subjects: string[]
+}
+
+export type TutorProfileSearchItem = TutorSearchResponse
 
 export interface TutorProfileRequest {
   fullName: string
@@ -80,6 +101,14 @@ export interface SubjectOption {
   description: string | null
   category: { id: number; name: string } | null
   gradeLevels: { id: number; name: string }[]
+}
+
+export interface Page<T> {
+  content: T[]
+  totalPages: number
+  totalElements: number
+  number: number
+  size: number
 }
 
 function getAuthHeader() {
@@ -138,6 +167,35 @@ function isTutorProfileArray(data: unknown): data is TutorProfileSearchItem[] {
   return Array.isArray(data)
 }
 
+function normalizeTutorSearchItem(rawItem: TutorSearchResponseRaw): TutorSearchResponse {
+  return {
+    id: rawItem.id,
+    fullName: rawItem.fullName,
+    avatar: rawItem.avatar,
+    major: rawItem.major,
+    experience: rawItem.experience,
+    isVerified: rawItem.isVerified ?? rawItem.verified ?? false,
+    subjects: rawItem.subjects,
+  }
+}
+
+function normalizeTutorSearchPayload(payload: unknown): TutorSearchResponse[] {
+  if (isTutorProfileArray(payload)) {
+    return payload as TutorSearchResponse[]
+  }
+
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    'content' in payload &&
+    Array.isArray((payload as { content?: unknown }).content)
+  ) {
+    return (payload as { content: TutorSearchResponseRaw[] }).content.map(normalizeTutorSearchItem)
+  }
+
+  return []
+}
+
 export async function searchTutorProfiles(
   params: TutorSearchParams = {}
 ): Promise<TutorProfileSearchItem[]> {
@@ -154,19 +212,37 @@ export async function searchTutorProfiles(
   })
 
   const payload = res.data as unknown
+  return normalizeTutorSearchPayload(payload)
+}
 
-  if (isTutorProfileArray(payload)) {
-    return payload
+export async function searchTutorProfilesPaged(
+  params: TutorSearchParams & { page?: number; size?: number } = {}
+): Promise<Page<TutorProfileSearchItem>> {
+  const normalizedParams: Record<string, unknown> = {
+    ...(params.name ? { name: params.name } : {}),
+    ...(params.occupation ? { occupation: params.occupation } : {}),
+    ...(params.experience ? { experience: params.experience } : {}),
+    ...(params.subjectName ? { subjectName: params.subjectName } : {}),
   }
 
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    'content' in payload &&
-    isTutorProfileArray((payload as { content?: unknown }).content)
-  ) {
-    return (payload as { content: TutorProfileSearchItem[] }).content
+  if (typeof params.page === 'number') {
+    normalizedParams.page = params.page
+  }
+  if (typeof params.size === 'number') {
+    normalizedParams.size = params.size
   }
 
-  return []
+  const res = await api.get('/api/tutor-profile/searchTutor', {
+    params: normalizedParams,
+    headers: getAuthHeader(),
+  })
+
+  const payload = res.data as Page<TutorSearchResponseRaw> & { content?: TutorSearchResponseRaw[] }
+
+  return {
+    ...payload,
+    content: Array.isArray(payload.content)
+      ? payload.content.map(normalizeTutorSearchItem)
+      : [],
+  }
 }
