@@ -8,6 +8,8 @@ import { Register } from "./pages/Register";
 import HomePage from "./pages/HomePage";
 import { TutorInfo } from "./pages/Tutor/TutorInfo";
 import { TutorProfile } from "./pages/Tutor/profile";
+import { TutorClasses } from "./pages/Tutor/class";
+import { FormAddClass } from "./pages/Tutor/form-add-class";
 import { StudentProfile } from "./pages/Student/StudentProfile";
 import AboutPage from "./pages/AboutPage";
 import { AdminDashboard } from "./pages/Admin/AdminDashboard";
@@ -25,6 +27,8 @@ function App() {
   if (pathname === "/oauth2/redirect") return <OAuth2Redirect />;
   if (pathname === "/tutor/info") return <TutorInfo />;
   if (pathname === "/tutor/profile") return <TutorProfile />;
+  if (pathname === "/tutor/classes") return <TutorClasses />;
+  if (pathname === "/tutor/classes/new") return <FormAddClass />;
   if (pathname === "/student/profile") return <StudentProfile />;
   if (pathname === "/admin") return <AdminDashboard />;
 
