@@ -19,11 +19,12 @@ export async function login(payload: LoginPayload) {
 }
 
 export async function register(payload: RegisterPayload) {
+  const role = payload.role ? payload.role.toUpperCase() : 'STUDENT'
   const params = new URLSearchParams({
     username: payload.username,
     email: payload.email,
     password: payload.password,
-    role: payload.role ?? 'student',
+    role,
   }).toString()
 
   const res = await api.post('/api/auth/register', params, {

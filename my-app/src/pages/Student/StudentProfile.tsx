@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
 import { getUserProfile, type UserProfileResponse } from '../../api/userProfile.ts'
+import { getMediaUrl } from '../../api/axios'
 
 const GENDER_LABELS: Record<string, string> = {
-  male: 'Nam', female: 'Nữ', other: 'Khác',
+  MALE: 'Nam', FEMALE: 'Nữ',
+  male: 'Nam', female: 'Nữ',
 }
 
 export function StudentProfile() {
@@ -34,7 +36,7 @@ useEffect(() => {
 }, [userId]);
 
   const displayName = profile?.fullName || user?.fullName || user?.username || user?.name || 'Học viên'
-  const avatarUrl = profile?.avatar || user?.avatar || null
+  const avatarUrl = getMediaUrl(profile?.avatar || user?.avatar)
 
   return (
     <AccountLayout activePath="/student/profile">

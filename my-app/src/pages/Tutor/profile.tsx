@@ -11,7 +11,8 @@ const OCCUPATION_LABELS: Record<string, string> = {
 }
 
 const GENDER_LABELS: Record<string, string> = {
-  male: 'Nam', female: 'Nữ', other: 'Khác',
+  MALE: 'Nam', FEMALE: 'Nữ',
+  male: 'Nam', female: 'Nữ',
 }
 
 const CATEGORY_COLORS: Record<string, string> = {

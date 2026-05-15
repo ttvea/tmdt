@@ -4,6 +4,7 @@ import { login } from "../api/auth";
 import heroImage from "../assets/hero.png";
 import Footer from "../layouts/Footer";
 import Navbar from "../layouts/Navbar";
+import { isAdminRole } from "../utils/userRole";
 
 function GoogleIcon() {
   return (
@@ -92,7 +93,7 @@ export function Login() {
         localStorage.setItem("user", JSON.stringify(data.user));
       }
 
-      window.location.href = "/";
+      window.location.href = isAdminRole(data.user?.role) ? "/admin" : "/";
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Đăng nhập thất bại.");
     } finally {

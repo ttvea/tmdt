@@ -1,4 +1,5 @@
 import { getTutorProfile } from "../api/tutorProfile";
+import { isTutorRole } from "../utils/userRole";
 
 function Navbar() {
   const pathname = window.location.pathname;
@@ -6,7 +7,7 @@ function Navbar() {
   const token = localStorage.getItem("access_token");
   const isLoggedIn = !!(token && userRaw);
   const user = userRaw ? JSON.parse(userRaw) : null;
-  const isTutor = user?.role === "tutor";
+  const isTutor = isTutorRole(user?.role);
 
   const handleAccountClick = async (e: React.MouseEvent) => {
     if (!isTutor) return;
