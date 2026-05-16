@@ -14,6 +14,7 @@ import { ClassDetail } from "./pages/Tutor/class-detail";
 import { StudentProfile } from "./pages/Student/StudentProfile";
 import AboutPage from "./pages/AboutPage";
 import { AdminDashboard } from "./pages/Admin/AdminDashboard";
+import { AdminClasses } from "./pages/Admin/AdminClasses";
 
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
   if (pathname.startsWith("/tutor/classes/") && !pathname.includes("/edit/")) return <ClassDetail />;
   if (pathname === "/student/profile") return <StudentProfile />;
   if (pathname === "/admin") return <AdminDashboard />;
+  if (pathname === "/admin/classes") return <AdminClasses />;
 
   return <HomePage />;
 }
