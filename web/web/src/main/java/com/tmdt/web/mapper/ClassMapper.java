@@ -10,8 +10,12 @@ import com.tmdt.web.entity.ClassSchedule;
 import com.tmdt.web.entity.Enrollment;
 import com.tmdt.web.entity.Subject;
 import com.tmdt.web.entity.GradeLevel;
+import com.tmdt.web.entity.User;
+import com.tmdt.web.enums.EnrollmentStatus;
+import com.tmdt.web.repository.EnrollmentRep;
 import com.tmdt.web.repository.GradeLevelRep;
 import com.tmdt.web.repository.SubjectRep;
+import com.tmdt.web.repository.UserRep;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +28,8 @@ public class ClassMapper {
 
     private final SubjectRep subjectRep;
     private final GradeLevelRep gradeLevelRep;
+    private final UserRep userRep;
+    private final EnrollmentRep enrollmentRepository;
 
     private static final String[] DAY_LABELS = {
             "", "", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"
@@ -76,7 +82,10 @@ public class ClassMapper {
                         .map(GradeLevel::getName).orElse("—")
                 : "—";
 
-        return ClassResponse.builder()
+    long actualStudents = enrollmentRepository.countByClassEntityIdAndStatusIn(
+            entity.getId(), List.of(EnrollmentStatus.APPROVED, EnrollmentStatus.PAID));
+
+    return ClassResponse.builder()
                 .id(entity.getId())
                 .tutorId(entity.getTutorId())
                 .title(entity.getTitle())
@@ -90,7 +99,7 @@ public class ClassMapper {
                 .pricePerCourse(entity.getPricePerCourse())
                 .totalSessions(entity.getTotalSessions())
                 .maxStudents(entity.getMaxStudents())
-                .currentStudents(entity.getCurrentStudents())
+                .currentStudents((int) actualStudents)
                 .approvalStatus(entity.getApprovalStatus())
                 .rejectReason(entity.getRejectReason())
                 .status(entity.getStatus())
@@ -118,11 +127,17 @@ public class ClassMapper {
     }
 
     public EnrollmentResponse toEnrollmentResponse(Enrollment e) {
+        User student = userRep.findById(e.getStudentId().intValue()).orElse(null);
+
         return EnrollmentResponse.builder()
                 .id(e.getId())
                 .classId(e.getClassEntity().getId())
                 .classTitle(e.getClassEntity().getTitle())
                 .studentId(e.getStudentId())
+                .studentName(student != null ? student.getFullName() : null)
+                .studentEmail(student != null ? student.getEmail() : null)
+                .studentPhone(student != null ? student.getPhone() : null)
+                .studentAvatar(student != null ? student.getAvatar() : null)
                 .status(e.getStatus())
                 .note(e.getNote())
                 .approvedAt(e.getApprovedAt())

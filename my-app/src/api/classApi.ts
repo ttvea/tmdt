@@ -140,3 +140,44 @@ export async function getAllCategories(): Promise<CategoryOption[]> {
   const res = await api.get('/api/category/all')
   return res.data
 }
+
+export type EnrollmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'PAID'
+
+export interface EnrollmentResponse {
+  id: number
+  classId: number
+  classTitle: string
+  studentId: number
+  studentName: string | null
+  studentEmail: string | null
+  studentPhone: string | null
+  studentAvatar: string | null
+  status: EnrollmentStatus
+  note: string | null
+  approvedAt: string | null
+  paidAt: string | null
+  createdAt: string
+}
+
+export async function getEnrollmentsOfClass(
+  classId: number,
+  page = 0,
+  size = 20
+): Promise<PageResponse<EnrollmentResponse>> {
+  const res = await api.get(`/api/classes/my/${classId}/enrollments`, {
+    headers: getAuthHeader(),
+    params: { page, size },
+  })
+  return res.data
+}
+
+export async function reviewEnrollment(
+  enrollmentId: number,
+  approved: boolean,
+  note?: string
+): Promise<EnrollmentResponse> {
+  const res = await api.put(`/api/classes/enrollments/${enrollmentId}/review`, { approved, note }, {
+    headers: getAuthHeader(),
+  })
+  return res.data
+}

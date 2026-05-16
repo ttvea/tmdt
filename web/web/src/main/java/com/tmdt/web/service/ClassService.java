@@ -88,6 +88,11 @@ public class ClassService {
             }
             enrollment.setStatus(EnrollmentStatus.APPROVED);
             enrollment.setApprovedAt(LocalDateTime.now());
+
+            if (approvedCount + 1 >= classEntity.getMaxStudents()) {
+                classEntity.setStatus(ClassStatus.CLOSED);
+                classRepository.save(classEntity);
+            }
         } else {
             if (request.getNote() == null || request.getNote().isBlank()) {
                 throw AppException.badRequest("Vui lòng cung cấp lý do từ chối");
@@ -104,10 +109,6 @@ public class ClassService {
     public ClassResponse updateClassStatus(Long classId, Long tutorId, ClassStatus newStatus) {
         TutorClass classEntity = classRepository.findByIdAndTutorId(classId, tutorId)
                 .orElseThrow(() -> AppException.notFound("Không tìm thấy lớp học"));
-
-        if (classEntity.getApprovalStatus() != ApprovalStatus.APPROVED) {
-            throw AppException.badRequest("Lớp chưa được admin duyệt");
-        }
 
         classEntity.setStatus(newStatus);
         classRepository.save(classEntity);

@@ -62,6 +62,7 @@ export function FormAddClass() {
   const [endPeriod, setEndPeriod] = useState<Period>('AM')
   const [mode, setMode] = useState<TeachMode>('ONLINE')
   const [fee, setFee] = useState('200.000')
+  const [totalSessions, setTotalSessions] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [categories, setCategories] = useState<CategoryOption[]>([])
@@ -124,7 +125,7 @@ export function FormAddClass() {
         gradeLevelId: selectedGradeId,
         teachingMode: mode,
         pricePerCourse: Number(fee.replace(/\./g, '')),
-        totalSessions: null,
+        totalSessions: totalSessions ? Number(totalSessions) : null,
         maxStudents: Number(maxStudents),
         address: null,
         city: null,
@@ -310,6 +311,12 @@ export function FormAddClass() {
                     <input type="number" min={1} max={50} value={maxStudents}
                       onChange={e => setMaxStudents(e.target.value)}
                       placeholder="Ví dụ: 5" required className="input-base" />
+                  </FormField>
+
+                  <FormField label="Tổng số buổi học">
+                    <input type="number" min={1} value={totalSessions}
+                      onChange={e => setTotalSessions(e.target.value)}
+                      placeholder="Ví dụ: 24" className="input-base" />
                   </FormField>
 
                   <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 flex items-start gap-2">
