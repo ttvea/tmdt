@@ -181,3 +181,28 @@ export async function reviewEnrollment(
   })
   return res.data
 }
+
+export async function adminGetAllClasses(
+  approvalStatus: ApprovalStatus | null,
+  page = 0,
+  size = 10
+): Promise<PageResponse<ClassResponse>> {
+  const params: Record<string, unknown> = { page, size }
+  if (approvalStatus) params.approvalStatus = approvalStatus
+  const res = await api.get('/api/classes/admin/all', {
+    headers: getAuthHeader(),
+    params,
+  })
+  return res.data
+}
+
+export async function adminReviewClass(
+  classId: number,
+  approved: boolean,
+  rejectReason?: string
+): Promise<ClassResponse> {
+  const res = await api.put(`/api/classes/admin/${classId}/review`, { approved, rejectReason }, {
+    headers: getAuthHeader(),
+  })
+  return res.data
+}
