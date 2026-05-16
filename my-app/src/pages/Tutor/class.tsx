@@ -17,8 +17,8 @@ function getDisplayStatus(approvalStatus: ApprovalStatus, classStatus: ClassStat
   if (approvalStatus === 'PENDING') return 'pending'
   if (approvalStatus === 'REJECTED') return 'rejected'
   if (classStatus === 'COMPLETED') return 'completed'
-  if (classStatus === 'CLOSED') return 'teaching'
-  return 'recruiting' 
+  if (classStatus === 'CLOSED') return 'teaching'  
+  return 'recruiting'                               
 }
 
 const PAGE_SIZE = 4
@@ -66,7 +66,7 @@ export function TutorClasses() {
   const currentPage = page + 1
 
   const totalClasses  = totalElements
-  const teachingCount = classes.filter(c => c.approvalStatus === 'APPROVED' && c.status !== 'COMPLETED').length
+  const teachingCount = classes.filter(c => c.approvalStatus === 'APPROVED' && (c.status === 'CLOSED' || c.status === 'OPEN')).length
   const pendingCount  = classes.filter(c => c.approvalStatus === 'PENDING').length
   const completedCount = classes.filter(c => c.status === 'COMPLETED').length
 

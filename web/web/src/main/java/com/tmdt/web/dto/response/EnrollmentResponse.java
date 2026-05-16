@@ -13,6 +13,10 @@ public class EnrollmentResponse {
     private Long classId;
     private String classTitle;
     private Long studentId;
+    private String studentName;
+    private String studentEmail;
+    private String studentPhone;
+    private String studentAvatar;
     private EnrollmentStatus status;
     private String note;
     private LocalDateTime approvedAt;
