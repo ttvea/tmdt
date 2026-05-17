@@ -5,9 +5,9 @@ export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 export type ClassStatus = 'OPEN' | 'CLOSED' | 'COMPLETED'
 
 export interface ScheduleRequest {
-  dayOfWeek: number   
-  startTime: string  
-  endTime: string   
+  dayOfWeek: number
+  startTime: string
+  endTime: string
 }
 
 export interface ClassCreateRequest {
@@ -74,7 +74,6 @@ function getAuthHeader() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-
 export async function createClass(request: ClassCreateRequest): Promise<ClassResponse> {
   const res = await api.post('/api/classes', request, { headers: getAuthHeader() })
   return res.data
@@ -101,12 +100,12 @@ export async function updateClassStatus(classId: number, status: ClassStatus): P
   return res.data
 }
 
-
-export async function searchClasses(params: {
+export async function searchClassesPaged(params: {
   subjectId?: number
   gradeLevelId?: number
   teachingMode?: string
   city?: string
+  title?: string
   page?: number
   size?: number
 }): Promise<PageResponse<ClassResponse>> {
@@ -118,7 +117,6 @@ export async function getClassDetail(classId: number): Promise<ClassResponse> {
   const res = await api.get(`/api/classes/${classId}`)
   return res.data
 }
-
 
 export interface GradeLevelOption {
   id: number

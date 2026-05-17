@@ -10,6 +10,7 @@ import com.tmdt.web.entity.TutorClass;
 import com.tmdt.web.enums.ApprovalStatus;
 import com.tmdt.web.enums.ClassStatus;
 import com.tmdt.web.enums.EnrollmentStatus;
+import com.tmdt.web.enums.TeachingMode;
 import com.tmdt.web.exception.AppException;
 import com.tmdt.web.mapper.ClassMapper;
 import com.tmdt.web.repository.ClassRep;
@@ -153,9 +154,9 @@ public class ClassService {
     }
 
     public Page<ClassResponse> searchClasses(Long subjectId, Long gradeLevelId,
-                                             String teachingMode, String city,
+                                             String teachingMode,String title, String city,
                                              Pageable pageable) {
-        return classRepository.searchClasses(subjectId, gradeLevelId, teachingMode, city, pageable)
+        return classRepository.searchClasses(subjectId, gradeLevelId, teachingMode,title, city, pageable)
                 .map(classMapper::toResponse);
     }
 

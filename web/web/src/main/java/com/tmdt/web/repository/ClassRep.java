@@ -29,12 +29,14 @@ public interface ClassRep extends JpaRepository<TutorClass, Long> {
           AND (:subjectId IS NULL OR c.subjectId = :subjectId)
           AND (:gradeLevelId IS NULL OR c.gradeLevelId = :gradeLevelId)
           AND (:teachingMode IS NULL OR CAST(c.teachingMode AS string) = :teachingMode)
+          AND (:title IS NULL OR LOWER(c.title) LIKE LOWER(CONCAT('%', CAST(:title as string), '%')))
           AND (:city IS NULL OR c.city = :city)
     """)
     Page<TutorClass> searchClasses(
             @Param("subjectId") Long subjectId,
             @Param("gradeLevelId") Long gradeLevelId,
             @Param("teachingMode") String teachingMode,
+            @Param("title") String title,
             @Param("city") String city,
             Pageable pageable
     );

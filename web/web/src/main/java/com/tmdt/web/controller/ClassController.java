@@ -8,6 +8,7 @@ import com.tmdt.web.dto.response.EnrollmentResponse;
 import com.tmdt.web.enums.ApprovalStatus;
 import com.tmdt.web.enums.ClassStatus;
 import com.tmdt.web.enums.EnrollmentStatus;
+import com.tmdt.web.enums.TeachingMode;
 import com.tmdt.web.exception.AppException;
 import com.tmdt.web.repository.UserRep;
 import com.tmdt.web.service.ClassService;
@@ -122,12 +123,13 @@ public class ClassController {
             @RequestParam(required = false) Long subjectId,
             @RequestParam(required = false) Long gradeLevelId,
             @RequestParam(required = false) String teachingMode,
+            @RequestParam(required = false) String title,
             @RequestParam(required = false) String city,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return ResponseEntity.ok(
-                classService.searchClasses(subjectId, gradeLevelId, teachingMode, city, pageable));
+                classService.searchClasses(subjectId, gradeLevelId, teachingMode,title, city, pageable));
     }
 
     @GetMapping("/{classId}")
