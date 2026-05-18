@@ -1,3 +1,7 @@
+import { useEffect, useState } from "react";
+import { getCategories } from "../api/category";
+import { searchClassesPaged } from "../api/classApi";
+import { searchTutorProfilesPaged } from "../api/tutorProfile";
 import Footer from "../layouts/Footer";
 import Navbar from "../layouts/Navbar";
 
@@ -8,258 +12,226 @@ type ValueCard = {
   colorClass: string;
 };
 
-const stats = [
-  { value: "5000+", label: "Lớp học đã kết nối" },
-  { value: "3000+", label: "Gia sư đã đăng ký" },
-  { value: "95%", label: "Phụ huynh hài lòng" },
-];
-
 const values: ValueCard[] = [
   {
     title: "Minh bạch",
     description:
       "Mọi thông tin về học phí, hợp đồng và chính sách đều được trình bày rõ ràng ngay từ đầu.",
     icon: "bi-shield-check",
-    colorClass:
-      "from-amber-50 to-white text-amber-700 border-amber-100",
+    colorClass: "border-amber-100 bg-amber-50 text-amber-700",
   },
   {
     title: "Tận tâm",
     description:
       "Đội ngũ tư vấn theo sát từng nhu cầu học tập, từ lúc tìm gia sư đến khi lớp vận hành ổn định.",
     icon: "bi-heart-pulse",
-    colorClass:
-      "from-sky-50 to-white text-sky-700 border-sky-100",
+    colorClass: "border-sky-100 bg-sky-50 text-sky-700",
   },
   {
     title: "Chất lượng",
     description:
       "Gia sư được kiểm duyệt về chuyên môn, tác phong và khả năng đồng hành cùng học sinh.",
     icon: "bi-stars",
-    colorClass:
-      "from-emerald-50 to-white text-emerald-700 border-emerald-100",
+    colorClass: "border-emerald-100 bg-emerald-50 text-emerald-700",
   },
   {
     title: "Đổi mới",
     description:
       "Quy trình kết nối được cải tiến liên tục để việc học 1 kèm 1 trở nên dễ tiếp cận và hiệu quả hơn.",
     icon: "bi-lightning-charge",
-    colorClass:
-      "from-rose-50 to-white text-rose-700 border-rose-100",
+    colorClass: "border-rose-100 bg-rose-50 text-rose-700",
   },
 ];
 
+const initialStats = [
+  { value: "...", label: "Lớp học đang mở" },
+  { value: "...", label: "Gia sư trên hệ thống" },
+  { value: "...", label: "Môn học hỗ trợ" },
+];
+
+function formatStat(value: number) {
+  return value.toLocaleString("vi-VN");
+}
+
 function AboutPage() {
+  const [stats, setStats] = useState(initialStats);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const [classesPage, tutorsPage, categories] = await Promise.all([
+          searchClassesPaged({ page: 0, size: 1 }),
+          searchTutorProfilesPaged({ page: 0, size: 1 }),
+          getCategories(),
+        ]);
+
+        const subjectCount = categories.reduce((total, category) => {
+          return total + category.subjects.length;
+        }, 0);
+
+        setStats([
+          { value: formatStat(classesPage.totalElements), label: "Lớp học đang mở" },
+          { value: formatStat(tutorsPage.totalElements), label: "Gia sư trên hệ thống" },
+          { value: formatStat(subjectCount), label: "Môn học hỗ trợ" },
+        ]);
+      } catch {
+        setStats([
+          { value: "0", label: "Lớp học đang mở" },
+          { value: "0", label: "Gia sư trên hệ thống" },
+          { value: "0", label: "Môn học hỗ trợ" },
+        ]);
+      }
+    }
+
+    loadStats();
+  }, []);
+
   return (
-    <div className="flex min-h-screen flex-col bg-white text-slate-900">
+    <div className="flex min-h-screen flex-col bg-sky-50/30 text-slate-900">
       <Navbar />
 
       <main className="flex-1 overflow-hidden">
-        {/* HERO */}
-        <section className="relative isolate flex min-h-[520px] items-center justify-center overflow-hidden bg-slate-950">
-          {/* Background */}
-          <div className="absolute inset-0">
-            <div className="absolute left-[-120px] top-[-120px] h-[320px] w-[320px] rounded-full bg-blue-500/20 blur-3xl" />
+        <section className="relative isolate overflow-hidden border-b border-slate-200 bg-white">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.10),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.10),transparent_30%)]" />
 
-            <div className="absolute bottom-[-120px] right-[-120px] h-[320px] w-[320px] rounded-full bg-cyan-400/10 blur-3xl" />
-
-            <div className="absolute inset-0 bg-black/40" />
-
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:80px_80px]" />
-          </div>
-
-          {/* Content */}
-          <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center justify-center px-6 py-14 text-center lg:py-16">
-            <h1 className="max-w-4xl text-5xl font-black leading-[1.1] tracking-tight sm:text-6xl lg:text-7xl">
-              <span className="text-white">
-                Câu chuyện phát triển của
-              </span>{" "}
-              <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
-                EduMatch Pro
-              </span>
+          <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-24">
+            <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">
+              Câu chuyện phát triển của EduMatch Pro
             </h1>
 
-            <p className="mt-8 max-w-2xl text-lg leading-8 text-slate-200 sm:text-xl">
-              Chúng tôi xây dựng nền tảng kết nối gia sư hiện đại,
-              minh bạch và hiệu quả để mỗi học sinh đều có cơ hội
-              phát triển tốt nhất.
+            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
+              Chúng tôi xây dựng nền tảng kết nối gia sư hiện đại, minh bạch và hiệu quả
+              để mỗi học sinh đều có cơ hội phát triển tốt nhất.
             </p>
 
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
               <a
                 href="/register"
-                className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-7 py-3 text-sm font-bold text-white shadow-xl shadow-blue-600/30 transition duration-300 hover:-translate-y-1 hover:bg-blue-500"
+                className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800"
               >
                 Bắt đầu ngay
               </a>
 
               <a
-                href="/"
-                className="inline-flex items-center justify-center rounded-2xl border border-white/20 bg-white/5 px-7 py-3 text-sm font-semibold text-white backdrop-blur-md transition duration-300 hover:bg-white/10"
+                href="/discover/tutors"
+                className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
               >
                 Khám phá gia sư
               </a>
             </div>
-          </div>
-        </section>
 
-        {/* MISSION */}
-        <section className="relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-50 to-white" />
-
-          <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
-            <div className="grid gap-14 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-              <div>
-                <p className="text-sm font-bold uppercase tracking-[0.25em] text-blue-700">
-                  Sứ mệnh
-                </p>
-
-                <h2 className="mt-4 text-4xl font-black leading-tight tracking-tight text-slate-950">
-                  Kết nối đúng người học với đúng gia sư
-                </h2>
-
-                <div className="mt-8 space-y-6 text-lg leading-8 text-slate-600">
-                  <p>
-                    EduMatch Pro được xây dựng với mục tiêu giúp phụ
-                    huynh dễ dàng tìm được gia sư phù hợp và giúp
-                    gia sư tiếp cận lớp học chất lượng nhanh hơn.
-                  </p>
-
-                  <p>
-                    Chúng tôi tin rằng trải nghiệm học tập hiệu quả
-                    phải bắt đầu từ sự thấu hiểu, minh bạch và đồng
-                    hành lâu dài.
-                  </p>
-                </div>
-              </div>
-
-              {/* Commitment Card */}
-              <aside className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/60">
-                <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-100 blur-3xl" />
-
-                <div className="relative">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-2xl text-white shadow-lg shadow-blue-600/30">
-                    <i className="bi bi-award" />
-                  </div>
-
-                  <h3 className="mt-6 text-2xl font-bold text-slate-950">
-                    Cam kết của chúng tôi
-                  </h3>
-
-                  <div className="mt-8 space-y-5">
-                    {[
-                      "Tư vấn đúng nhu cầu học tập",
-                      "Gia sư được xác minh thông tin",
-                      "Theo dõi chất lượng trong quá trình học",
-                    ].map((item) => (
-                      <div
-                        key={item}
-                        className="flex items-start gap-4"
-                      >
-                        <div className="mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                          <i className="bi bi-check-lg text-sm" />
-                        </div>
-
-                        <p className="text-sm font-medium leading-6 text-slate-700">
-                          {item}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </aside>
-            </div>
-
-            {/* Stats */}
-            <div className="mt-20 grid gap-6 sm:grid-cols-3">
-              {stats.map((stat) => (
+            <div className="mt-10 grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
+              {stats.map((item) => (
                 <div
-                  key={stat.label}
-                  className="group rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm transition duration-300 hover:-translate-y-2 hover:shadow-xl"
+                  key={item.label}
+                  className="rounded-lg border border-slate-200 bg-white/80 px-4 py-3 shadow-sm"
                 >
-                  <div className="text-5xl font-black text-blue-700">
-                    {stat.value}
-                  </div>
-
-                  <div className="mt-3 text-sm font-medium text-slate-500">
-                    {stat.label}
-                  </div>
+                  <div className="text-lg font-bold text-blue-700">{item.value}</div>
+                  <div className="mt-1 text-xs font-medium text-slate-500">{item.label}</div>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* VALUES */}
-        <section className="relative border-y border-slate-200 bg-slate-50">
+        <section className="bg-gradient-to-b from-slate-50 to-white">
           <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-3xl text-center">
-              <p className="text-sm font-bold uppercase tracking-[0.25em] text-blue-700">
-                Giá trị cốt lõi
-              </p>
+            <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.25em] text-blue-700">
+                  Sứ mệnh
+                </p>
 
-              <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950">
-                Điều tạo nên sự khác biệt của EduMatch Pro
+                <h2 className="mt-4 text-4xl font-bold leading-tight tracking-tight text-slate-950">
+                  Kết nối đúng người học với đúng gia sư
+                </h2>
+
+                <div className="mt-8 space-y-5 text-lg leading-8 text-slate-600">
+                  <p>
+                    EduMatch Pro được xây dựng với mục tiêu giúp phụ huynh dễ dàng tìm
+                    được gia sư phù hợp và giúp gia sư tiếp cận lớp học chất lượng nhanh hơn.
+                  </p>
+
+                  <p>
+                    Chúng tôi tin rằng trải nghiệm học tập hiệu quả phải bắt đầu từ sự
+                    thấu hiểu, minh bạch và đồng hành lâu dài.
+                  </p>
+                </div>
+              </div>
+
+              <aside className="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
+                <h3 className="text-2xl font-bold text-slate-950">Cam kết của chúng tôi</h3>
+                <div className="mt-6 space-y-4">
+                  {[
+                    "Tư vấn nhu cầu học tập trước khi kết nối.",
+                    "Ưu tiên hồ sơ rõ ràng, chuyên môn phù hợp.",
+                    "Theo dõi phản hồi để lớp học vận hành ổn định.",
+                  ].map((item) => (
+                    <div key={item} className="flex gap-3">
+                      <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+                        ✓
+                      </span>
+                      <p className="text-sm leading-6 text-slate-600">{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-y border-slate-200 bg-white">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+            <div className="mx-auto mb-10 max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight text-slate-950">
+                Giá trị vận hành
               </h2>
+              <p className="mt-3 text-slate-600">
+                Những nguyên tắc giúp EduMatch Pro giữ chất lượng trong từng kết nối.
+              </p>
             </div>
 
-            <div className="mt-14 grid gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
               {values.map((value) => (
                 <article
                   key={value.title}
-                  className={`group rounded-3xl border bg-gradient-to-br p-8 transition duration-300 hover:-translate-y-2 hover:shadow-xl ${value.colorClass}`}
+                  className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
                 >
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm transition group-hover:scale-110">
+                  <div
+                    className={`mb-5 flex h-12 w-12 items-center justify-center rounded-lg border text-xl ${value.colorClass}`}
+                  >
                     <i className={`bi ${value.icon}`} />
                   </div>
-
-                  <h3 className="mt-6 text-2xl font-bold text-slate-950">
-                    {value.title}
-                  </h3>
-
-                  <p className="mt-4 text-base leading-7 text-slate-600">
-                    {value.description}
-                  </p>
+                  <h3 className="text-lg font-bold text-slate-950">{value.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{value.description}</p>
                 </article>
               ))}
             </div>
           </div>
         </section>
 
-        {/* CTA */}
-        <section className="relative flex min-h-[500px] items-center justify-center overflow-hidden">
-          {/* Background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-500" />
-
-          {/* Content */}
-          <div className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-center px-4 py-16 sm:px-6 lg:px-8">
-            <div className="w-full max-w-4xl overflow-hidden rounded-[32px] border border-white/10 bg-white/10 p-10 text-center text-white backdrop-blur-xl shadow-2xl lg:p-14">
-              <h2 className="text-4xl font-black leading-tight tracking-tight sm:text-5xl">
-                Hãy đồng hành cùng EduMatch Pro
-              </h2>
-
-              <div className="mt-6 flex justify-center">
-                <p className="max-w-2xl text-center text-lg leading-8 text-blue-100 sm:text-xl">
-                  Dù bạn là phụ huynh đang tìm gia sư hay gia sư muốn nhận lớp
-                  nghiêm túc, chúng tôi luôn sẵn sàng kết nối.
-                </p>
-              </div>
-
-              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <a
-                  href="/register"
-                  className="inline-flex items-center justify-center rounded-2xl bg-white px-7 py-3 text-sm font-bold text-blue-700 transition duration-300 hover:-translate-y-1 hover:bg-blue-50"
-                >
-                  Đăng ký ngay
-                </a>
-
-                <a
-                  href="/"
-                  className="inline-flex items-center justify-center rounded-2xl border border-white/20 bg-white/5 px-7 py-3 text-sm font-semibold text-white transition duration-300 hover:bg-white/10"
-                >
-                  Khám phá gia sư
-                </a>
-              </div>
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-center rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 via-cyan-50 to-emerald-50 px-6 py-10 text-center shadow-sm">
+            <h2 className="max-w-3xl text-center text-3xl font-bold text-slate-950">
+              Cùng bắt đầu một lớp học hiệu quả hơn
+            </h2>
+            <p className="mt-3 max-w-2xl text-center text-slate-600">
+              Dù bạn là phụ huynh đang tìm gia sư hay gia sư muốn nhận lớp, EduMatch Pro
+              giúp quá trình kết nối rõ ràng và nhanh hơn.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <a
+                href="/register"
+                className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800"
+              >
+                Đăng ký ngay
+              </a>
+              <a
+                href="/discover/classes"
+                className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Xem lớp học
+              </a>
             </div>
           </div>
         </section>

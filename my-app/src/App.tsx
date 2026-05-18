@@ -6,6 +6,8 @@ import { ForgotPassword } from './pages/ForgotPassword'
 import { OAuth2Redirect } from "./pages/OAuth2Redirect";
 import { Register } from "./pages/Register";
 import HomePage from "./pages/HomePage";
+import DiscoverTutors from "./pages/DiscoverTutors";
+import DiscoverClasses from "./pages/DiscoverClasses";
 import { TutorInfo } from "./pages/Tutor/TutorInfo";
 import { TutorProfile } from "./pages/Tutor/profile";
 import { TutorClasses } from "./pages/Tutor/class";
@@ -13,6 +15,7 @@ import { FormAddClass } from "./pages/Tutor/form-add-class";
 import { ClassDetail } from "./pages/Tutor/class-detail";
 import { StudentProfile } from "./pages/Student/StudentProfile";
 import AboutPage from "./pages/AboutPage";
+import NotFoundPage from "./pages/NotFoundPage";
 import { AdminDashboard } from "./pages/Admin/AdminDashboard";
 import { AdminClasses } from "./pages/Admin/AdminClasses";
 
@@ -21,6 +24,8 @@ function App() {
   const pathname = window.location.pathname;
 
   if (pathname === "/") return <HomePage />;
+  if (pathname === "/discover/tutors") return <DiscoverTutors />;
+  if (pathname === "/discover/classes") return <DiscoverClasses />;
   if (pathname === "/about") return <AboutPage />;
   if (pathname === "/login") return <Login />;
   if (pathname === "/register") return <Register />;
@@ -36,7 +41,7 @@ function App() {
   if (pathname === "/admin") return <AdminDashboard />;
   if (pathname === "/admin/classes") return <AdminClasses />;
 
-  return <HomePage />;
+  return <NotFoundPage />;
 }
 
 export default App;

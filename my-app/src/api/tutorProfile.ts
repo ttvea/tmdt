@@ -38,6 +38,8 @@ export interface TutorProfileResponse {
 
 export interface TutorSearchResponse {
   id: number
+  profileId?: number
+  userId?: number
   fullName: string
   avatar: string
   major: string
@@ -48,6 +50,8 @@ export interface TutorSearchResponse {
 
 interface TutorSearchResponseRaw {
   id: number
+  profileId?: number
+  userId?: number
   fullName: string
   avatar: string
   major: string
@@ -123,6 +127,11 @@ export async function getTutorProfile(userId: number): Promise<TutorProfileRespo
   return res.data
 }
 
+export async function getPublicTutorProfile(profileId: number): Promise<TutorProfileResponse> {
+  const res = await api.get(`/api/tutor-profile/public/${profileId}`)
+  return res.data
+}
+
 export async function getTutorProfileForEdit(userId: number): Promise<TutorProfileEditResponse> {
   const res = await api.get(`/api/tutor-profile/${userId}/edit`, {
     headers: getAuthHeader(),
@@ -170,6 +179,8 @@ function isTutorProfileArray(data: unknown): data is TutorProfileSearchItem[] {
 function normalizeTutorSearchItem(rawItem: TutorSearchResponseRaw): TutorSearchResponse {
   return {
     id: rawItem.id,
+    profileId: rawItem.profileId ?? rawItem.id,
+    userId: rawItem.userId,
     fullName: rawItem.fullName,
     avatar: rawItem.avatar,
     major: rawItem.major,
