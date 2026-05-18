@@ -85,7 +85,8 @@ public class TutorProfileService {
         if (request.getGender() != null && !request.getGender().isBlank()) {
             try {
                 user.setGender(User.Gender.valueOf(request.getGender()));
-            } catch (IllegalArgumentException ignored) {}
+            } catch (IllegalArgumentException ignored) {
+            }
         }
         userRep.save(user);
 
@@ -197,6 +198,7 @@ public class TutorProfileService {
 
         return res;
     }
+
     public Page<TutorSearchResponse> searchTutors(
             String name,
             TutorProfile.OccupationType occupation,
