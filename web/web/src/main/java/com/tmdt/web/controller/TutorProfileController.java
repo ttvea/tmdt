@@ -29,6 +29,8 @@ public class TutorProfileController {
     public ResponseEntity<TutorProfileResponse> getProfile(@PathVariable int userId) {
         return ResponseEntity.ok(tutorProfileService.getProfile(userId));
     }
+
+
     @GetMapping("/{userId}/edit")
     public ResponseEntity<TutorProfileRequest> getProfileForEdit(@PathVariable int userId) {
         return ResponseEntity.ok(tutorProfileService.getProfileForEdit(userId));

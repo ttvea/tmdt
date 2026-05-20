@@ -12,7 +12,6 @@ import java.util.Optional;
 
 public interface TutorProfileRep extends JpaRepository<TutorProfile, Integer> {
     Optional<TutorProfile> findByUserId(int userId);
-
     @Query("""
     SELECT DISTINCT t
     FROM TutorProfile t
