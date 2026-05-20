@@ -1,139 +1,235 @@
 import { useEffect, useState } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
-import { getUserProfile, type UserProfileResponse } from '../../api/userProfile.ts'
+import { getUserProfile, type UserProfileResponse } from '../../api/userProfile'
 import { getMediaUrl } from '../../api/axios'
 
 const GENDER_LABELS: Record<string, string> = {
-  MALE: 'Nam', FEMALE: 'Nữ',
-  male: 'Nam', female: 'Nữ',
+  male: 'Nam',
+  female: 'Nữ',
 }
 
-export function StudentProfile() {
+export default function StudentProfile() {
   const userRaw = localStorage.getItem('user')
   const user = userRaw ? JSON.parse(userRaw) : null
-  const userId: number = user?.id
+  const userId = user?.id ? Number(user.id) : 0
 
   const [profile, setProfile] = useState<UserProfileResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [showEmailTooltip, setShowEmailTooltip] = useState(false)
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
+  const [isEditing, setIsEditing] = useState(false)
+  
+  const [formData, setFormData] = useState<{
+    fullName: string;
+    phone: string;
+    gender: string;
+    birthday: number | string;
+  }>({
+    fullName: '',
+    phone: '',
+    gender: '',
+    birthday: 2000
+  })
 
-useEffect(() => {
-  if (!userId) { 
-    setLoading(false); 
-    return; 
+  useEffect(() => {
+    if (!userId) return
+    getUserProfile(userId)
+      .then((data) => {
+        setProfile(data)
+        setFormData({
+          fullName: data.fullName || '',
+          phone: data.phone || '',
+          gender: data.gender || '',
+          birthday: data.birthday || 2000
+        })
+      })
+      .catch(() => {})
+  }, [userId])
+
+  const handleSave = () => {
+    console.log("Dữ liệu chuẩn bị gửi đi:", formData)
+    alert("Tính năng gửi dữ liệu về Server đang được xây dựng!")
+    // setIsEditing(false)
   }
 
-  getUserProfile(userId)
-    .then((data: UserProfileResponse) => { 
-      setProfile(data); 
-      setLoading(false); 
-    })
-    .catch((error) => {
-      console.error("Lỗi khi lấy thông tin học viên:", error);
-      setLoading(false);
-    });
-}, [userId]);
+  if (!profile) return (
+    <AccountLayout>
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    </AccountLayout>
+  )
 
-  const displayName = profile?.fullName || user?.fullName || user?.username || user?.name || 'Học viên'
-  const avatarUrl = getMediaUrl(profile?.avatar || user?.avatar)
+  const avatarUrl = getMediaUrl(profile.avatar)
 
   return (
     <AccountLayout activePath="/student/profile">
-      <div className="min-h-screen bg-slate-50 text-left">
+      <div className="min-h-screen bg-[#f0f2f5] w-full text-left pb-12">
+        
+        {/* ================= HEADER TRẮNG ================= */}
+        <div className="bg-white shadow-sm mb-8">
+          <div className="max-w-5xl mx-auto w-full">
+            
+            {/* 1. ẢNH BÌA XANH */}
+            <div className="h-28 md:h-40 bg-[#4267b2] w-full"></div>
 
-        <div className="bg-white border-b border-slate-200 px-8 py-6">
-          <div className="max-w-4xl mx-auto flex items-center gap-8">
-            <div className="relative shrink-0">
-              <div className="w-24 h-24 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+            {/* 2. AVATAR, TÊN VÀ NÚT */}
+            <div className="px-6 md:px-10 pb-4 flex flex-col md:flex-row md:items-end justify-between relative">
+              
+              <div className="flex flex-col md:flex-row md:items-end gap-4 md:gap-6">
+                
+                <div className="-mt-[70px] md:-mt-[90px] relative z-10 w-[140px] h-[140px] md:w-[180px] md:h-[180px] shrink-0 mx-auto md:mx-0">
+                  <div className="w-full h-full rounded-full border-4 border-white bg-slate-200 flex items-center justify-center text-5xl font-bold text-[#4267b2] overflow-hidden shadow-sm">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      profile.fullName?.charAt(0)
+                    )}
+                  </div>
+                  <button className="absolute bottom-2 right-2 md:bottom-4 md:right-4 w-9 h-9 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-full border-2 border-white flex items-center justify-center transition-colors shadow-sm z-20">
+                    <i className="fa-solid fa-camera text-sm"></i>
+                  </button>
+                </div>
+
+                {/* KHỐI TÊN */}
+                <div className="mb-2 md:mb-5 text-center md:text-left">
+                  <h1 
+                    className="text-xl md:text-2xl font-bold tracking-tight m-0 leading-none" 
+                    style={{ color: '#111827' }}
+                  >
+                    {profile.fullName || 'Học viên ẩn danh'}
+                  </h1>
+                  <p className="text-[#0084ff] font-medium mt-1.5 m-0 text-[15px]">
+                    Học viên
+                  </p>
+                </div>
+              </div>
+
+              {/* Nhóm Nút Bấm Góc Phải */}
+              <div className="mb-2 md:mb-4 flex justify-center md:justify-end w-full md:w-auto mt-3 md:mt-0">
+                {!isEditing ? (
+                  <button 
+                    onClick={() => setIsEditing(true)}
+                    className="px-6 py-2 bg-[#00a859] text-white font-semibold rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 shadow-sm"
+                  >
+                    Chỉnh sửa hồ sơ <i className="fa-solid fa-pen text-sm"></i>
+                  </button>
                 ) : (
-                  <svg className="w-12 h-12 text-slate-300 absolute inset-0 m-auto" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-                  </svg>
+                  <div className="flex gap-2 w-full md:w-auto">
+                    <button 
+                      onClick={() => setIsEditing(false)}
+                      className="flex-1 md:flex-none px-8 py-2 bg-[#d32f2f] text-white font-semibold rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                    >
+                      Hủy
+                    </button>
+                    <button 
+                      onClick={handleSave}
+                      className="flex-1 md:flex-none px-8 py-2 bg-[#00a859] text-white font-semibold rounded-lg hover:bg-green-600 transition-colors shadow-sm"
+                    >
+                      Lưu thay đổi
+                    </button>
+                  </div>
                 )}
               </div>
-              <span className="absolute bottom-1.5 left-1.5 w-3 h-3 rounded-full bg-green-500 border-2 border-white" />
-            </div>
 
-            <div className="flex-1 min-w-0">
-              <h2 className="text-2xl font-bold text-slate-900 leading-tight">
-                {loading ? <span className="inline-block w-36 h-7 bg-slate-200 rounded animate-pulse" /> : displayName}
-              </h2>
-              <p className="text-sm text-slate-500 mt-1">Học viên</p>
             </div>
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto px-8 py-8 flex gap-8 items-start">
-          {loading ? (
-            <div className="flex-1 flex items-center justify-center py-20">
-              <div className="flex flex-col items-center gap-3 text-slate-400">
-                <svg className="w-8 h-8 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-                <span className="text-sm">Đang tải thông tin...</span>
-              </div>
+        {/* ================= KHU VỰC THÔNG TIN CÁ NHÂN ================= */}
+        <div className="max-w-5xl mx-auto w-full px-4 md:px-10">
+          
+          <h2 className="text-xl md:text-2xl font-bold mb-4" style={{ color: '#b8860b' }}>
+            Thông tin cá nhân
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+            
+            <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <label className="text-[15px] font-medium text-slate-500 block mb-2">Họ và tên</label>
+              {isEditing ? (
+                <input 
+                  type="text" 
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-lg font-medium text-slate-900 outline-none focus:border-[#00a859]"
+                />
+              ) : (
+                <p className="text-xl md:text-2xl font-medium" style={{ color: '#111827' }}>
+                  {profile.fullName || '—'}
+                </p>
+              )}
             </div>
-          ) : (
-            <>
-              <div className="flex-1 min-w-0 flex flex-col gap-6">
-                <section className="bg-white border border-slate-200 rounded-xl p-6">
-                  <h2 className="text-base font-bold text-slate-900 mb-4">Thông tin tài khoản</h2>
-                  <div className="flex flex-col gap-0">
-                    {[
-                      { label: 'Họ và tên', value: profile?.fullName || '—' },
-                      { label: 'Giới tính', value: GENDER_LABELS[profile?.gender ?? ''] || '—' },
-                      { label: 'Năm sinh', value: profile?.birthday ? String(profile.birthday) : '—' },
-                      { label: 'Số điện thoại', value: profile?.phone || '—' },
-                    ].map((item, idx, arr) => (
-                      <div key={item.label}
-                        className={`flex items-center gap-3 py-3 ${idx < arr.length - 1 ? 'border-b border-slate-100' : ''}`}>
-                        <span className="text-sm text-slate-400 w-36 shrink-0">{item.label}</span>
-                        <span className="text-sm font-semibold text-slate-800">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
+
+            <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <label className="text-[15px] font-medium text-slate-500 block mb-2">Email</label>
+              {isEditing ? (
+                <input 
+                  type="email" 
+                  value={profile.email}
+                  readOnly
+                  className="w-full border border-slate-300 bg-slate-50 rounded-lg px-3 py-2 text-lg font-medium text-slate-600 outline-none cursor-not-allowed"
+                />
+              ) : (
+                <p className="text-xl md:text-2xl font-medium truncate" style={{ color: '#111827' }} title={profile.email}>
+                  {profile.email || '—'}
+                </p>
+              )}
+            </div>
+
+            <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <label className="text-[15px] font-medium text-slate-500 block mb-2">Số Điện Thoại</label>
+              {isEditing ? (
+                <input 
+                  type="tel" 
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-lg font-medium text-slate-900 outline-none focus:border-[#00a859]"
+                />
+              ) : (
+                <p className="text-xl md:text-2xl font-medium" style={{ color: '#111827' }}>
+                  {profile.phone || '—'}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 md:gap-5">
+              
+              <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <label className="text-[15px] font-medium text-slate-500 block mb-2">Giới Tính</label>
+                {isEditing ? (
+                  <select 
+                    value={formData.gender}
+                    onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-lg font-medium text-slate-900 outline-none focus:border-[#00a859] cursor-pointer"
+                  >
+                    <option value="">Chọn</option>
+                    <option value="male">Nam</option>
+                    <option value="female">Nữ</option>
+                  </select>
+                ) : (
+                  <p className="text-xl md:text-2xl font-medium" style={{ color: '#111827' }}>
+                    {GENDER_LABELS[profile.gender] || '—'}
+                  </p>
+                )}
               </div>
 
-              <div className="w-60 shrink-0">
-                <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col gap-0">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Liên hệ</p>
-                  {[
-                    { label: 'Email', value: profile?.email || user?.email || '—' },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-baseline gap-2">
-                      <span className="text-xs font-medium text-slate-400 shrink-0">{item.label}:</span>
-                      <span
-                        className="relative truncate min-w-0"
-                        onMouseEnter={(e) => {
-                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                          setTooltipPos({ x: rect.left, y: rect.top })
-                          setShowEmailTooltip(true)
-                        }}
-                        onMouseLeave={() => setShowEmailTooltip(false)}
-                      >
-                        <span className="text-sm font-semibold text-slate-800 truncate block cursor-default">
-                          {item.value}
-                        </span>
-                        {showEmailTooltip && (
-                          <span
-                            className="fixed z-[9999] bg-slate-800 text-white text-xs rounded-lg px-3 py-1.5 whitespace-nowrap shadow-lg pointer-events-none"
-                            style={{ left: tooltipPos.x, top: tooltipPos.y - 36 }}
-                          >
-                            {item.value}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <label className="text-[15px] font-medium text-slate-500 block mb-2">Năm sinh</label>
+                {isEditing ? (
+                  <input 
+                    type="number" 
+                    value={formData.birthday}
+                    onChange={(e) => setFormData({...formData, birthday: e.target.value})}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-lg font-medium text-slate-900 outline-none focus:border-[#00a859]"
+                  />
+                ) : (
+                  <p className="text-xl md:text-2xl font-medium" style={{ color: '#111827' }}>
+                    {profile.birthday || '—'}
+                  </p>
+                )}
               </div>
-            </>
-          )}
+              
+            </div>
+
+          </div>
         </div>
       </div>
     </AccountLayout>
