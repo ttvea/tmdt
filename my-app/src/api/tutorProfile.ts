@@ -52,13 +52,18 @@ interface TutorSearchResponseRaw {
   id: number
   profileId?: number
   userId?: number
-  fullName: string
-  avatar: string
-  major: string
-  experience: string
+  user?: {
+    id?: number
+    fullName?: string
+    avatar?: string
+  }
+  fullName?: string
+  avatar?: string
+  major?: string
+  experience?: string
   verified?: boolean
   isVerified?: boolean
-  subjects: string[]
+  subjects?: Array<string | { name?: string }>
 }
 
 export type TutorProfileSearchItem = TutorSearchResponse
@@ -128,7 +133,7 @@ export async function getTutorProfile(userId: number): Promise<TutorProfileRespo
 }
 
 export async function getPublicTutorProfile(profileId: number): Promise<TutorProfileResponse> {
-  const res = await api.get(`/api/tutor-profile/public/${profileId}`)
+  const res = await api.get(`/api/tutor-profile/${profileId}`)
   return res.data
 }
 
@@ -177,16 +182,20 @@ function isTutorProfileArray(data: unknown): data is TutorProfileSearchItem[] {
 }
 
 function normalizeTutorSearchItem(rawItem: TutorSearchResponseRaw): TutorSearchResponse {
+  const subjectNames = (rawItem.subjects ?? [])
+    .map((subject) => (typeof subject === 'string' ? subject : subject.name ?? ''))
+    .filter((subjectName) => subjectName.length > 0)
+
   return {
     id: rawItem.id,
     profileId: rawItem.profileId ?? rawItem.id,
-    userId: rawItem.userId,
-    fullName: rawItem.fullName,
-    avatar: rawItem.avatar,
-    major: rawItem.major,
-    experience: rawItem.experience,
+    userId: rawItem.userId ?? rawItem.user?.id,
+    fullName: rawItem.fullName ?? rawItem.user?.fullName ?? '',
+    avatar: rawItem.avatar ?? rawItem.user?.avatar ?? '',
+    major: rawItem.major ?? '',
+    experience: rawItem.experience ?? '',
     isVerified: rawItem.isVerified ?? rawItem.verified ?? false,
-    subjects: rawItem.subjects,
+    subjects: subjectNames,
   }
 }
 

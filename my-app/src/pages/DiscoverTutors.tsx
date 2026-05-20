@@ -67,7 +67,7 @@ function TutorCard({ tutor }: { tutor: TutorProfileSearchItem }) {
           {tutor.isVerified ? "Hồ sơ sẵn sàng liên hệ" : "Đang cập nhật hồ sơ"}
         </span>
         <a
-          href="/login"
+          href={`/tutor/${tutor.userId ?? tutor.profileId ?? tutor.id}`}
           className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
         >
           Xem hồ sơ

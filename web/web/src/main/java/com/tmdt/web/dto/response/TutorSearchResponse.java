@@ -7,6 +7,7 @@ import java.util.List;
 @Data
 public class TutorSearchResponse {
     private int id;
+    private int userId;
     private String fullName;
     private String avatar;
     private String major;
