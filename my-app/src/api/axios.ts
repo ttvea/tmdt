@@ -7,6 +7,20 @@ const api = axios.create({
   withCredentials: true,
 })
 
+// Tự động gắn token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access_token'); 
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 export function getMediaUrl(path: string | null | undefined): string | null {
   if (!path) return null
   if (path.startsWith('http')) return path

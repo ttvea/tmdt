@@ -1,9 +1,8 @@
 package com.tmdt.web.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +24,9 @@ public class TutorProfile {
 
     @OneToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id")
+    @ToString.Exclude           // Cấm in user
+    @EqualsAndHashCode.Exclude  // Cấm so sánh user
+    @JsonIgnore
     private User user;
 
     @Enumerated(EnumType.STRING)

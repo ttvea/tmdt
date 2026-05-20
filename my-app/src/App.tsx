@@ -13,7 +13,7 @@ import { TutorProfile } from "./pages/Tutor/profile";
 import { TutorClasses } from "./pages/Tutor/class";
 import { FormAddClass } from "./pages/Tutor/form-add-class";
 import { ClassDetail } from "./pages/Tutor/class-detail";
-import { StudentProfile } from "./pages/Student/StudentProfile";
+import  StudentProfile  from "./pages/Student/StudentProfile";
 import AboutPage from "./pages/AboutPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import { AdminDashboard } from "./pages/Admin/AdminDashboard";
