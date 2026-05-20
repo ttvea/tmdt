@@ -13,6 +13,7 @@ import { TutorProfile } from "./pages/Tutor/profile";
 import { TutorClasses } from "./pages/Tutor/class";
 import { FormAddClass } from "./pages/Tutor/form-add-class";
 import { ClassDetail } from "./pages/Tutor/class-detail";
+import { TutorProfileDetail } from "./pages/Tutor/TutorProfileDetail";
 import { StudentProfile } from "./pages/Student/StudentProfile";
 import AboutPage from "./pages/AboutPage";
 import NotFoundPage from "./pages/NotFoundPage";
@@ -37,6 +38,10 @@ function App() {
   if (pathname === "/tutor/classes") return <TutorClasses />;
   if (pathname === "/tutor/classes/new") return <FormAddClass />;
   if (pathname.startsWith("/tutor/classes/") && !pathname.includes("/edit/")) return <ClassDetail />;
+  if (pathname.startsWith("/tutor/") && !pathname.includes("/classes")) {
+    const tutorId = pathname.split("/")[2];
+    if (tutorId && !isNaN(Number(tutorId))) return <TutorProfileDetail />;
+  }
   if (pathname === "/student/profile") return <StudentProfile />;
   if (pathname === "/admin") return <AdminDashboard />;
   if (pathname === "/admin/classes") return <AdminClasses />;

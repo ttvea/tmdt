@@ -39,6 +39,15 @@ public class TutorProfileService {
                 .orElse(new TutorProfile());
         return mapToResponse(user, profile);
     }
+    public TutorProfileResponse getProfileById(int id) {
+        User user = userRep.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+        TutorProfile profile = tutorProfileRep.findByUserId(id)
+                .orElse(new TutorProfile());
+        return mapToResponse(user, profile);
+    }
+
+
 
     public TutorProfileRequest getProfileForEdit(int userId) {
         User user = userRep.findById(userId)
@@ -217,7 +226,7 @@ public class TutorProfileService {
 
         return tutors.map(t -> {
             TutorSearchResponse dto = new TutorSearchResponse();
-
+            dto.setUserId(t.getUser().getId());
             dto.setId(t.getId());
             dto.setFullName(t.getUser().getFullName());
             dto.setAvatar(t.getUser().getAvatar());
