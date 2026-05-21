@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.tmdt.web.dto.request.UserUpdateRequest;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/users")
@@ -25,5 +26,18 @@ public class UserController {
     public ResponseEntity<String> updateProfile(@PathVariable Integer id, @RequestBody UserUpdateRequest request) {
         userService.updateUserProfile(id, request);
         return ResponseEntity.ok("Cập nhật thông tin thành công!");
+    }
+
+    // Nhận ảnh đại diện
+    @PostMapping("/{id}/avatar")
+    public ResponseEntity<String> uploadAvatar(
+            @PathVariable Integer id,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            String newAvatarUrl = userService.uploadAvatar(id, file);
+            return ResponseEntity.ok(newAvatarUrl);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi upload: " + e.getMessage());
+        }
     }
 }
