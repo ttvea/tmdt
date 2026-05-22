@@ -22,13 +22,28 @@ function getDisplayStatus(approvalStatus: ApprovalStatus, classStatus: ClassStat
 }
 
 const PAGE_SIZE = 4
+const STATS_PAGE_SIZE = 100
 
 function formatFee(fee: number) {
   return fee.toLocaleString('vi-VN') + 'đ/Khóa'
 }
 
+async function getAllMyClassesForStats() {
+  const firstPage = await getMyClasses(0, STATS_PAGE_SIZE)
+  if (firstPage.totalPages <= 1) return firstPage.content
+
+  const restPages = await Promise.all(
+    Array.from({ length: firstPage.totalPages - 1 }, (_, index) =>
+      getMyClasses(index + 1, STATS_PAGE_SIZE)
+    )
+  )
+
+  return [firstPage, ...restPages].flatMap(pageData => pageData.content)
+}
+
 export function TutorClasses() {
   const [classes, setClasses] = useState<ClassResponse[]>([])
+  const [statsClasses, setStatsClasses] = useState<ClassResponse[]>([])
   const [totalElements, setTotalElements] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [page, setPage] = useState(0)
@@ -52,6 +67,12 @@ export function TutorClasses() {
   }, [])
 
   useEffect(() => {
+    getAllMyClassesForStats()
+      .then(setStatsClasses)
+      .catch(() => setStatsClasses([]))
+  }, [])
+
+  useEffect(() => {
     setLoading(true)
     getMyClasses(page, PAGE_SIZE)
       .then(data => {
@@ -65,13 +86,15 @@ export function TutorClasses() {
 
   const currentPage = page + 1
 
-  const totalClasses  = totalElements
-  const teachingCount = classes.filter(c => c.approvalStatus === 'APPROVED' && (c.status === 'CLOSED' || c.status === 'OPEN')).length
-  const pendingCount  = classes.filter(c => c.approvalStatus === 'PENDING').length
-  const completedCount = classes.filter(c => c.status === 'COMPLETED').length
+  const totalClasses  = statsClasses.length || totalElements
+  const recruitingCount = statsClasses.filter(c => c.approvalStatus === 'APPROVED' && c.status === 'OPEN').length
+  const teachingCount = statsClasses.filter(c => c.approvalStatus === 'APPROVED' && c.status === 'CLOSED').length
+  const pendingCount  = statsClasses.filter(c => c.approvalStatus === 'PENDING').length
+  const completedCount = statsClasses.filter(c => c.status === 'COMPLETED').length
 
   const handleDelete = (id: number) => {
     setClasses(prev => prev.filter(c => c.id !== id))
+    setStatsClasses(prev => prev.filter(c => c.id !== id))
     setDeleteId(null)
   }
 
@@ -96,10 +119,14 @@ export function TutorClasses() {
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-5 gap-4">
             <StatCard
               icon={<svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
               iconBg="bg-blue-100" label="Tổng số lớp" value={totalClasses}
+            />
+            <StatCard
+              icon={<svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6v6l4 2m5-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" /></svg>}
+              iconBg="bg-emerald-100" label="Lớp đang tuyển sinh" value={recruitingCount}
             />
             <StatCard
               icon={<svg className="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}

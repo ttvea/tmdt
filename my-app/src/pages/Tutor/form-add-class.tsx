@@ -61,6 +61,8 @@ export function FormAddClass() {
   const [endMin, setEndMin] = useState('00')
   const [endPeriod, setEndPeriod] = useState<Period>('AM')
   const [mode, setMode] = useState<TeachMode>('ONLINE')
+  const [address, setAddress] = useState('')
+  const [city, setCity] = useState('')
   const [fee, setFee] = useState('200.000')
   const [totalSessions, setTotalSessions] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -109,6 +111,11 @@ export function FormAddClass() {
       return
     }
 
+    if (mode === 'OFFLINE' && (!address.trim() || !city.trim())) {
+      setError('Vui lòng nhập địa chỉ và thành phố khi chọn học Offline.')
+      return
+    }
+
     const schedules: ScheduleRequest[] = selectedDays.map(dow => ({
       dayOfWeek: dow,
       startTime,
@@ -127,8 +134,8 @@ export function FormAddClass() {
         pricePerCourse: Number(fee.replace(/\./g, '')),
         totalSessions: totalSessions ? Number(totalSessions) : null,
         maxStudents: Number(maxStudents),
-        address: null,
-        city: null,
+        address: mode === 'OFFLINE' ? address.trim() : null,
+        city: mode === 'OFFLINE' ? city.trim() : null,
         thumbnailUrl: null,
         schedules,
       })
@@ -288,7 +295,34 @@ export function FormAddClass() {
                     </div>
                   </FormField>
 
+                  {mode === 'OFFLINE' && (
+                    <div className="grid grid-cols-1 gap-4">
+                      <FormField label="Địa chỉ học" required>
+                        <input
+                          type="text"
+                          value={address}
+                          onChange={e => setAddress(e.target.value)}
+                          placeholder="Ví dụ: 12 Nguyễn Văn Bảo, phường 4"
+                          required
+                          className="input-base"
+                        />
+                      </FormField>
+
+                      <FormField label="Thành phố" required>
+                        <input
+                          type="text"
+                          value={city}
+                          onChange={e => setCity(e.target.value)}
+                          placeholder="Ví dụ: TP. Hồ Chí Minh"
+                          required
+                          className="input-base"
+                        />
+                      </FormField>
+                    </div>
+                  )}
+
                   <FormField label="Học phí dự kiến (VNĐ/Khóa)" required>
+
                     <div className="relative">
                       <input
                         type="text"

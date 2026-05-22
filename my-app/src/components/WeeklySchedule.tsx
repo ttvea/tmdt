@@ -7,6 +7,8 @@ export interface ScheduleEvent {
   categoryName?: string | null
   teacherName?: string
   mode: 'ONLINE' | 'OFFLINE'
+  address?: string | null
+  city?: string | null
   dayOfWeek: number
   startTime: string
   endTime: string
@@ -336,6 +338,11 @@ export function WeeklySchedule({
           <p className="mt-1 text-xs font-semibold text-slate-600">
             Thời gian: {formatTime(hoveredEvent.startTime)} - {formatTime(hoveredEvent.endTime)}
           </p>
+          {hoveredEvent.mode === 'OFFLINE' && (hoveredEvent.address || hoveredEvent.city) ? (
+            <p className="mt-1 text-xs font-semibold text-slate-600">
+              Địa chỉ: {[hoveredEvent.address, hoveredEvent.city].filter(Boolean).join(', ')}
+            </p>
+          ) : null}
           <p className="mt-2 inline-flex rounded bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-800">
             {modeLabel(hoveredEvent.mode)}
           </p>
