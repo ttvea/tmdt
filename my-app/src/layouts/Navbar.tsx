@@ -55,16 +55,13 @@ function Navbar() {
               <a href="/about" className={navLinkClass("/about")}>
                 Giới thiệu
               </a>
-              <a href="#" className="text-sm font-medium text-slate-600 hover:text-cyan-700">
+              <a href="/pricing" className={navLinkClass("/pricing")}>
                 Học phí
               </a>
-              <a href="#" className="text-sm font-medium text-slate-600 hover:text-cyan-700">
-                Blog
-              </a>
-              <a href="#" className="text-sm font-medium text-slate-600 hover:text-cyan-700">
+              <a href="/faq" className={navLinkClass("/faq")}>
                 Hỏi đáp
               </a>
-              <a href="#" className="text-sm font-medium text-slate-600 hover:text-cyan-700">
+              <a href="/contact" className={navLinkClass("/contact")}>
                 Liên hệ
               </a>
               <div className="group relative">

@@ -1,4 +1,4 @@
-
+import { useEffect } from "react";
 import "./App.css";
 import { Login } from "./pages/Login";
 import { ResetPassword } from './pages/ResetPassword';
@@ -22,15 +22,57 @@ import NotFoundPage from "./pages/NotFoundPage";
 import { AdminDashboard } from "./pages/Admin/AdminDashboard";
 import { AdminClasses } from "./pages/Admin/AdminClasses";
 import { AdminClassDetail } from "./pages/Admin/AdminClassDetail";
+import PricingPage from "./pages/PricingPage";
+import ContactPage from "./pages/ContactPage";
+import FaqPage from "./pages/FaqPage";
 
+const pageTitles: Record<string, string> = {
+  "/": "EduMatch Pro - Kết nối gia sư 1 kèm 1",
+  "/discover/tutors": "Tìm gia sư - EduMatch Pro",
+  "/discover/classes": "Tìm lớp học - EduMatch Pro",
+  "/about": "Giới thiệu - EduMatch Pro",
+  "/pricing": "Học phí - EduMatch Pro",
+  "/faq": "Hỏi đáp - EduMatch Pro",
+  "/contact": "Liên hệ - EduMatch Pro",
+  "/login": "Đăng nhập - EduMatch Pro",
+  "/register": "Đăng ký - EduMatch Pro",
+  "/forgot-password": "Quên mật khẩu - EduMatch Pro",
+  "/reset-password": "Đặt lại mật khẩu - EduMatch Pro",
+  "/oauth2/redirect": "Đang đăng nhập - EduMatch Pro",
+  "/tutor/info": "Thông tin gia sư - EduMatch Pro",
+  "/tutor/profile": "Hồ sơ gia sư - EduMatch Pro",
+  "/tutor/classes": "Lớp của gia sư - EduMatch Pro",
+  "/tutor/schedule": "Lịch dạy - EduMatch Pro",
+  "/tutor/classes/new": "Tạo lớp học - EduMatch Pro",
+  "/student/profile": "Hồ sơ học viên - EduMatch Pro",
+  "/student/schedule": "Lịch học - EduMatch Pro",
+  "/admin": "Quản trị - EduMatch Pro",
+  "/admin/classes": "Quản lý lớp học - EduMatch Pro",
+};
+
+function getPageTitle(pathname: string) {
+  if (pageTitles[pathname]) return pageTitles[pathname];
+  if (pathname.startsWith("/tutor/classes/")) return "Chi tiết lớp học - EduMatch Pro";
+  if (pathname.startsWith("/tutor/")) return "Chi tiết gia sư - EduMatch Pro";
+  if (pathname.startsWith("/admin/classes/")) return "Duyệt lớp học - EduMatch Pro";
+
+  return "Không tìm thấy trang - EduMatch Pro";
+}
 
 function App() {
   const pathname = window.location.pathname;
+
+  useEffect(() => {
+    document.title = getPageTitle(pathname);
+  }, [pathname]);
 
   if (pathname === "/") return <HomePage />;
   if (pathname === "/discover/tutors") return <DiscoverTutors />;
   if (pathname === "/discover/classes") return <DiscoverClasses />;
   if (pathname === "/about") return <AboutPage />;
+  if (pathname === "/pricing") return <PricingPage />;
+  if (pathname === "/faq") return <FaqPage />;
+  if (pathname === "/contact") return <ContactPage />;
   if (pathname === "/login") return <Login />;
   if (pathname === "/register") return <Register />;
   if (pathname === '/forgot-password') return <ForgotPassword />
