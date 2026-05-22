@@ -22,6 +22,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 import { AdminDashboard } from "./pages/Admin/AdminDashboard";
 import { AdminClasses } from "./pages/Admin/AdminClasses";
 import { AdminClassDetail } from "./pages/Admin/AdminClassDetail";
+import { AdminUsers } from "./pages/Admin/AdminUsers";
 import PricingPage from "./pages/PricingPage";
 import ContactPage from "./pages/ContactPage";
 import FaqPage from "./pages/FaqPage";
@@ -47,6 +48,7 @@ const pageTitles: Record<string, string> = {
   "/student/profile": "Hồ sơ học viên - EduMatch Pro",
   "/student/schedule": "Lịch học - EduMatch Pro",
   "/admin": "Quản trị - EduMatch Pro",
+  "/admin/users": "Quản lý người dùng - EduMatch Pro",
   "/admin/classes": "Quản lý lớp học - EduMatch Pro",
 };
 
@@ -91,6 +93,7 @@ function App() {
   if (pathname === "/student/profile") return <StudentProfile />;
   if (pathname === "/student/schedule") return <StudentSchedule />;
   if (pathname === "/admin") return <AdminDashboard />;
+  if (pathname === "/admin/users") return <AdminUsers />;
   if (pathname === "/admin/classes") return <AdminClasses />;
   if (pathname.startsWith("/admin/classes/")) return <AdminClassDetail />;
 

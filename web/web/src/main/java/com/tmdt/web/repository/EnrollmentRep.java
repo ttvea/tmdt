@@ -25,6 +25,8 @@ public interface EnrollmentRep extends JpaRepository<Enrollment, Long> {
 
     Page<Enrollment> findByStudentId(Long studentId, Pageable pageable);
 
+    long countByStatus(EnrollmentStatus status);
+
     long countByClassEntityIdAndStatusIn(Long classId, List<EnrollmentStatus> statuses);
 
     @Query("""

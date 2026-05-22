@@ -1,3 +1,4 @@
+import axios from 'axios'
 import api from './axios'
 
 type LoginPayload = { email: string; password: string }
@@ -11,11 +12,18 @@ export async function login(payload: LoginPayload) {
     password: payload.password,
   }).toString()
 
-  const res = await api.post('/api/auth/login', params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  })
+  try {
+    const res = await api.post('/api/auth/login', params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    })
 
-  return res.data
+    return res.data
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.data) {
+      throw new Error(String(error.response.data))
+    }
+    throw error
+  }
 }
 
 export async function register(payload: RegisterPayload) {
