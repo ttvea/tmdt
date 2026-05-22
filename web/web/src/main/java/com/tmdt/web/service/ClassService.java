@@ -157,6 +157,25 @@ public class ClassService {
         return classRepository.findAll(pageable).map(classMapper::toResponse);
     }
 
+    public ClassResponse adminGetClassDetail(Long classId) {
+        TutorClass classEntity = classRepository.findById(classId)
+                .orElseThrow(() -> AppException.notFound("Không tìm thấy lớp học"));
+        return classMapper.toResponse(classEntity);
+    }
+
+    public Page<EnrollmentResponse> adminGetClassEnrollments(Long classId,
+                                                             EnrollmentStatus statusFilter,
+                                                             Pageable pageable) {
+        classRepository.findById(classId)
+                .orElseThrow(() -> AppException.notFound("Không tìm thấy lớp học"));
+
+        Page<Enrollment> page = (statusFilter != null)
+                ? enrollmentRepository.findByClassEntityIdAndStatus(classId, statusFilter, pageable)
+                : enrollmentRepository.findByClassEntityId(classId, pageable);
+
+        return page.map(classMapper::toEnrollmentResponse);
+    }
+
     public Page<ClassResponse> searchClasses(Long subjectId, Long gradeLevelId,
                                              String teachingMode,String title, String city,
                                              Pageable pageable) {

@@ -4,6 +4,16 @@ import { getMyClasses, getAllGradeLevels, type ClassResponse, type ApprovalStatu
 import { getAllSubjects, type SubjectOption } from '../../api/tutorProfile'
 
 type DisplayStatus = 'pending' | 'recruiting' | 'teaching' | 'completed' | 'rejected'
+type ClassTab = 'all' | DisplayStatus
+
+const CLASS_TABS: { key: ClassTab; label: string }[] = [
+  { key: 'all', label: 'Tất cả' },
+  { key: 'pending', label: 'Chờ duyệt' },
+  { key: 'recruiting', label: 'Đang tuyển sinh' },
+  { key: 'teaching', label: 'Đang dạy' },
+  { key: 'completed', label: 'Đã hoàn thành' },
+  { key: 'rejected', label: 'Đã từ chối' },
+]
 
 const STATUS_CONFIG: Record<DisplayStatus, { label: string; className: string }> = {
   pending:    { label: 'Chờ duyệt',     className: 'bg-yellow-100 text-yellow-600' },
@@ -42,6 +52,7 @@ async function getAllMyClassesForStats() {
 }
 
 export function TutorClasses() {
+  const [activeTab, setActiveTab] = useState<ClassTab>('all')
   const [classes, setClasses] = useState<ClassResponse[]>([])
   const [statsClasses, setStatsClasses] = useState<ClassResponse[]>([])
   const [totalElements, setTotalElements] = useState(0)
@@ -67,22 +78,32 @@ export function TutorClasses() {
   }, [])
 
   useEffect(() => {
+    setLoading(true)
     getAllMyClassesForStats()
-      .then(setStatsClasses)
-      .catch(() => setStatsClasses([]))
+      .then(data => {
+        setStatsClasses(data)
+        setLoading(false)
+      })
+      .catch(() => {
+        setStatsClasses([])
+        setLoading(false)
+      })
   }, [])
 
   useEffect(() => {
-    setLoading(true)
-    getMyClasses(page, PAGE_SIZE)
-      .then(data => {
-        setClasses(data.content)
-        setTotalElements(data.totalElements)
-        setTotalPages(data.totalPages)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [page])
+    setPage(0)
+  }, [activeTab])
+
+  useEffect(() => {
+    const filtered = activeTab === 'all'
+      ? statsClasses
+      : statsClasses.filter(cls => getDisplayStatus(cls.approvalStatus, cls.status) === activeTab)
+    const start = page * PAGE_SIZE
+
+    setClasses(filtered.slice(start, start + PAGE_SIZE))
+    setTotalElements(filtered.length)
+    setTotalPages(Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
+  }, [activeTab, page, statsClasses])
 
   const currentPage = page + 1
 
@@ -143,6 +164,23 @@ export function TutorClasses() {
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="flex border-b border-slate-200">
+              {CLASS_TABS.map(tab => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex-1 border-b-2 px-3 py-3 text-sm font-semibold transition-colors ${
+                    activeTab === tab.key
+                      ? 'border-blue-700 bg-blue-50/60 text-blue-700'
+                      : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
             {loading ? (
               <div className="flex items-center justify-center py-16 text-slate-400">
                 <svg className="w-6 h-6 animate-spin mr-2" fill="none" viewBox="0 0 24 24">
@@ -156,7 +194,11 @@ export function TutorClasses() {
                 <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
-                <p className="text-sm">Chưa có lớp học nào. Hãy tạo lớp đầu tiên!</p>
+                <p className="text-sm">
+                  {activeTab === 'all'
+                    ? 'Chưa có lớp học nào. Hãy tạo lớp đầu tiên!'
+                    : 'Không có lớp học nào trong trạng thái này.'}
+                </p>
               </div>
             ) : (
               <table className="w-full text-sm">
@@ -228,7 +270,7 @@ export function TutorClasses() {
               </table>
             )}
 
-            {!loading && totalPages > 0 && (
+            {!loading && totalElements > 0 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100">
                 <span className="text-xs text-slate-400">
                   Hiển thị {page * PAGE_SIZE + 1} – {Math.min((page + 1) * PAGE_SIZE, totalElements)} trong số {totalElements} lớp học

@@ -21,6 +21,7 @@ import AboutPage from "./pages/AboutPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import { AdminDashboard } from "./pages/Admin/AdminDashboard";
 import { AdminClasses } from "./pages/Admin/AdminClasses";
+import { AdminClassDetail } from "./pages/Admin/AdminClassDetail";
 
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
   if (pathname === "/student/schedule") return <StudentSchedule />;
   if (pathname === "/admin") return <AdminDashboard />;
   if (pathname === "/admin/classes") return <AdminClasses />;
+  if (pathname.startsWith("/admin/classes/")) return <AdminClassDetail />;
 
   return <NotFoundPage />;
 }

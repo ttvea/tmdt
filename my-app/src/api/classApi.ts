@@ -202,6 +202,25 @@ export async function adminGetAllClasses(
   return res.data
 }
 
+export async function adminGetClassDetail(classId: number): Promise<ClassResponse> {
+  const res = await api.get(`/api/classes/admin/${classId}`, {
+    headers: getAuthHeader(),
+  })
+  return res.data
+}
+
+export async function adminGetClassEnrollments(
+  classId: number,
+  page = 0,
+  size = 50
+): Promise<PageResponse<EnrollmentResponse>> {
+  const res = await api.get(`/api/classes/admin/${classId}/enrollments`, {
+    headers: getAuthHeader(),
+    params: { page, size },
+  })
+  return res.data
+}
+
 export async function adminReviewClass(
   classId: number,
   approved: boolean,

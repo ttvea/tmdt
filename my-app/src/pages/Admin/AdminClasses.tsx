@@ -57,7 +57,7 @@ export function AdminClasses() {
   const [confirmModal, setConfirmModal] = useState<{ id: number; action: 'approve' | 'reject' } | null>(null)
   const [rejectReason, setRejectReason] = useState('')
 
-  const [stats, setStats] = useState({ pending: 0, recruiting: 0, teaching: 0, completed: 0 })
+  const [stats, setStats] = useState({ all: 0, pending: 0, recruiting: 0, teaching: 0, completed: 0 })
 
   useEffect(() => {
     getAllSubjects().then(data => {
@@ -68,13 +68,15 @@ export function AdminClasses() {
     }).catch(() => {})
 
     Promise.all([
+      adminGetAllClasses(null, 0, 1),
       adminGetAllClasses('PENDING', 0, 1),
-      adminGetAllClasses('APPROVED', 0, 100),
-    ]).then(([pending, approved]) => {
+      adminGetAllClasses('APPROVED', 0, 1000),
+    ]).then(([all, pending, approved]) => {
       const teaching   = approved.content.filter(c => c.status === 'CLOSED').length
       const recruiting = approved.content.filter(c => c.status === 'OPEN').length
       const completed  = approved.content.filter(c => c.status === 'COMPLETED').length
       setStats({
+        all: all.totalElements,
         pending: pending.totalElements,
         recruiting,
         teaching,
@@ -85,16 +87,18 @@ export function AdminClasses() {
 
   useEffect(() => {
     setPage(0)
-  }, [tab])
+  }, [tab, search, subjectFilter])
 
   useEffect(() => {
     setLoading(true)
     const { approval } = TAB_FILTER[tab]
-    adminGetAllClasses(approval, page, PAGE_SIZE)
+    const statusFilter = TAB_FILTER[tab].status
+    const shouldClientPaginate = Boolean(statusFilter || search.trim() || subjectFilter)
+
+    adminGetAllClasses(approval, shouldClientPaginate ? 0 : page, shouldClientPaginate ? 1000 : PAGE_SIZE)
       .then(async data => {
         let filtered = data.content
 
-        const statusFilter = TAB_FILTER[tab].status
         if (statusFilter) {
           filtered = filtered.filter(c => c.status === statusFilter)
         }
@@ -125,9 +129,17 @@ export function AdminClasses() {
             )
         )
         setTutorMap(newTutorMap)
-        setClasses(filtered)
-        setTotalElements(data.totalElements)
-        setTotalPages(data.totalPages)
+
+        if (shouldClientPaginate) {
+          const start = page * PAGE_SIZE
+          setClasses(filtered.slice(start, start + PAGE_SIZE))
+          setTotalElements(filtered.length)
+          setTotalPages(Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))
+        } else {
+          setClasses(filtered)
+          setTotalElements(data.totalElements)
+          setTotalPages(data.totalPages)
+        }
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -152,8 +164,9 @@ export function AdminClasses() {
         <p className="text-sm text-slate-500 mt-1">Quản lý và kiểm duyệt các yêu cầu mở lớp từ gia sư trên EduMatch Pro.</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-5 gap-4 mb-6">
         {[
+          { label: 'TẤT CẢ', value: stats.all, accent: true },
           { label: 'CHỜ PHÊ DUYỆT', value: stats.pending, accent: true },
           { label: 'ĐANG TUYỂN SINH', value: stats.recruiting, accent: true },
           { label: 'ĐANG DẠY', value: stats.teaching, accent: true },
