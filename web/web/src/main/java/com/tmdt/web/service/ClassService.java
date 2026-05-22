@@ -2,9 +2,11 @@ package com.tmdt.web.service;
 
 import com.tmdt.web.dto.request.AdminReviewClassRequest;
 import com.tmdt.web.dto.request.ClassCreateRequest;
+import com.tmdt.web.dto.request.ScheduleRequest;
 import com.tmdt.web.dto.request.TutorReviewEnrollmentRequest;
 import com.tmdt.web.dto.response.ClassResponse;
 import com.tmdt.web.dto.response.EnrollmentResponse;
+import com.tmdt.web.entity.ClassSchedule;
 import com.tmdt.web.entity.Enrollment;
 import com.tmdt.web.entity.TutorClass;
 import com.tmdt.web.enums.ApprovalStatus;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -35,6 +38,7 @@ public class ClassService {
     @Transactional
     public ClassResponse createClass(ClassCreateRequest request, Long tutorId) {
         validateSchedule(request);
+        validateTutorScheduleConflict(request, tutorId);
         validateOfflineAddress(request);
 
         TutorClass classEntity = classMapper.toEntity(request, tutorId);
@@ -196,6 +200,8 @@ public class ClassService {
             throw AppException.badRequest("Gia sư không thể đăng ký lớp của chính mình");
         }
 
+        validateStudentScheduleConflict(classEntity, studentId);
+
         Enrollment enrollment = Enrollment.builder()
                 .classEntity(classEntity)
                 .studentId(studentId)
@@ -258,6 +264,66 @@ public class ClassService {
                 throw AppException.badRequest("Giờ kết thúc phải sau giờ bắt đầu");
             }
         });
+
+        List<ScheduleRequest> schedules = request.getSchedules();
+        for (int i = 0; i < schedules.size(); i++) {
+            ScheduleRequest current = schedules.get(i);
+            for (int j = i + 1; j < schedules.size(); j++) {
+                ScheduleRequest next = schedules.get(j);
+                if (current.getDayOfWeek().equals(next.getDayOfWeek())
+                        && isTimeOverlapping(current.getStartTime(), current.getEndTime(),
+                        next.getStartTime(), next.getEndTime())) {
+                    throw AppException.badRequest("Thời khóa biểu của lớp học không được trùng giờ");
+                }
+            }
+        }
+    }
+
+    private void validateTutorScheduleConflict(ClassCreateRequest request, Long tutorId) {
+        if (request.getSchedules() == null || request.getSchedules().isEmpty()) return;
+
+        List<TutorClass> existingClasses = classRepository.findByTutorId(tutorId);
+        for (ScheduleRequest schedule : request.getSchedules()) {
+            for (TutorClass existingClass : existingClasses) {
+                if (existingClass.getApprovalStatus() == ApprovalStatus.REJECTED
+                        || existingClass.getStatus() == ClassStatus.COMPLETED) {
+                    continue;
+                }
+
+                for (ClassSchedule existingSchedule : existingClass.getSchedules()) {
+                    if (schedule.getDayOfWeek().equals(existingSchedule.getDayOfWeek())
+                            && isTimeOverlapping(schedule.getStartTime(), schedule.getEndTime(),
+                            existingSchedule.getStartTime(), existingSchedule.getEndTime())) {
+                        throw AppException.badRequest("Thời khóa biểu bị trùng với một lớp khác của bạn");
+                    }
+                }
+            }
+        }
+    }
+
+
+    private void validateStudentScheduleConflict(TutorClass targetClass, Long studentId) {
+        if (targetClass.getSchedules() == null || targetClass.getSchedules().isEmpty()) return;
+
+        for (ClassSchedule schedule : targetClass.getSchedules()) {
+            boolean hasConflict = enrollmentRepository.existsStudentScheduleConflict(
+                    studentId,
+                    targetClass.getId(),
+                    schedule.getDayOfWeek(),
+                    schedule.getStartTime(),
+                    schedule.getEndTime(),
+                    List.of(EnrollmentStatus.APPROVED, EnrollmentStatus.PAID)
+            );
+
+            if (hasConflict) {
+                throw AppException.badRequest("Lịch học của bạn bị trùng với một lớp đã đăng ký");
+            }
+        }
+    }
+
+    private boolean isTimeOverlapping(LocalTime firstStart, LocalTime firstEnd,
+                                      LocalTime secondStart, LocalTime secondEnd) {
+        return firstStart.isBefore(secondEnd) && firstEnd.isAfter(secondStart);
     }
 
     private void validateOfflineAddress(ClassCreateRequest request) {

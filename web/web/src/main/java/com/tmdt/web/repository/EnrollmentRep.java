@@ -6,7 +6,10 @@ import com.tmdt.web.enums.EnrollmentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,4 +26,25 @@ public interface EnrollmentRep extends JpaRepository<Enrollment, Long> {
     Page<Enrollment> findByStudentId(Long studentId, Pageable pageable);
 
     long countByClassEntityIdAndStatusIn(Long classId, List<EnrollmentStatus> statuses);
+
+    @Query("""
+        SELECT CASE WHEN COUNT(e) > 0 THEN true ELSE false END
+        FROM Enrollment e
+        JOIN e.classEntity c
+        JOIN c.schedules s
+        WHERE e.studentId = :studentId
+          AND e.status IN :statuses
+          AND c.id <> :classId
+          AND s.dayOfWeek = :dayOfWeek
+          AND s.startTime < :endTime
+          AND s.endTime > :startTime
+    """)
+    boolean existsStudentScheduleConflict(
+            @Param("studentId") Long studentId,
+            @Param("classId") Long classId,
+            @Param("dayOfWeek") Integer dayOfWeek,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime,
+            @Param("statuses") List<EnrollmentStatus> statuses
+    );
 }
