@@ -169,6 +169,14 @@ export async function getEnrollmentsOfClass(
   return res.data
 }
 
+export async function getMyEnrollments(page = 0, size = 50): Promise<PageResponse<EnrollmentResponse>> {
+  const res = await api.get('/api/classes/my-enrollments', {
+    headers: getAuthHeader(),
+    params: { page, size },
+  })
+  return res.data
+}
+
 export async function reviewEnrollment(
   enrollmentId: number,
   approved: boolean,

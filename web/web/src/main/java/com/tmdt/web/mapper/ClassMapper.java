@@ -7,11 +7,13 @@ import com.tmdt.web.dto.response.EnrollmentResponse;
 import com.tmdt.web.dto.response.ScheduleResponse;
 import com.tmdt.web.entity.TutorClass;
 import com.tmdt.web.entity.ClassSchedule;
+import com.tmdt.web.entity.Category;
 import com.tmdt.web.entity.Enrollment;
 import com.tmdt.web.entity.Subject;
 import com.tmdt.web.entity.GradeLevel;
 import com.tmdt.web.entity.User;
 import com.tmdt.web.enums.EnrollmentStatus;
+import com.tmdt.web.repository.CategoryRep;
 import com.tmdt.web.repository.EnrollmentRep;
 import com.tmdt.web.repository.GradeLevelRep;
 import com.tmdt.web.repository.SubjectRep;
@@ -28,6 +30,7 @@ public class ClassMapper {
 
     private final SubjectRep subjectRep;
     private final GradeLevelRep gradeLevelRep;
+    private final CategoryRep categoryRep;
     private final UserRep userRep;
     private final EnrollmentRep enrollmentRepository;
 
@@ -82,6 +85,11 @@ public class ClassMapper {
                         .map(GradeLevel::getName).orElse("—")
                 : "—";
 
+        String categoryName = entity.getCategoryId() != null
+                ? categoryRep.findById(entity.getCategoryId())
+                        .map(Category::getName).orElse(null)
+                : null;
+
     long actualStudents = enrollmentRepository.countByClassEntityIdAndStatusIn(
             entity.getId(), List.of(EnrollmentStatus.APPROVED, EnrollmentStatus.PAID));
 
@@ -91,6 +99,7 @@ public class ClassMapper {
                 .title(entity.getTitle())
                 .description(entity.getDescription())
                 .categoryId(entity.getCategoryId())
+                .categoryName(categoryName)
                 .subjectId(entity.getSubjectId())
                 .subjectName(subjectName)
                 .gradeLevelId(entity.getGradeLevelId())
