@@ -1,5 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { getCurrentAdmin, type AdminSession } from '../../api/admin'
+import {
+  getAdminDashboard,
+  getCurrentAdmin,
+  type AdminDashboardStats,
+  type AdminSession,
+} from '../../api/admin'
 import { AdminLayout } from '../../components/AdminLayout'
 
 type StatCard = {
@@ -12,73 +17,69 @@ type StatCard = {
   urgent?: boolean
 }
 
-const statCards: StatCard[] = [
-  {
-    label: 'Tổng doanh thu',
-    value: '$482,904.00',
-    detail: '+$14,200 so với tháng trước',
-    tone: 'blue',
-    trend: '12.5%',
-    trendTone: 'up',
-  },
-  {
-    label: 'Người dùng mới',
-    value: '2,845',
-    detail: '+122 người dùng tuần này',
-    tone: 'slate',
-    trend: '8.1%',
-    trendTone: 'up',
-  },
-  {
-    label: 'Gia sư đang hoạt động',
-    value: '1,120',
-    detail: '-12 từ lần kiểm tra trước',
-    tone: 'slate',
-    trend: '2.4%',
-    trendTone: 'down',
-  },
-  {
-    label: 'Chờ phê duyệt',
-    value: '42',
-    detail: 'Yêu cầu xem xét ngay lập tức',
-    tone: 'yellow',
-    urgent: true,
-  },
-]
+const emptyDashboardStats: AdminDashboardStats = {
+  totalRevenue: 0,
+  totalUsers: 0,
+  newUsersThisWeek: 0,
+  totalTutors: 0,
+  verifiedTutors: 0,
+  pendingClasses: 0,
+  totalClasses: 0,
+  openClasses: 0,
+  teachingClasses: 0,
+  completedClasses: 0,
+  totalEnrollments: 0,
+  pendingEnrollments: 0,
+  paidEnrollments: 0,
+}
 
-const activities = [
-  {
-    title: 'Sarah Jenkins',
-    text: 'đã đăng ký làm Gia sư mới',
-    meta: 'Toán học • 2 phút trước',
-    avatar: 'SJ',
-    marker: 'blue',
-  },
-  {
-    title: 'Phiên học được Duyệt:',
-    text: 'Vật lý 101',
-    meta: 'ID: #88291 • 15 phút trước',
-    marker: 'check',
-  },
-  {
-    title: 'David Chen',
-    text: 'đã gửi một tranh chấp',
-    meta: 'Vấn đề Thanh toán • 1 giờ trước',
-    avatar: 'DC',
-    marker: 'warning',
-  },
-  {
-    title: '12 Người dùng mới',
-    text: 'đã tham gia nền tảng',
-    meta: 'Toàn cầu • 3 giờ trước',
-    marker: 'count',
-  },
-]
+const emptyBars = [0, 0, 0, 0, 0, 0, 0]
 
-const bars = [0.46, 0.62, 0.54, 0.78, 0.66, 0.86, 0.58]
+function formatNumber(value: number) {
+  return value.toLocaleString('vi-VN')
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+function buildStatCards(stats: AdminDashboardStats): StatCard[] {
+  return [
+    {
+      label: 'Tổng doanh thu',
+      value: formatCurrency(stats.totalRevenue),
+      detail: 'Doanh thu từ đơn hàng đã thanh toán',
+      tone: 'blue',
+    },
+    {
+      label: 'Người dùng mới',
+      value: formatNumber(stats.newUsersThisWeek),
+      detail: `${formatNumber(stats.totalUsers)} người dùng trong hệ thống`,
+      tone: 'slate',
+    },
+    {
+      label: 'Gia sư đang hoạt động',
+      value: formatNumber(stats.totalTutors),
+      detail: `${formatNumber(stats.verifiedTutors)} hồ sơ gia sư đã xác minh`,
+      tone: 'slate',
+    },
+    {
+      label: 'Chờ phê duyệt',
+      value: formatNumber(stats.pendingClasses),
+      detail: `${formatNumber(stats.pendingEnrollments)} lượt đăng ký lớp đang chờ`,
+      tone: 'yellow',
+      urgent: stats.pendingClasses > 0 || stats.pendingEnrollments > 0,
+    },
+  ]
+}
 
 export function AdminDashboard() {
   const [admin, setAdmin] = useState<AdminSession | null>(null)
+  const [dashboard, setDashboard] = useState<AdminDashboardStats>(emptyDashboardStats)
   const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
@@ -88,10 +89,11 @@ export function AdminDashboard() {
       return
     }
 
-    getCurrentAdmin(token)
-      .then((data) => {
-        setAdmin(data)
-        localStorage.setItem('user', JSON.stringify(data))
+    Promise.all([getCurrentAdmin(token), getAdminDashboard(token).catch(() => emptyDashboardStats)])
+      .then(([adminData, dashboardData]) => {
+        setAdmin(adminData)
+        setDashboard(dashboardData)
+        localStorage.setItem('user', JSON.stringify(adminData))
       })
       .catch(() => {
         localStorage.removeItem('access_token')
@@ -100,6 +102,8 @@ export function AdminDashboard() {
       })
       .finally(() => setIsChecking(false))
   }, [])
+
+  const statCards = buildStatCards(dashboard)
 
   if (isChecking) {
     return (
@@ -144,12 +148,15 @@ export function AdminDashboard() {
           <div className="flex h-[250px] flex-col justify-end">
             <div className="relative flex h-[175px] items-end justify-between border-b border-slate-300 px-3">
               <div className="absolute inset-x-0 bottom-20 border-t border-slate-200" />
-              {bars.map((height, index) => (
+              {emptyBars.map((height, index) => (
                 <div key={index} className="flex h-full w-11 items-end justify-center">
                   <div className="w-5 rounded-t bg-blue-700" style={{ height: `${height * 100}%` }} />
-                  <div className="ml-1 w-5 rounded-t bg-slate-300" style={{ height: `${(height - 0.16) * 100}%` }} />
+                  <div className="ml-1 w-5 rounded-t bg-slate-300" style={{ height: `${Math.max(height - 0.16, 0) * 100}%` }} />
                 </div>
               ))}
+              <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-slate-500">
+                Chưa có dữ liệu biểu đồ
+              </div>
             </div>
             <div className="grid grid-cols-7 px-3 pt-3 text-center text-xs font-medium text-slate-700">
               {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'].map((day) => (
@@ -158,9 +165,9 @@ export function AdminDashboard() {
             </div>
           </div>
           <div className="mt-5 grid grid-cols-3 border-t border-slate-300 pt-5">
-            <Metric label="TG Phiên học Trung bình" value="42p 12s" />
-            <Metric label="Tỷ lệ Thoát" value="24.5%" />
-            <Metric label="Tỷ lệ Chuyển đổi" value="18.2%" />
+            <Metric label="Tổng lớp học" value={formatNumber(dashboard.totalClasses)} />
+            <Metric label="Lớp đang tuyển" value={formatNumber(dashboard.openClasses)} />
+            <Metric label="Lượt ghi danh đã thanh toán" value={formatNumber(dashboard.paidEnrollments)} />
           </div>
         </div>
 
@@ -169,10 +176,8 @@ export function AdminDashboard() {
             <h2 className="m-0 text-xl font-semibold text-slate-950">Hoạt động Gần đây</h2>
             <a href="/admin" className="text-xs font-bold text-blue-700 hover:underline">Xem tất cả</a>
           </div>
-          <div className="space-y-4">
-            {activities.map((activity) => (
-              <ActivityItem key={`${activity.title}-${activity.meta}`} activity={activity} />
-            ))}
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+            Chưa có dữ liệu hoạt động gần đây.
           </div>
           <div className="mt-6 rounded border border-slate-300 bg-slate-100 p-4">
             <p className="text-sm font-bold text-slate-900">Tình trạng Hệ thống</p>
@@ -187,19 +192,19 @@ export function AdminDashboard() {
       <section className="mt-5 grid grid-cols-3 gap-5">
         <div className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
           <h3 className="mb-5 text-xs font-bold uppercase tracking-wide text-slate-800">Môn học hàng đầu</h3>
-          <ProgressRow label="Toán học" value="42%" width="42%" />
-          <ProgressRow label="Khoa học Dữ liệu" value="28%" width="28%" />
+          <ProgressRow label="Chưa có dữ liệu" value="0%" width="0%" />
+          <ProgressRow label="Chưa có dữ liệu" value="0%" width="0%" />
         </div>
         <div className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
           <h3 className="mb-5 text-xs font-bold uppercase tracking-wide text-slate-800">Tỷ lệ giữ chân người dùng</h3>
           <div className="flex h-20 items-end gap-3">
-            {[0.72, 0.66, 0.7, 0.78].map((height, index) => (
+            {[0, 0, 0, 0].map((height, index) => (
               <div key={index} className={`flex-1 rounded-t ${index === 3 ? 'bg-blue-700' : 'bg-blue-100'}`} style={{ height: `${height * 100}%` }} />
             ))}
           </div>
           <div className="mt-3 flex items-center justify-between text-xs">
             <span className="text-slate-600">4 tuần qua</span>
-            <span className="font-bold text-green-700">+2.1%</span>
+            <span className="font-bold text-slate-500">0%</span>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center rounded-lg border border-slate-300 bg-white p-6 text-center shadow-sm">
@@ -208,7 +213,7 @@ export function AdminDashboard() {
           </div>
           <h3 className="text-base font-bold text-slate-950">Công cụ Khớp nối AI</h3>
           <p className="mt-2 max-w-[260px] text-xs leading-5 text-slate-600">
-            Hiệu suất tăng 14% trong tháng này nhờ mô hình mới.
+            Chưa có dữ liệu hiệu suất từ công cụ khớp nối tự động.
           </p>
           <a href="/admin" className="mt-4 text-xs font-bold text-blue-700 hover:underline">Tối ưu hóa Cài đặt</a>
         </div>
@@ -253,27 +258,6 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
-function ActivityItem({ activity }: { activity: (typeof activities)[number] }) {
-  return (
-    <div className="flex gap-3">
-      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-xs font-bold text-blue-900 [&_svg]:h-5 [&_svg]:w-5">
-        {activity.avatar ?? (activity.marker === 'count' ? '+12' : <CheckIcon />)}
-        <span className={`absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white ${
-          activity.marker === 'warning' ? 'bg-amber-500' : activity.marker === 'check' ? 'bg-slate-400' : 'bg-blue-700'
-        }`}>
-          {activity.marker === 'warning' ? '!' : activity.marker === 'count' ? '' : '●'}
-        </span>
-      </div>
-      <div className="min-w-0">
-        <p className="text-sm leading-5 text-slate-950">
-          <span className="font-bold">{activity.title}</span> {activity.text}
-        </p>
-        <p className="text-xs font-semibold text-slate-700">{activity.meta}</p>
-      </div>
-    </div>
-  )
-}
-
 function ProgressRow({ label, value, width }: { label: string; value: string; width: string }) {
   return (
     <div className="mb-4 last:mb-0">
@@ -298,5 +282,4 @@ function CalendarIcon() { return <IconSvg className="h-4 w-4"><><path d="M8 2v4M
 function DownloadIcon() { return <IconSvg className="h-4 w-4"><><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></></IconSvg> }
 function RevenueIcon() { return <IconSvg><><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="3" /><path d="M6 9h2M16 15h2" /></></IconSvg> }
 function PendingIcon() { return <IconSvg><><path d="M7 7h10v12H7z" /><path d="M9 7V5a3 3 0 0 1 6 0v2" /><circle cx="17" cy="17" r="4" /><path d="M17 15v2l1.5 1" /></></IconSvg> }
-function CheckIcon() { return <IconSvg className="h-6 w-6"><><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></></IconSvg> }
 function SparklesIcon() { return <IconSvg className="h-8 w-8"><><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" /><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z" /></></IconSvg> }

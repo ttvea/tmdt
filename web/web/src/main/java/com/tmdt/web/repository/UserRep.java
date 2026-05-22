@@ -13,4 +13,8 @@ public interface UserRep extends JpaRepository<User, Integer> {
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    long countByRole(User.RoleAcc role);
+
+    long countByCreatedAtAfter(java.time.LocalDateTime createdAt);
 }

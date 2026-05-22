@@ -12,6 +12,10 @@ import java.util.Optional;
 
 public interface TutorProfileRep extends JpaRepository<TutorProfile, Integer> {
     Optional<TutorProfile> findByUserId(int userId);
+
+    @Query("SELECT COUNT(t) FROM TutorProfile t WHERE t.isVerified = :isVerified")
+    long countByVerifiedStatus(@Param("isVerified") Boolean isVerified);
+
     @Query("""
     SELECT DISTINCT t
     FROM TutorProfile t
