@@ -1,6 +1,10 @@
 package com.tmdt.web.controller;
 
 import com.tmdt.web.dto.response.AdminDashboardResponse;
+import com.tmdt.web.dto.request.AdminUpdateUserRoleRequest;
+import com.tmdt.web.dto.request.AdminUpdateUserStatusRequest;
+import com.tmdt.web.dto.response.AdminUserResponse;
+import com.tmdt.web.dto.response.AdminUsersStatsResponse;
 import com.tmdt.web.entity.User;
 import com.tmdt.web.entity.Order;
 import com.tmdt.web.enums.ApprovalStatus;
@@ -13,11 +17,20 @@ import com.tmdt.web.repository.TutorProfileRep;
 import com.tmdt.web.repository.UserRep;
 import com.tmdt.web.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
@@ -103,6 +116,92 @@ public class AdminController {
                 pendingEnrollments,
                 paidEnrollments
         ));
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<?> getUsers(
+            HttpServletRequest request,
+            @RequestParam(required = false) User.RoleAcc role,
+            @RequestParam(required = false) Boolean enabled,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        String normalizedKeyword = keyword != null && !keyword.trim().isEmpty() ? keyword.trim() : null;
+
+        Page<AdminUserResponse> users = userRep
+                .searchAdminUsers(role, enabled, normalizedKeyword, pageable)
+                .map(AdminUserResponse::from);
+
+        return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/users/stats")
+    public ResponseEntity<?> getUsersStats(HttpServletRequest request) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        return ResponseEntity.ok(new AdminUsersStatsResponse(
+                userRep.count(),
+                userRep.countByRole(User.RoleAcc.STUDENT),
+                userRep.countByRole(User.RoleAcc.TUTOR),
+                userRep.countByRole(User.RoleAcc.ADMIN),
+                userRep.countByEnabled(true),
+                userRep.countByEnabled(false),
+                userRep.countByCreatedAtAfter(LocalDateTime.now().minusDays(7))
+        ));
+    }
+
+    @PatchMapping("/users/{userId}/status")
+    public ResponseEntity<?> updateUserStatus(
+            HttpServletRequest request,
+            @PathVariable Integer userId,
+            @Valid @RequestBody AdminUpdateUserStatusRequest updateRequest
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        User user = userRep.findById(userId).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy người dùng");
+        }
+
+        user.setEnabled(updateRequest.getEnabled());
+        User saved = userRep.save(user);
+
+        return ResponseEntity.ok(AdminUserResponse.from(saved));
+    }
+
+    @PatchMapping("/users/{userId}/role")
+    public ResponseEntity<?> updateUserRole(
+            HttpServletRequest request,
+            @PathVariable Integer userId,
+            @Valid @RequestBody AdminUpdateUserRoleRequest updateRequest
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        User user = userRep.findById(userId).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy người dùng");
+        }
+
+        user.setRole(updateRequest.getRole());
+        User saved = userRep.save(user);
+
+        return ResponseEntity.ok(AdminUserResponse.from(saved));
     }
 
     private ResponseEntity<?> validateAdminRequest(HttpServletRequest request) {
