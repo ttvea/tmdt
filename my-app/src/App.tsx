@@ -22,6 +22,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 import { AdminDashboard } from "./pages/Admin/AdminDashboard";
 import { AdminClasses } from "./pages/Admin/AdminClasses";
 import { AdminClassDetail } from "./pages/Admin/AdminClassDetail";
+import PricingPage from "./pages/PricingPage";
 
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
   if (pathname === "/discover/tutors") return <DiscoverTutors />;
   if (pathname === "/discover/classes") return <DiscoverClasses />;
   if (pathname === "/about") return <AboutPage />;
+  if (pathname === "/pricing") return <PricingPage />;
   if (pathname === "/login") return <Login />;
   if (pathname === "/register") return <Register />;
   if (pathname === '/forgot-password') return <ForgotPassword />

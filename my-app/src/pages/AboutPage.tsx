@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getCategories } from "../api/category";
 import { searchClassesPaged } from "../api/classApi";
 import { searchTutorProfilesPaged } from "../api/tutorProfile";
+import heroImage from "../assets/hero.png";
 import Footer from "../layouts/Footer";
 import Navbar from "../layouts/Navbar";
 
@@ -92,10 +93,16 @@ function AboutPage() {
 
       <main className="flex-1 overflow-hidden">
         <section className="relative isolate overflow-hidden border-b border-slate-200 bg-white">
+          <img
+            src={heroImage}
+            alt=""
+            aria-hidden="true"
+            className="absolute right-0 top-0 hidden h-full w-1/2 object-cover opacity-10 lg:block"
+          />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.10),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.10),transparent_30%)]" />
 
           <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-24">
-            <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">
+            <h1 className="mt-4 max-w-4xl text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">
               Câu chuyện phát triển của EduMatch Pro
             </h1>
 
@@ -121,12 +128,26 @@ function AboutPage() {
             </div>
 
             <div className="mt-10 grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
-              {stats.map((item) => (
+              {stats.map((item, index) => (
                 <div
                   key={item.label}
-                  className="rounded-lg border border-slate-200 bg-white/80 px-4 py-3 shadow-sm"
+                  className={`rounded-lg border px-4 py-3 shadow-sm ${index === 0
+                      ? "border-blue-100 bg-blue-50/80"
+                      : index === 1
+                        ? "border-cyan-100 bg-cyan-50/80"
+                        : "border-emerald-100 bg-emerald-50/80"
+                    }`}
                 >
-                  <div className="text-lg font-bold text-blue-700">{item.value}</div>
+                  <div
+                    className={`text-lg font-bold ${index === 0
+                        ? "text-blue-700"
+                        : index === 1
+                          ? "text-cyan-700"
+                          : "text-emerald-700"
+                      }`}
+                  >
+                    {item.value}
+                  </div>
                   <div className="mt-1 text-xs font-medium text-slate-500">{item.label}</div>
                 </div>
               ))}

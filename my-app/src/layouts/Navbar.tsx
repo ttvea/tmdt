@@ -55,7 +55,7 @@ function Navbar() {
               <a href="/about" className={navLinkClass("/about")}>
                 Giới thiệu
               </a>
-              <a href="#" className="text-sm font-medium text-slate-600 hover:text-cyan-700">
+              <a href="/pricing" className={navLinkClass("/pricing")}>
                 Học phí
               </a>
               <a href="#" className="text-sm font-medium text-slate-600 hover:text-cyan-700">
