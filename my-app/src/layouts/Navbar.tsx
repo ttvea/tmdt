@@ -58,7 +58,7 @@ function Navbar() {
               <a href="/pricing" className={navLinkClass("/pricing")}>
                 Học phí
               </a>
-              <a href="#" className="text-sm font-medium text-slate-600 hover:text-cyan-700">
+              <a href="/faq" className={navLinkClass("/faq")}>
                 Hỏi đáp
               </a>
               <a href="/contact" className={navLinkClass("/contact")}>

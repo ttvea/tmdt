@@ -24,6 +24,7 @@ import { AdminClasses } from "./pages/Admin/AdminClasses";
 import { AdminClassDetail } from "./pages/Admin/AdminClassDetail";
 import PricingPage from "./pages/PricingPage";
 import ContactPage from "./pages/ContactPage";
+import FaqPage from "./pages/FaqPage";
 
 const pageTitles: Record<string, string> = {
   "/": "EduMatch Pro - Kết nối gia sư 1 kèm 1",
@@ -31,6 +32,7 @@ const pageTitles: Record<string, string> = {
   "/discover/classes": "Tìm lớp học - EduMatch Pro",
   "/about": "Giới thiệu - EduMatch Pro",
   "/pricing": "Học phí - EduMatch Pro",
+  "/faq": "Hỏi đáp - EduMatch Pro",
   "/contact": "Liên hệ - EduMatch Pro",
   "/login": "Đăng nhập - EduMatch Pro",
   "/register": "Đăng ký - EduMatch Pro",
@@ -69,6 +71,7 @@ function App() {
   if (pathname === "/discover/classes") return <DiscoverClasses />;
   if (pathname === "/about") return <AboutPage />;
   if (pathname === "/pricing") return <PricingPage />;
+  if (pathname === "/faq") return <FaqPage />;
   if (pathname === "/contact") return <ContactPage />;
   if (pathname === "/login") return <Login />;
   if (pathname === "/register") return <Register />;

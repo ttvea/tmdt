@@ -81,7 +81,7 @@ function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#" className="text-sm text-slate-600 hover:text-blue-600">
+                <a href="/faq" className="text-sm text-slate-600 hover:text-blue-600">
                   Hỏi đáp
                 </a>
               </li>
