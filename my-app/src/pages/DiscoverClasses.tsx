@@ -331,6 +331,12 @@ function DiscoverClasses() {
                   </strong>
                   <span className="ml-1 text-slate-500">online</span>
                 </div>
+                <div className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-sm">
+                  <strong className="text-slate-950">
+                    {results.filter((item) => item.teachingMode === "OFFLINE").length}
+                  </strong>
+                  <span className="ml-1 text-slate-500">offline</span>
+                </div>
               </div>
             </div>
           </div>

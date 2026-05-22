@@ -19,6 +19,8 @@ function classToEvents(cls: ClassWithTeacher): ScheduleEvent[] {
     categoryName: cls.categoryName,
     teacherName: cls.teacherName,
     mode: cls.teachingMode,
+    address: cls.address,
+    city: cls.city,
     dayOfWeek: schedule.dayOfWeek,
     startTime: schedule.startTime,
     endTime: schedule.endTime,
