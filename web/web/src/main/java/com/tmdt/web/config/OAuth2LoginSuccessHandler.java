@@ -60,6 +60,12 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             userRepository.save(user);
         }
 
+        if (Boolean.FALSE.equals(user.getEnabled())) {
+            String redirectUrl = "http://localhost:5173/login?error=account_locked";
+            getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+            return;
+        }
+
         String token = jwtService.generateToken(user.getEmail());
 
         String redirectUrl = "http://localhost:5173/oauth2/redirect?token=" + token;

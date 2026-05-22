@@ -43,6 +43,9 @@ export function AdminUsers() {
   const [loading, setLoading] = useState(true)
   const [checking, setChecking] = useState(true)
   const [updatingId, setUpdatingId] = useState<number | null>(null)
+  const [viewingUser, setViewingUser] = useState<AdminUser | null>(null)
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
+  const [selectedRole, setSelectedRole] = useState<AdminUserRole>('STUDENT')
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
@@ -124,7 +127,11 @@ export function AdminUsers() {
   )
 
   const handleToggleStatus = async (user: AdminUser) => {
-    const nextEnabled = !user.enabled
+    const nextEnabled = !(user.enabled ?? true)
+    const actionLabel = nextEnabled ? 'mở khóa' : 'khóa'
+    const confirmed = window.confirm(`Bạn có chắc muốn ${actionLabel} tài khoản ${user.fullName}?`)
+    if (!confirmed) return
+
     setUpdatingId(user.id)
     try {
       const updated = await updateAdminUserStatus(user.id, nextEnabled)
@@ -141,21 +148,25 @@ export function AdminUsers() {
     }
   }
 
-  const handleChangeRole = async (user: AdminUser) => {
-    const nextRole = window.prompt('Nhập vai trò mới: STUDENT, TUTOR hoặc ADMIN', user.role ?? 'STUDENT')
-    if (!nextRole) return
-
-    const normalizedRole = nextRole.trim().toUpperCase()
-    if (!['STUDENT', 'TUTOR', 'ADMIN'].includes(normalizedRole)) {
-      alert('Vai trò không hợp lệ.')
+  const openRoleEditor = (user: AdminUser) => {
+    if (user.role === 'ADMIN') {
+      alert('Không thể sửa quyền của tài khoản Admin.')
       return
     }
 
-    setUpdatingId(user.id)
+    setEditingUser(user)
+    setSelectedRole(user.role ?? 'STUDENT')
+  }
+
+  const handleSaveRole = async () => {
+    if (!editingUser) return
+
+    setUpdatingId(editingUser.id)
     try {
-      const updated = await updateAdminUserRole(user.id, normalizedRole as AdminUserRole)
+      const updated = await updateAdminUserRole(editingUser.id, selectedRole)
       setUsers((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
       getAdminUsersStats().then(setStats).catch(() => {})
+      setEditingUser(null)
     } catch {
       alert('Không thể cập nhật vai trò người dùng.')
     } finally {
@@ -279,8 +290,10 @@ export function AdminUsers() {
                     key={user.id}
                     user={user}
                     updating={updatingId === user.id}
+                    onView={() => setViewingUser(user)}
+                    isCurrentAdmin={admin?.id === user.id}
                     onToggleStatus={() => handleToggleStatus(user)}
-                    onChangeRole={() => handleChangeRole(user)}
+                    onChangeRole={() => openRoleEditor(user)}
                   />
                 ))
               )}
@@ -338,6 +351,18 @@ export function AdminUsers() {
           </div>
         </div>
       </section>
+
+      {viewingUser ? <UserDetailModal user={viewingUser} onClose={() => setViewingUser(null)} /> : null}
+      {editingUser ? (
+        <RoleEditModal
+          user={editingUser}
+          selectedRole={selectedRole}
+          updating={updatingId === editingUser.id}
+          onRoleChange={setSelectedRole}
+          onClose={() => setEditingUser(null)}
+          onSave={handleSaveRole}
+        />
+      ) : null}
     </AdminLayout>
   )
 }
@@ -376,16 +401,20 @@ function FilterSelect({
 function UserRow({
   user,
   updating,
+  isCurrentAdmin,
+  onView,
   onToggleStatus,
   onChangeRole,
 }: {
   user: AdminUser
   updating: boolean
+  isCurrentAdmin: boolean
+  onView: () => void
   onToggleStatus: () => void
   onChangeRole: () => void
 }) {
   const role = user.role ?? 'STUDENT'
-  const enabled = user.enabled ?? false
+  const enabled = user.enabled ?? true
 
   return (
     <tr className="transition hover:bg-slate-50">
@@ -425,6 +454,7 @@ function UserRow({
         <div className="flex justify-end gap-2">
           <button
             type="button"
+            onClick={onView}
             className="rounded p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-blue-700"
             title="Xem chi tiết"
           >
@@ -433,26 +463,163 @@ function UserRow({
           <button
             type="button"
             onClick={onChangeRole}
-            disabled={updating}
-            className="rounded p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-blue-700"
-            title="Sửa quyền"
+            disabled={updating || role === 'ADMIN'}
+            className="rounded p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-500"
+            title={role === 'ADMIN' ? 'Không thể sửa quyền Admin' : 'Sửa quyền'}
           >
             <EditIcon />
           </button>
           <button
             type="button"
             onClick={onToggleStatus}
-            disabled={updating}
+            disabled={updating || isCurrentAdmin}
             className={`rounded p-1.5 transition hover:bg-slate-100 disabled:opacity-50 ${
               enabled ? 'text-slate-500 hover:text-red-600' : 'text-red-600 hover:text-green-700'
             }`}
-            title={enabled ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+            title={isCurrentAdmin ? 'Không thể khóa tài khoản admin hiện tại' : enabled ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
           >
             {enabled ? <UnlockIcon /> : <LockIcon />}
           </button>
         </div>
       </td>
     </tr>
+  )
+}
+
+function UserDetailModal({ user, onClose }: { user: AdminUser; onClose: () => void }) {
+  const role = user.role ?? 'STUDENT'
+  const enabled = user.enabled ?? true
+
+  return (
+    <Modal title="Chi tiết người dùng" onClose={onClose}>
+      <div className="flex items-start gap-4">
+        {user.avatar ? (
+          <img src={user.avatar} alt={user.fullName} className="h-16 w-16 rounded-2xl object-cover" />
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-lg font-bold text-blue-800">
+            {getInitials(user.fullName)}
+          </div>
+        )}
+        <div>
+          <h3 className="text-xl font-bold text-slate-950">{user.fullName || 'Chưa cập nhật'}</h3>
+          <p className="mt-1 text-sm text-slate-500">{user.email}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className={`rounded px-2 py-1 text-xs font-bold uppercase tracking-wide ${getRoleClass(role)}`}>
+              {roleLabels[role]}
+            </span>
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'
+              }`}
+            >
+              {enabled ? 'Hoạt động' : 'Đã khóa'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
+        <DetailItem label="Mã người dùng" value={`#EDU-${user.id}`} />
+        <DetailItem label="Số điện thoại" value={user.phone || 'Chưa cập nhật'} />
+        <DetailItem label="Xác minh" value={user.verified ? 'Đã xác minh' : 'Chưa xác minh'} />
+        <DetailItem label="Ngày tạo" value={formatDateTime(user.createdAt)} />
+        <DetailItem label="Cập nhật gần nhất" value={formatDateTime(user.updatedAt ?? user.createdAt)} />
+      </div>
+    </Modal>
+  )
+}
+
+function RoleEditModal({
+  user,
+  selectedRole,
+  updating,
+  onRoleChange,
+  onClose,
+  onSave,
+}: {
+  user: AdminUser
+  selectedRole: AdminUserRole
+  updating: boolean
+  onRoleChange: (role: AdminUserRole) => void
+  onClose: () => void
+  onSave: () => void
+}) {
+  return (
+    <Modal title="Sửa quyền người dùng" onClose={onClose}>
+      <p className="text-sm leading-6 text-slate-600">
+        Cập nhật vai trò cho <span className="font-semibold text-slate-950">{user.fullName}</span>. Thay đổi này sẽ ảnh hưởng quyền truy cập của tài khoản.
+      </p>
+
+      <label className="mt-5 block text-sm font-bold text-slate-900" htmlFor="admin-user-role">
+        Vai trò mới
+      </label>
+      <select
+        id="admin-user-role"
+        value={selectedRole}
+        onChange={(event) => onRoleChange(event.target.value as AdminUserRole)}
+        className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      >
+        <option value="STUDENT">Học sinh</option>
+        <option value="TUTOR">Gia sư</option>
+        <option value="ADMIN">Admin</option>
+      </select>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+        >
+          Hủy
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={updating}
+          className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-60"
+        >
+          {updating ? 'Đang lưu...' : 'Lưu thay đổi'}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+function Modal({
+  title,
+  children,
+  onClose,
+}: {
+  title: string
+  children: ReactNode
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
+      <section className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <h2 className="text-xl font-bold text-slate-950">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            aria-label="Đóng"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        {children}
+      </section>
+    </div>
+  )
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-1 font-semibold text-slate-800">{value}</p>
+    </div>
   )
 }
 
@@ -519,3 +686,4 @@ function EditIcon() { return <Svg><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.
 function LockIcon() { return <Svg><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></Svg> }
 function UnlockIcon() { return <Svg><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 7.5-2" /></Svg> }
 function ShieldIcon({ className }: { className?: string }) { return <Svg className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></Svg> }
+function CloseIcon() { return <Svg><path d="M18 6 6 18M6 6l12 12" /></Svg> }

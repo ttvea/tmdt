@@ -21,6 +21,26 @@ api.interceptors.request.use(
   }
 );
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status
+    const message = String(error?.response?.data ?? '')
+
+    if (
+      status === 401 &&
+      message.toLowerCase().includes('khóa') &&
+      window.location.pathname !== '/login'
+    ) {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    }
+
+    return Promise.reject(error)
+  },
+)
+
 export function getMediaUrl(path: string | null | undefined): string | null {
   if (!path) return null
   if (path.startsWith('http')) return path

@@ -171,6 +171,11 @@ public class AdminController {
             return authError;
         }
 
+        User currentAdmin = getAdminUserFromRequest(request);
+        if (currentAdmin != null && currentAdmin.getId().equals(userId) && Boolean.FALSE.equals(updateRequest.getEnabled())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Không thể khóa tài khoản admin hiện tại");
+        }
+
         User user = userRep.findById(userId).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy người dùng");
@@ -198,6 +203,10 @@ public class AdminController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy người dùng");
         }
 
+        if (user.getRole() == User.RoleAcc.ADMIN) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Không thể sửa quyền tài khoản admin");
+        }
+
         user.setRole(updateRequest.getRole());
         User saved = userRep.save(user);
 
@@ -205,14 +214,7 @@ public class AdminController {
     }
 
     private ResponseEntity<?> validateAdminRequest(HttpServletRequest request) {
-        String token = extractBearerToken(request);
-
-        if (token == null || !jwtService.validateToken(token)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token không hợp lệ");
-        }
-
-        String email = jwtService.extractUsername(token);
-        User user = userRep.findByEmail(email).orElse(null);
+        User user = getAdminUserFromRequest(request);
 
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Không tìm thấy người dùng");
@@ -223,6 +225,17 @@ public class AdminController {
         }
 
         return null;
+    }
+
+    private User getAdminUserFromRequest(HttpServletRequest request) {
+        String token = extractBearerToken(request);
+
+        if (token == null || !jwtService.validateToken(token)) {
+            return null;
+        }
+
+        String email = jwtService.extractUsername(token);
+        return userRep.findByEmail(email).orElse(null);
     }
 
     private String extractBearerToken(HttpServletRequest request) {

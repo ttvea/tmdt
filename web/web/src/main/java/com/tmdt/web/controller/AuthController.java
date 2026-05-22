@@ -44,6 +44,12 @@ public class AuthController {
                     .body("Email không tồn tại");
         }
 
+        if (Boolean.FALSE.equals(user.getEnabled())) {
+            return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body("Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.");
+        }
+
         if (user.getPassword() == null || user.getPassword().isBlank()) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
