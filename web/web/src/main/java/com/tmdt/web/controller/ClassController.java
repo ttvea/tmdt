@@ -118,6 +118,21 @@ public class ClassController {
         return ResponseEntity.ok(classService.adminGetAllClasses(approvalStatus, pageable));
     }
 
+    @GetMapping("/admin/{classId}")
+    public ResponseEntity<ClassResponse> adminGetClassDetail(@PathVariable Long classId) {
+        return ResponseEntity.ok(classService.adminGetClassDetail(classId));
+    }
+
+    @GetMapping("/admin/{classId}/enrollments")
+    public ResponseEntity<Page<EnrollmentResponse>> adminGetClassEnrollments(
+            @PathVariable Long classId,
+            @RequestParam(required = false) EnrollmentStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return ResponseEntity.ok(classService.adminGetClassEnrollments(classId, status, pageable));
+    }
+
     @GetMapping("/search")
     public ResponseEntity<Page<ClassResponse>> searchClasses(
             @RequestParam(required = false) Long subjectId,
