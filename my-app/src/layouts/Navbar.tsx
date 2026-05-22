@@ -59,12 +59,9 @@ function Navbar() {
                 Học phí
               </a>
               <a href="#" className="text-sm font-medium text-slate-600 hover:text-cyan-700">
-                Blog
-              </a>
-              <a href="#" className="text-sm font-medium text-slate-600 hover:text-cyan-700">
                 Hỏi đáp
               </a>
-              <a href="#" className="text-sm font-medium text-slate-600 hover:text-cyan-700">
+              <a href="/contact" className={navLinkClass("/contact")}>
                 Liên hệ
               </a>
               <div className="group relative">

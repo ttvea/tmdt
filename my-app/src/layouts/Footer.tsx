@@ -1,8 +1,8 @@
 function Footer() {
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <h3 className="mb-3 flex items-center gap-2 text-lg font-bold text-slate-950">
               <i className="bi bi-mortarboard-fill text-2xl text-blue-600" />
@@ -86,7 +86,7 @@ function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#" className="text-sm text-slate-600 hover:text-blue-600">
+                <a href="/contact" className="text-sm text-slate-600 hover:text-blue-600">
                   Liên hệ
                 </a>
               </li>
@@ -129,7 +129,7 @@ function Footer() {
           </div>
         </div>
 
-        <hr className="my-6 border-slate-200" />
+        <hr className="my-4 border-slate-200" />
         <p className="text-center text-sm text-slate-500">
           © 2026 EduMatch Pro. All rights reserved.
         </p>
