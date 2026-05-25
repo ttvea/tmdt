@@ -118,6 +118,13 @@ export async function getClassDetail(classId: number): Promise<ClassResponse> {
   return res.data
 }
 
+export async function getTutorClasses(tutorId: number, page = 0, size = 100): Promise<PageResponse<ClassResponse>> {
+  const res = await api.get(`/api/classes/tutor/${tutorId}`, {
+    params: { page, size },
+  })
+  return res.data
+}
+
 export interface GradeLevelOption {
   id: number
   name: string
