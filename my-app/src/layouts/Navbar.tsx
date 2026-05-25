@@ -97,30 +97,52 @@ function Navbar() {
               </div>
             </nav>
 
-            <div className="flex items-center gap-3">
+            {/* KHOẢNG CHỨA NÚT BÊN PHẢI */}
+            <div className="flex items-center gap-3 md:gap-4">
+              {/* Nút Đăng lớp */}
+              <a
+                href="/post-class"
+                className={`text-sm md:text-base font-semibold transition-colors ${
+                  pathname === "/post-class" ? "text-blue-600" : "text-slate-900 hover:text-blue-600"
+                }`}
+              >
+                Đăng lớp
+              </a>
+
+              {/* Vạch kẻ dọc phân cách */}
+              <span className="h-4 w-[1px] bg-slate-300 hidden md:block"></span>
+
               {isLoggedIn ? (
+                // Trạng thái đã đăng nhập (Nút Tài khoản)
                 <a
                   href={isTutor ? "/tutor/profile" : "/student/profile"}
                   onClick={handleAccountClick}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                  className={`text-sm md:text-base font-semibold transition-colors ${
+                    pathname.includes("/profile") ? "text-blue-600" : "text-slate-900 hover:text-blue-600"
+                  }`}
                 >
                   Tài khoản
                 </a>
               ) : (
-                <>
+                // Trạng thái chưa đăng nhập
+                <div className="flex items-center gap-3">
+                  {/* Nút Đăng nhập */}
                   <a
                     href="/login"
-                    className="text-sm font-semibold text-slate-700 hover:text-blue-600"
+                    className={`text-sm md:text-base font-semibold transition-colors ${
+                      pathname === "/login" ? "text-blue-600" : "text-slate-900 hover:text-blue-600"
+                    }`}
                   >
                     Đăng nhập
                   </a>
+                  {/* Nút Đăng ký (Giữ nguyên dạng khối nền xanh) */}
                   <a
                     href="/register"
-                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                    className="hidden md:block rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
                   >
-                    Đăng lớp ngay
+                    Đăng ký
                   </a>
-                </>
+                </div>
               )}
             </div>
 
