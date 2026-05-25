@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import Navbar from '../../layouts/Navbar'
 import Footer from '../../layouts/Footer'
 import { getTutorProfile, type TutorProfileResponse } from '../../api/tutorProfile'
+import { createOrGetConversation } from '../../api/conversations'
+import { getTutorClasses, type ClassResponse } from '../../api/classApi'
+import { ConsultationModal } from '../../components/ConsultationModal'
 
 interface TutorProfile {
   id: number
@@ -102,9 +105,61 @@ export function TutorProfileDetail() {
   const [profile, setProfile] = useState<TutorProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [conversationId, setConversationId] = useState<number | null>(null)
 
   const handleNavigateBack = () => {
     window.history.back()
+  }
+
+  const handleOpenConsultation = async () => {
+    try {
+      const id = await createOrGetConversation(Number(tutorId))
+      setConversationId(id)
+      setIsModalOpen(true)
+    } catch (err) {
+      console.error('Không thể mở cuộc hội thoại', err)
+      alert('Không thể mở cuộc hội thoại, vui lòng thử lại.')
+    }
+  }
+
+  // Helper function to convert classes to schedule
+  const buildScheduleFromClasses = (classes: ClassResponse[]): Record<string, Record<string, boolean>> => {
+    const daysMap: Record<number, string> = {
+      2: 'T2',
+      3: 'T3',
+      4: 'T4',
+      5: 'T5',
+      6: 'T6',
+      7: 'T7',
+      8: 'CN',
+    }
+
+    const schedule: Record<string, Record<string, boolean>> = {
+      T2: { Sáng: false, Chiều: false, Tối: false },
+      T3: { Sáng: false, Chiều: false, Tối: false },
+      T4: { Sáng: false, Chiều: false, Tối: false },
+      T5: { Sáng: false, Chiều: false, Tối: false },
+      T6: { Sáng: false, Chiều: false, Tối: false },
+      T7: { Sáng: false, Chiều: false, Tối: false },
+      CN: { Sáng: false, Chiều: false, Tối: false },
+    }
+
+    classes.forEach((cls) => {
+      cls.schedules.forEach((slot) => {
+        const dayKey = daysMap[slot.dayOfWeek]
+        if (dayKey) {
+          const hour = parseInt(slot.startTime.split(':')[0])
+          let timeKey = 'Chiều'
+          if (hour < 12) timeKey = 'Sáng'
+          else if (hour >= 17) timeKey = 'Tối'
+          
+          schedule[dayKey][timeKey] = true
+        }
+      })
+    })
+
+    return schedule
   }
 
   useEffect(() => {
@@ -151,6 +206,20 @@ export function TutorProfileDetail() {
         }
         
         setProfile(mappedProfile)
+
+        // Fetch tutor's classes to build schedule
+        try {
+          const classesResponse = await getTutorClasses(Number(tutorId))
+          const approvedClasses = classesResponse.content.filter(
+            (cls) => cls.approvalStatus === 'APPROVED' && cls.status === 'CLOSED'
+          )
+          const builtSchedule = buildScheduleFromClasses(approvedClasses)
+          mappedProfile.schedule = builtSchedule
+        } catch (scheduleError) {
+          console.error('Không thể tải thời khóa biểu:', scheduleError)
+          // Keep default schedule if fetching classes fails
+        }
+        
         setLoading(false)
       } catch (err) {
         setError('Không thể tải thông tin gia sư')
@@ -307,9 +376,9 @@ export function TutorProfileDetail() {
 
               
 
-              {/* Lịch rảnh */}
+              {/* Thời khóa biểu */}
               <div className="mb-8 bg-white p-6 rounded-lg border border-slate-200">
-                <h2 className="text-2xl font-bold mb-6">Lịch rảnh trong tuần</h2>
+                <h2 className="text-2xl font-bold mb-6">Thời khóa biểu</h2>
                 <ScheduleGrid schedule={profile.schedule} />
               </div>
 
@@ -341,22 +410,17 @@ export function TutorProfileDetail() {
             <div className="lg:col-span-1">
               {/* Price Card */}
               <div className="mb-6 bg-white p-6 rounded-lg border border-slate-200">
-                <div className="text-center mb-4">
-                  <div className="text-3xl font-bold text-blue-600">{profile.price.toLocaleString('vi-VN')}₫</div>
-                  <div className="text-sm text-slate-600">/ buổi ({profile.hoursPerLesson} phút)</div>
-                </div>
+               
                 <button className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold mb-2 hover:bg-blue-700">
                   Mời dạy
                 </button>
-                <button className="w-full bg-white text-blue-600 py-3 rounded-lg font-semibold border border-blue-600 mb-3 hover:bg-blue-50">
+                <button 
+                  onClick={handleOpenConsultation}
+                  className="w-full bg-white text-blue-600 py-3 rounded-lg font-semibold border border-blue-600 mb-3 hover:bg-blue-50">
                   Nhắn tin tư vấn
                 </button>
                 <hr className="my-3" />
-                <div className="space-y-2 text-sm text-slate-700">
-                  <div>✓ Học thử 1 buổi miễn phí</div>
-                  <div>✓ Đổi gia sư miễn phí nếu không phù hợp</div>
-                  <div>✓ Hợp đồng minh bạch, rõ ràng</div>
-                </div>
+                
               </div>
 
               {/* Verification Card */}
@@ -374,6 +438,14 @@ export function TutorProfileDetail() {
       </section>
 
       <Footer />
+
+      <ConsultationModal
+        isOpen={isModalOpen}
+        tutorName={profile.fullName}
+        tutorAvatar={profile.avatar}
+        conversationId={conversationId}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   )
 }

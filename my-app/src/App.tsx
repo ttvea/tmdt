@@ -14,8 +14,10 @@ import { TutorClasses } from "./pages/Tutor/class";
 import { FormAddClass } from "./pages/Tutor/form-add-class";
 import { ClassDetail } from "./pages/Tutor/class-detail";
 import { TutorSchedule } from "./pages/Tutor/schedule";
+import { TutorMessages } from "./pages/Tutor/messages";
 import  StudentProfile  from "./pages/Student/StudentProfile";
 import { StudentSchedule } from "./pages/Student/schedule";
+import { StudentMessages } from "./pages/Student/messages";
 import { TutorProfileDetail } from "./pages/Tutor/TutorProfileDetail";
 import AboutPage from "./pages/AboutPage";
 import NotFoundPage from "./pages/NotFoundPage";
@@ -44,9 +46,11 @@ const pageTitles: Record<string, string> = {
   "/tutor/profile": "Hồ sơ gia sư - EduMatch Pro",
   "/tutor/classes": "Lớp của gia sư - EduMatch Pro",
   "/tutor/schedule": "Lịch dạy - EduMatch Pro",
+  "/tutor/messages": "Tin nhắn - EduMatch Pro",
   "/tutor/classes/new": "Tạo lớp học - EduMatch Pro",
   "/student/profile": "Hồ sơ học viên - EduMatch Pro",
   "/student/schedule": "Lịch học - EduMatch Pro",
+  "/student/messages": "Tin nhắn - EduMatch Pro",
   "/admin": "Quản trị - EduMatch Pro",
   "/admin/users": "Quản lý người dùng - EduMatch Pro",
   "/admin/classes": "Quản lý lớp học - EduMatch Pro",
@@ -84,6 +88,7 @@ function App() {
   if (pathname === "/tutor/profile") return <TutorProfile />;
   if (pathname === "/tutor/classes") return <TutorClasses />;
   if (pathname === "/tutor/schedule") return <TutorSchedule />;
+  if (pathname === "/tutor/messages") return <TutorMessages />;
   if (pathname === "/tutor/classes/new") return <FormAddClass />;
   if (pathname.startsWith("/tutor/classes/") && !pathname.includes("/edit/")) return <ClassDetail />;
   if (pathname.startsWith("/tutor/") && !pathname.includes("/classes")) {
@@ -92,6 +97,7 @@ function App() {
   }
   if (pathname === "/student/profile") return <StudentProfile />;
   if (pathname === "/student/schedule") return <StudentSchedule />;
+  if (pathname === "/student/messages") return <StudentMessages />;
   if (pathname === "/admin") return <AdminDashboard />;
   if (pathname === "/admin/users") return <AdminUsers />;
   if (pathname === "/admin/classes") return <AdminClasses />;
