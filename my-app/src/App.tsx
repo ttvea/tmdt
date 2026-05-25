@@ -26,6 +26,7 @@ import { AdminUsers } from "./pages/Admin/AdminUsers";
 import PricingPage from "./pages/PricingPage";
 import ContactPage from "./pages/ContactPage";
 import FaqPage from "./pages/FaqPage";
+import PostClassPage from "./pages/Student/PostClassPage";
 
 const pageTitles: Record<string, string> = {
   "/": "EduMatch Pro - Kết nối gia sư 1 kèm 1",
@@ -50,6 +51,7 @@ const pageTitles: Record<string, string> = {
   "/admin": "Quản trị - EduMatch Pro",
   "/admin/users": "Quản lý người dùng - EduMatch Pro",
   "/admin/classes": "Quản lý lớp học - EduMatch Pro",
+  "/post-class": "Đăng lớp - EduMatch Pro",
 };
 
 function getPageTitle(pathname: string) {
@@ -57,7 +59,6 @@ function getPageTitle(pathname: string) {
   if (pathname.startsWith("/tutor/classes/")) return "Chi tiết lớp học - EduMatch Pro";
   if (pathname.startsWith("/tutor/")) return "Chi tiết gia sư - EduMatch Pro";
   if (pathname.startsWith("/admin/classes/")) return "Duyệt lớp học - EduMatch Pro";
-
   return "Không tìm thấy trang - EduMatch Pro";
 }
 
@@ -96,6 +97,8 @@ function App() {
   if (pathname === "/admin/users") return <AdminUsers />;
   if (pathname === "/admin/classes") return <AdminClasses />;
   if (pathname.startsWith("/admin/classes/")) return <AdminClassDetail />;
+  if (pathname === "/post-class") return <PostClassPage />;
+
 
   return <NotFoundPage />;
 }
