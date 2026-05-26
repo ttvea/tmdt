@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { getCategories, type GradeLevel, type SubjectCategory } from "../api/category";
 import { searchClassesPaged, type ClassResponse, type TeachingMode } from "../api/classApi";
 import Navbar from "../layouts/Navbar";
@@ -59,27 +59,27 @@ function ClassCard({
 
   return (
     <article className="flex h-full flex-col rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap gap-2">
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+      <div>
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="max-w-[12rem] truncate rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700" title={subjectName}>
               {subjectName}
             </span>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+            <span className="max-w-[8rem] shrink-0 truncate rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700" title={gradeName}>
               {gradeName}
             </span>
           </div>
-          <h3 className="line-clamp-2 text-lg font-bold leading-6 text-slate-950">
-            {classPost.title}
-          </h3>
+          <span
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+              isUrgent ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"
+            }`}
+          >
+            {isUrgent ? "Gấp" : "Đang mở"}
+          </span>
         </div>
-        <span
-          className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-            isUrgent ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"
-          }`}
-        >
-          {isUrgent ? "Gấp" : "Đang mở"}
-        </span>
+        <h3 className="line-clamp-2 w-full text-lg font-bold leading-6 text-slate-950">
+          {classPost.title}
+        </h3>
       </div>
 
       <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-600">{classPost.description}</p>
@@ -489,3 +489,4 @@ function DiscoverClasses() {
 }
 
 export default DiscoverClasses;
+

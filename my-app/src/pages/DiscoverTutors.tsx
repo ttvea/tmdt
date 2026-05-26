@@ -62,13 +62,13 @@ function TutorCard({ tutor }: { tutor: TutorProfileSearchItem }) {
         )}
       </div>
 
-      <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-100 pt-5">
-        <span className="text-sm font-medium text-slate-500">
+      <div className="mt-auto grid min-h-[76px] grid-cols-[minmax(0,1fr)_128px] items-center gap-4 border-t border-slate-100 pt-5">
+        <span className="min-w-0 max-w-[180px] text-sm font-medium leading-5 text-slate-500">
           {tutor.isVerified ? "Hồ sơ sẵn sàng liên hệ" : "Đang cập nhật hồ sơ"}
         </span>
         <a
           href={`/tutor/${tutor.userId ?? tutor.profileId ?? tutor.id}`}
-          className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
+          className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-blue-700 px-4 text-center text-sm font-semibold leading-5 text-white transition hover:bg-blue-800"
         >
           Xem hồ sơ
         </a>
