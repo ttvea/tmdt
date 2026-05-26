@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import Navbar from '../../layouts/Navbar'
 import Footer from '../../layouts/Footer'
 import { getTutorProfile, type TutorProfileResponse } from '../../api/tutorProfile'
@@ -38,33 +38,44 @@ interface Review {
   date: string
 }
 
-const ScheduleGrid = ({ schedule }: { schedule: Record<string, Record<string, boolean>> }) => {
-  const days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
-  const times = ['Sáng', 'Chiều', 'Tối']
+const DAY_KEYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+const PERIODS = [
+  { key: 'morning', label: 'Sáng', start: 6 * 60, end: 12 * 60 },
+  { key: 'afternoon', label: 'Chiều', start: 12 * 60, end: 18 * 60 },
+  { key: 'evening', label: 'Tối', start: 18 * 60, end: 24 * 60 },
+]
 
+const createEmptySchedule = (): Record<string, Record<string, boolean>> =>
+  DAY_KEYS.reduce((result, day) => {
+    result[day] = PERIODS.reduce<Record<string, boolean>>((periods, period) => {
+      periods[period.key] = false
+      return periods
+    }, {})
+    return result
+  }, {} as Record<string, Record<string, boolean>>)
+
+const ScheduleGrid = ({ schedule }: { schedule: Record<string, Record<string, boolean>> }) => {
   return (
     <div className="grid grid-cols-7 gap-2">
-      {/* Header */}
-      {days.map((day) => (
-        <div key={day} className="text-center font-semibold text-slate-700 p-2">
+      {DAY_KEYS.map((day) => (
+        <div key={day} className="p-2 text-center font-semibold text-slate-700">
           {day}
         </div>
       ))}
       
-      {/* Schedule cells */}
-      {times.map((time) =>
-        days.map((day) => {
-          const isAvailable = schedule[day]?.[time] ?? false
+      {PERIODS.map((period) =>
+        DAY_KEYS.map((day) => {
+          const isBusy = schedule[day]?.[period.key] ?? false
           return (
             <div
-              key={`${day}-${time}`}
-              className={`p-2 text-center text-sm rounded ${
-                isAvailable
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-slate-100 text-slate-500'
+              key={`${day}-${period.key}`}
+              className={`rounded border p-2 text-center text-sm font-semibold ${
+                isBusy
+                  ? 'border-slate-200 bg-slate-100 text-slate-400 line-through'
+                  : 'border-green-200 bg-green-100 text-green-700'
               }`}
             >
-              {isAvailable ? time : '—'}
+              {isBusy ? '-' : period.label}
             </div>
           )
         })
@@ -72,7 +83,6 @@ const ScheduleGrid = ({ schedule }: { schedule: Record<string, Record<string, bo
     </div>
   )
 }
-
 interface StarRatingProps {
   rating: number
   reviewCount?: number
@@ -123,7 +133,6 @@ export function TutorProfileDetail() {
     }
   }
 
-  // Helper function to convert classes to schedule
   const buildScheduleFromClasses = (classes: ClassResponse[]): Record<string, Record<string, boolean>> => {
     const daysMap: Record<number, string> = {
       2: 'T2',
@@ -135,33 +144,32 @@ export function TutorProfileDetail() {
       8: 'CN',
     }
 
-    const schedule: Record<string, Record<string, boolean>> = {
-      T2: { Sáng: false, Chiều: false, Tối: false },
-      T3: { Sáng: false, Chiều: false, Tối: false },
-      T4: { Sáng: false, Chiều: false, Tối: false },
-      T5: { Sáng: false, Chiều: false, Tối: false },
-      T6: { Sáng: false, Chiều: false, Tối: false },
-      T7: { Sáng: false, Chiều: false, Tối: false },
-      CN: { Sáng: false, Chiều: false, Tối: false },
+    const schedule = createEmptySchedule()
+    const toMinutes = (value: string) => {
+      const [hours, minutes] = value.split(':').map(Number)
+      return hours * 60 + minutes
     }
 
     classes.forEach((cls) => {
-      cls.schedules.forEach((slot) => {
+      cls.schedules?.forEach((slot) => {
         const dayKey = daysMap[slot.dayOfWeek]
-        if (dayKey) {
-          const hour = parseInt(slot.startTime.split(':')[0])
-          let timeKey = 'Chiều'
-          if (hour < 12) timeKey = 'Sáng'
-          else if (hour >= 17) timeKey = 'Tối'
-          
-          schedule[dayKey][timeKey] = true
-        }
+        if (!dayKey) return
+
+        const start = toMinutes(slot.startTime)
+        const rawEnd = toMinutes(slot.endTime)
+        const end = rawEnd === 0 && start > 0 ? 24 * 60 : rawEnd
+
+        PERIODS.forEach((period) => {
+          const isOverlapping = start < period.end && end > period.start
+          if (isOverlapping) {
+            schedule[dayKey][period.key] = true
+          }
+        })
       })
     })
 
     return schedule
   }
-
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -173,53 +181,40 @@ export function TutorProfileDetail() {
 
         const apiResponse: TutorProfileResponse = await getTutorProfile(Number(tutorId))
         
-        // Map API response to component profile
         const mappedProfile: TutorProfile = {
           id: apiResponse.userId,
           name: apiResponse.fullName,
           avatar: apiResponse.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(apiResponse.avatar)}&background=random`,
           fullName: apiResponse.fullName,
           subjects: apiResponse.subjects.map(s => s.name),
-          location: 'Chưa cập nhật', // Backend chưa có location field
+          location: 'Chưa cập nhật', 
           experience: parseInt(apiResponse.experience.split(' ')[0]) || 0,
-          rating: 0, // Backend chưa có rating field
-          totalReviews: 0, // Backend chưa có totalReviews field
-          lessons: 0, // Backend chưa có lessons field
-          students: 0, // Backend chưa có students field
-          satisfaction: 0, // Backend chưa có satisfaction field
+          rating: 0, 
+          totalReviews: 0,
+          lessons: 0,
+          students: 0, 
+          satisfaction: 0, 
           bio: apiResponse.bio || '',
           education: `${apiResponse.major}${apiResponse.university ? ' - ' + apiResponse.university : ''}`,
           teachingMethods: ['Đánh giá đầu vào', 'Lộ trình cá nhân', 'Báo cáo tiến độ'],
-          price: 0, // Backend chưa có price field
+          price: 0, 
           hoursPerLesson: 90,
-          schedule: {
-            T2: { Sáng: true, Chiều: true, Tối: false },
-            T3: { Sáng: false, Chiều: true, Tối: true },
-            T4: { Sáng: true, Chiều: false, Tối: true },
-            T5: { Sáng: false, Chiều: true, Tối: false },
-            T6: { Sáng: true, Chiều: false, Tối: true },
-            T7: { Sáng: true, Chiều: true, Tối: false },
-            CN: { Sáng: true, Chiều: false, Tối: true },
-          },
+          schedule: createEmptySchedule(),
           reviews: [],
           verified: apiResponse.isVerified,
         }
         
-        setProfile(mappedProfile)
-
-        // Fetch tutor's classes to build schedule
         try {
           const classesResponse = await getTutorClasses(Number(tutorId))
-          const approvedClasses = classesResponse.content.filter(
+          const teachingClasses = classesResponse.content.filter(
             (cls) => cls.approvalStatus === 'APPROVED' && cls.status === 'CLOSED'
           )
-          const builtSchedule = buildScheduleFromClasses(approvedClasses)
-          mappedProfile.schedule = builtSchedule
+          mappedProfile.schedule = buildScheduleFromClasses(teachingClasses)
         } catch (scheduleError) {
           console.error('Không thể tải thời khóa biểu:', scheduleError)
-          // Keep default schedule if fetching classes fails
         }
-        
+
+        setProfile(mappedProfile)
         setLoading(false)
       } catch (err) {
         setError('Không thể tải thông tin gia sư')
@@ -260,7 +255,6 @@ export function TutorProfileDetail() {
     <div className="flex flex-col min-h-screen">
       <Navbar />
 
-      {/* Hero Section */}
       <section className="bg-slate-900 text-white text-center py-16">
         <div className="container mx-auto px-4">
           <span className="inline-block bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium mb-3">
@@ -273,7 +267,6 @@ export function TutorProfileDetail() {
         </div>
       </section>
 
-      {/* Main Content */}
       <section className="flex-1 py-8">
         <div className="container mx-auto px-4">
           <button
@@ -284,9 +277,7 @@ export function TutorProfileDetail() {
           </button>
 
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            {/* Main Content */}
             <div className="lg:col-span-2">
-              {/* Profile Header */}
               <div className="mb-8">
                 <div className="flex flex-wrap gap-6 items-start mb-6">
                   <div className="w-24 h-24 bg-slate-200 rounded-lg flex items-center justify-center text-4xl">
@@ -318,7 +309,6 @@ export function TutorProfileDetail() {
                   </div>
                 </div>
 
-                {/* Stats Grid */}
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <div className="text-2xl font-bold text-slate-900">{profile.lessons}</div>
@@ -339,7 +329,6 @@ export function TutorProfileDetail() {
                 </div>
               </div>
 
-              {/* Thông tin nổi bật */}
               <div className="mb-8 bg-white p-6 rounded-lg border border-slate-200">
                 <h2 className="text-2xl font-bold mb-6">Thông tin nổi bật</h2>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -376,13 +365,11 @@ export function TutorProfileDetail() {
 
               
 
-              {/* Thời khóa biểu */}
               <div className="mb-8 bg-white p-6 rounded-lg border border-slate-200">
-                <h2 className="text-2xl font-bold mb-6">Thời khóa biểu</h2>
+                <h2 className="text-2xl font-bold mb-6">Thời gian rãnh trong tuần</h2>
                 <ScheduleGrid schedule={profile.schedule} />
               </div>
 
-              {/* Reviews */}
               <div className="bg-white p-6 rounded-lg border border-slate-200">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold">Đánh giá từ học viên</h2>
@@ -406,9 +393,7 @@ export function TutorProfileDetail() {
               </div>
             </div>
 
-            {/* Sidebar */}
             <div className="lg:col-span-1">
-              {/* Price Card */}
               <div className="mb-6 bg-white p-6 rounded-lg border border-slate-200">
                
                 <button className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold mb-2 hover:bg-blue-700">
@@ -423,7 +408,6 @@ export function TutorProfileDetail() {
                 
               </div>
 
-              {/* Verification Card */}
               <div className="bg-white p-6 rounded-lg border border-slate-200">
                 <h3 className="font-bold mb-4">Hồ sơ đã xác minh</h3>
                 <div className="space-y-3 text-sm text-slate-700">
