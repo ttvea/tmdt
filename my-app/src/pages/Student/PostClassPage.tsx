@@ -3,23 +3,24 @@ import Navbar from "../../layouts/Navbar";
 import Footer from "../../layouts/Footer";
 
 const PostClassPage = () => {
-  // Chuyển subject và studyTime thành mảng để lưu nhiều giá trị cùng lúc
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     area: "",
     classLevel: "",
     subject: [] as { value: string; label: string }[],
+    teachingMode: "OFFLINE",
     sessionsPerWeek: "",
     studyTime: [] as { value: string; label: string }[],
+    budget: "",
     requirements: "",
   });
 
-  // --- CÁC HÀM XỬ LÝ CHỌN NHIỀU & RÀNG BUỘC ---
+  // --- CÁC HÀM XỬ LÝ CHỌN NHIỀU ---
   const handleAddSubject = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     const label = e.target.options[e.target.selectedIndex].text;
-    
+
     // Nếu chưa có trong danh sách đã chọn thì mới thêm vào
     if (value && !formData.subject.find((item) => item.value === value)) {
       setFormData({ ...formData, subject: [...formData.subject, { value, label }] });
@@ -36,19 +37,8 @@ const PostClassPage = () => {
   const handleAddTime = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     const label = e.target.options[e.target.selectedIndex].text;
-    const maxSessions = parseInt(formData.sessionsPerWeek) || 0;
 
     if (!value) return;
-
-    if (maxSessions === 0) {
-      alert("Vui lòng chọn 'Số buổi học / tuần' trước khi chọn thời gian!");
-      return;
-    }
-
-    if (formData.studyTime.length >= maxSessions) {
-      alert(`Bạn chỉ được chọn tối đa ${maxSessions} khoảng thời gian theo thiết lập số buổi!`);
-      return;
-    }
 
     if (!formData.studyTime.find((item) => item.value === value)) {
       setFormData({ ...formData, studyTime: [...formData.studyTime, { value, label }] });
@@ -66,7 +56,6 @@ const PostClassPage = () => {
     setFormData({
       ...formData,
       sessionsPerWeek: e.target.value,
-      studyTime: [],
     });
   };
 
@@ -88,13 +77,6 @@ const PostClassPage = () => {
 
         {/* ================= KHUNG CHỨA TOÀN BỘ ================= */}
         <div className="flex flex-col lg:flex-row bg-white shadow-xl min-h-[800px] overflow-hidden rounded-2xl border border-slate-200">
-
-          {/* ================= CỘT TRÁI (NỀN XANH LƠ) ================= */}
-          <div className="bg-[#00a8e8] w-full lg:w-[350px] flex items-center justify-center py-20 lg:py-0 shrink-0">
-            <i className="fa-regular fa-file-lines text-white text-[150px]"></i>
-          </div>
-
-          {/* ================= CỘT PHẢI (FORM NHẬP LIỆU) ================= */}
           <div className="flex-1 p-8 lg:p-14">
 
             <div className="mb-10">
@@ -138,6 +120,19 @@ const PostClassPage = () => {
                         onChange={(e) => setFormData({ ...formData, area: e.target.value })}
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-[16px] font-medium text-slate-900 mb-2">Học phí dự kiến (VNĐ/Tháng hoặc Buổi)</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          placeholder="Ví dụ: 1500000"
+                          className="w-full border border-slate-300 p-3 pr-12 text-slate-700 outline-none focus:border-blue-500 appearance-none"
+                          onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-medium">đ</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -178,7 +173,7 @@ const PostClassPage = () => {
                       <div className="w-full border border-slate-300 p-2 min-h-[50px] flex flex-wrap gap-2 items-center focus-within:border-blue-500 transition-colors">
                         {formData.subject.map((sub, idx) => (
                           <span key={idx} className="flex items-center gap-1 bg-white border border-slate-300 px-2 py-1 text-sm text-slate-700 rounded-sm shadow-sm">
-                            <span 
+                            <span
                               className="text-slate-400 hover:text-red-500 cursor-pointer font-bold px-1"
                               onClick={() => handleRemoveSubject(sub.value)}
                             >×</span>
@@ -237,13 +232,13 @@ const PostClassPage = () => {
                       </select>
                     </div>
 
-                    {/* --- THỜI GIAN HỌC (CHỌN NHIỀU & RÀNG BUỘC THEO SỐ BUỔI) --- */}
+                    {/* --- THỜI GIAN HỌC MONG MUỐN --- */}
                     <div>
-                      <label className="block text-[16px] font-medium text-slate-900 mb-2">Thời gian học</label>
+                      <label className="block text-[16px] font-medium text-slate-900 mb-2">Thời gian học mong muốn</label>
                       <div className="w-full border border-slate-300 p-2 min-h-[50px] flex flex-wrap gap-2 items-center focus-within:border-blue-500 transition-colors">
                         {formData.studyTime.map((time, idx) => (
                           <span key={idx} className="flex items-center gap-1 bg-white border border-slate-300 px-2 py-1 text-sm text-slate-700 rounded-sm shadow-sm">
-                            <span 
+                            <span
                               className="text-slate-400 hover:text-red-500 cursor-pointer font-bold px-1"
                               onClick={() => handleRemoveTime(time.value)}
                             >×</span>
@@ -254,15 +249,8 @@ const PostClassPage = () => {
                           className="flex-1 bg-transparent text-slate-500 outline-none min-w-[150px] py-1 cursor-pointer"
                           onChange={handleAddTime}
                           value=""
-                          disabled={!formData.sessionsPerWeek || formData.studyTime.length >= parseInt(formData.sessionsPerWeek)}
                         >
-                          <option value="" disabled>
-                            {!formData.sessionsPerWeek 
-                              ? "Vui lòng chọn số buổi trước" 
-                              : formData.studyTime.length >= parseInt(formData.sessionsPerWeek) 
-                                ? "Đã chọn đủ số buổi" 
-                                : "+ Chọn thời gian"}
-                          </option>
+                          <option value="" disabled>+ Chọn thời gian</option>
                           <optgroup label="Buổi sáng (7h - 11h)">
                             <option value="morning_2">Thứ Hai</option>
                             <option value="morning_3">Thứ Ba</option>
@@ -295,7 +283,19 @@ const PostClassPage = () => {
                         </select>
                       </div>
                     </div>
-
+                    
+                    {/* --- HÌNH THỨC HỌC --- */}
+                    <div>
+                      <label className="block text-[16px] font-medium text-slate-900 mb-2">Hình thức học</label>
+                      <select
+                        className="w-full border border-slate-300 p-3 text-slate-700 outline-none focus:border-blue-500 bg-transparent cursor-pointer"
+                        onChange={(e) => setFormData({ ...formData, teachingMode: e.target.value })}
+                        value={formData.teachingMode}
+                      >
+                        <option value="OFFLINE">Học trực tiếp (Offline / Tại nhà)</option>
+                        <option value="ONLINE">Học trực tuyến (Online)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
