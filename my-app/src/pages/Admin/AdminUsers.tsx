@@ -186,14 +186,14 @@ export function AdminUsers() {
     <AdminLayout activePath="/admin/users" adminName={admin?.fullName}>
       <div className="mb-6 flex items-end justify-between gap-5">
         <div>
-          <h1 className="m-0 text-3xl font-bold tracking-normal text-slate-950">Quản lý Người dùng</h1>
+          <div role="heading" aria-level={1} className="flex h-10 items-center text-base font-bold tracking-normal text-slate-950">Quản lý Người dùng</div>
           <p className="mt-1 max-w-3xl text-sm text-slate-700">
             Quản lý thông tin đăng nhập, phân quyền và trạng thái bảo mật cho tất cả thành viên nền tảng EduMatch Pro.
           </p>
         </div>
-        <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white shadow-sm hover:bg-blue-800">
+        <a href="/admin/users/new" className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white shadow-sm hover:bg-blue-800">
           <PlusIcon /> Tạo Người dùng Mới
-        </button>
+        </a>
       </div>
 
       <section className="mb-5 flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
