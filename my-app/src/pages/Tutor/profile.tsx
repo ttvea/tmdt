@@ -137,6 +137,14 @@ export function TutorProfile() {
           </div>
         </div>
 
+        {!loading && !error && !profile?.isVerified ? (
+          <div className="mx-auto mt-6 max-w-5xl px-8">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              Hồ sơ gia sư của bạn đang chờ admin duyệt. Bạn chỉ có thể mở lớp sau khi hồ sơ được xác thực.
+            </div>
+          </div>
+        ) : null}
+
         <div className="max-w-5xl mx-auto px-8 py-8 flex gap-8 items-start">
 
           {loading ? (

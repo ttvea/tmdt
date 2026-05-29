@@ -54,6 +54,7 @@ export function TutorInfo() {
   const [bio, setBio] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [loadError, setLoadError] = useState('')
+  const [showPendingReviewModal, setShowPendingReviewModal] = useState(false)
 
   useEffect(() => {
     // Load tất cả môn học từ backend
@@ -185,7 +186,7 @@ export function TutorInfo() {
         await uploadCertificateApi(userId, certFile)
       }
 
-      window.location.href = '/tutor/profile'
+      setShowPendingReviewModal(true)
     } catch {
       alert('Lưu thông tin thất bại. Vui lòng thử lại.')
     } finally {
@@ -634,6 +635,32 @@ export function TutorInfo() {
           </form>
         </div>
       </div>
+
+      {showPendingReviewModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
+          <section className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+              <svg className="h-7 w-7" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </div>
+            <h2 className="mt-4 text-xl font-bold text-slate-950">Hồ sơ đã được tải lên</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Hồ sơ gia sư của bạn đã được ghi nhận và đang chờ admin duyệt. Sau khi được xác thực, bạn mới có thể mở lớp và nhận học viên.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowPendingReviewModal(false)
+                window.location.href = '/tutor/profile'
+              }}
+              className="mt-6 inline-flex h-10 w-full items-center justify-center rounded-lg bg-blue-700 px-4 text-sm font-bold text-white transition hover:bg-blue-800"
+            >
+              Xem hồ sơ
+            </button>
+          </section>
+        </div>
+      ) : null}
     </AccountLayout>
   )
 }

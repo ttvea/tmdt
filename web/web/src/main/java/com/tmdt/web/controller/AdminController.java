@@ -4,10 +4,13 @@ import com.tmdt.web.dto.response.AdminDashboardResponse;
 import com.tmdt.web.dto.request.AdminCreateUserRequest;
 import com.tmdt.web.dto.request.AdminUpdateUserRoleRequest;
 import com.tmdt.web.dto.request.AdminUpdateUserStatusRequest;
+import com.tmdt.web.dto.request.AdminVerifyTutorRequest;
+import com.tmdt.web.dto.response.AdminTutorResponse;
 import com.tmdt.web.dto.response.AdminUserResponse;
 import com.tmdt.web.dto.response.AdminUsersStatsResponse;
 import com.tmdt.web.entity.User;
 import com.tmdt.web.entity.Order;
+import com.tmdt.web.entity.TutorProfile;
 import com.tmdt.web.enums.ApprovalStatus;
 import com.tmdt.web.enums.ClassStatus;
 import com.tmdt.web.enums.EnrollmentStatus;
@@ -162,6 +165,61 @@ public class AdminController {
                 userRep.countByEnabled(false),
                 userRep.countByCreatedAtAfter(LocalDateTime.now().minusDays(7))
         ));
+    }
+
+    @GetMapping("/tutors")
+    public ResponseEntity<?> getTutors(
+            HttpServletRequest request,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        String normalizedKeyword = keyword != null && !keyword.trim().isEmpty() ? keyword.trim() : null;
+
+        Page<AdminTutorResponse> tutors = userRep
+                .searchAdminUsers(User.RoleAcc.TUTOR, null, normalizedKeyword, pageable)
+                .map(user -> AdminTutorResponse.from(
+                        user,
+                        tutorProfileRep.findByUserId(user.getId()).orElse(null)
+                ));
+
+        return ResponseEntity.ok(tutors);
+    }
+
+    @PatchMapping("/tutors/{userId}/verification")
+    public ResponseEntity<?> updateTutorVerification(
+            HttpServletRequest request,
+            @PathVariable Integer userId,
+            @Valid @RequestBody AdminVerifyTutorRequest verifyRequest
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        User user = userRep.findById(userId).orElse(null);
+        if (user == null || user.getRole() != User.RoleAcc.TUTOR) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Không tìm thấy tài khoản gia sư");
+        }
+
+        TutorProfile profile = tutorProfileRep.findByUserId(userId).orElse(null);
+        if (profile == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Gia sư chưa upload hồ sơ");
+        }
+
+        profile.setIsVerified(verifyRequest.verified());
+        user.setVerified(verifyRequest.verified());
+
+        tutorProfileRep.save(profile);
+        userRep.save(user);
+
+        return ResponseEntity.ok(AdminTutorResponse.from(user, profile));
     }
 
     @PostMapping("/users")

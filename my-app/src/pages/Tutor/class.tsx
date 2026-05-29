@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
 import { getMyClasses, getAllGradeLevels, type ClassResponse, type ApprovalStatus, type ClassStatus, type GradeLevelOption } from '../../api/classApi'
-import { getAllSubjects, type SubjectOption } from '../../api/tutorProfile'
+import { getAllSubjects, getTutorProfile, type SubjectOption } from '../../api/tutorProfile'
 
 type DisplayStatus = 'pending' | 'recruiting' | 'teaching' | 'completed' | 'rejected'
 type ClassTab = 'all' | DisplayStatus
@@ -62,8 +62,22 @@ export function TutorClasses() {
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [subjectMap, setSubjectMap] = useState<Record<number, string>>({})
   const [gradeMap, setGradeMap] = useState<Record<number, string>>({})
+  const [profileVerified, setProfileVerified] = useState(false)
+  const [profileChecked, setProfileChecked] = useState(false)
 
   useEffect(() => {
+    const userRaw = localStorage.getItem('user')
+    const userId = userRaw ? JSON.parse(userRaw)?.id : null
+
+    if (userId) {
+      getTutorProfile(userId)
+        .then((profile) => setProfileVerified(Boolean(profile.isVerified)))
+        .catch(() => setProfileVerified(false))
+        .finally(() => setProfileChecked(true))
+    } else {
+      setProfileChecked(true)
+    }
+
     getAllSubjects().then(data => {
       const map: Record<number, string> = {}
       data.forEach((s: SubjectOption) => { map[s.id] = s.name })
@@ -130,8 +144,12 @@ export function TutorClasses() {
               <p className="text-sm text-slate-500 mt-1">Theo dõi và quản lý các lớp học đang diễn ra của bạn.</p>
             </div>
             <button
-              onClick={() => window.location.href = '/tutor/classes/new'}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold transition-colors shadow-sm"
+              onClick={() => {
+                if (profileVerified) window.location.href = '/tutor/classes/new'
+              }}
+              disabled={!profileChecked || !profileVerified}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold transition-colors shadow-sm disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+              title={profileVerified ? 'Tạo lớp mới' : 'Hồ sơ gia sư cần được admin duyệt trước khi mở lớp'}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
@@ -139,6 +157,12 @@ export function TutorClasses() {
               Tạo lớp mới
             </button>
           </div>
+
+          {profileChecked && !profileVerified ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              Hồ sơ gia sư của bạn đang chờ admin duyệt. Bạn chỉ có thể mở lớp sau khi hồ sơ được xác thực.
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-5 gap-4">
             <StatCard
