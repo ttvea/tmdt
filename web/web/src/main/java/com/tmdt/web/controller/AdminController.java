@@ -1,6 +1,7 @@
 package com.tmdt.web.controller;
 
 import com.tmdt.web.dto.response.AdminDashboardResponse;
+import com.tmdt.web.dto.request.AdminCreateUserRequest;
 import com.tmdt.web.dto.request.AdminUpdateUserRoleRequest;
 import com.tmdt.web.dto.request.AdminUpdateUserStatusRequest;
 import com.tmdt.web.dto.response.AdminUserResponse;
@@ -25,8 +26,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -48,6 +51,7 @@ public class AdminController {
     private final ClassRep classRep;
     private final EnrollmentRep enrollmentRep;
     private final OrderRep orderRep;
+    private final PasswordEncoder passwordEncoder;
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentAdmin(HttpServletRequest request) {
@@ -160,6 +164,38 @@ public class AdminController {
         ));
     }
 
+    @PostMapping("/users")
+    public ResponseEntity<?> createUser(
+            HttpServletRequest request,
+            @Valid @RequestBody AdminCreateUserRequest createRequest
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        String email = createRequest.email().trim().toLowerCase();
+        if (userRep.existsByEmail(email)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Email đã được sử dụng");
+        }
+
+        User user = new User();
+        user.setFullName(createRequest.fullName().trim());
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(createRequest.password()));
+        user.setRole(createRequest.role());
+        user.setProvider(User.Provider.LOCAL);
+        user.setEnabled(createRequest.enabled() == null || createRequest.enabled());
+        user.setVerified(false);
+        user.setPhone(normalizeOptionalText(createRequest.phone()));
+        user.setAvatar(normalizeOptionalText(createRequest.avatar()));
+        user.setGender(createRequest.gender());
+        user.setBirthday(createRequest.birthday());
+
+        User saved = userRep.save(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(AdminUserResponse.from(saved));
+    }
+
     @PatchMapping("/users/{userId}/status")
     public ResponseEntity<?> updateUserStatus(
             HttpServletRequest request,
@@ -244,5 +280,12 @@ public class AdminController {
             return null;
         }
         return authHeader.substring(7);
+    }
+
+    private String normalizeOptionalText(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value.trim();
     }
 }
