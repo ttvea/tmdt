@@ -40,6 +40,21 @@ export interface AdminUser {
   updatedAt: string | null
 }
 
+export interface AdminTutor {
+  id: number
+  userId: number
+  profileId: number | null
+  fullName: string
+  email: string
+  avatar: string | null
+  major: string | null
+  experience: string | null
+  isVerified: boolean
+  enabled: boolean | null
+  hasProfile: boolean
+  subjects: string[]
+}
+
 export interface AdminUsersStats {
   totalUsers: number
   totalStudents: number
@@ -109,6 +124,24 @@ export async function getAdminUsers(params: {
 
 export async function getAdminUsersStats(): Promise<AdminUsersStats> {
   const res = await api.get('/api/admin/users/stats')
+  return res.data
+}
+
+export async function getAdminTutors(params: {
+  keyword?: string
+  page?: number
+  size?: number
+}): Promise<PageResponse<AdminTutor>> {
+  const cleanParams = {
+    ...params,
+    keyword: params.keyword?.trim() || undefined,
+  }
+  const res = await api.get('/api/admin/tutors', { params: cleanParams })
+  return res.data
+}
+
+export async function updateAdminTutorVerification(userId: number, verified: boolean): Promise<AdminTutor> {
+  const res = await api.patch(`/api/admin/tutors/${userId}/verification`, { verified })
   return res.data
 }
 

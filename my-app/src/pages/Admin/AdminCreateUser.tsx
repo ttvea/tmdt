@@ -48,6 +48,11 @@ export function AdminCreateUser() {
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
+    const requestedRole = new URLSearchParams(window.location.search).get('role')
+    if (requestedRole === 'STUDENT' || requestedRole === 'TUTOR' || requestedRole === 'ADMIN') {
+      updateField('role', requestedRole)
+    }
+
     if (!token) {
       window.location.href = '/login'
       return
