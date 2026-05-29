@@ -45,6 +45,8 @@ export function AdminUsers() {
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [viewingUser, setViewingUser] = useState<AdminUser | null>(null)
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
+  const [statusTarget, setStatusTarget] = useState<AdminUser | null>(null)
+  const [statusError, setStatusError] = useState('')
   const [selectedRole, setSelectedRole] = useState<AdminUserRole>('STUDENT')
 
   useEffect(() => {
@@ -126,23 +128,28 @@ export function AdminUsers() {
     [stats],
   )
 
-  const handleToggleStatus = async (user: AdminUser) => {
-    const nextEnabled = !(user.enabled ?? true)
-    const actionLabel = nextEnabled ? 'mở khóa' : 'khóa'
-    const confirmed = window.confirm(`Bạn có chắc muốn ${actionLabel} tài khoản ${user.fullName}?`)
-    if (!confirmed) return
+  const openStatusConfirm = (user: AdminUser) => {
+    setStatusError('')
+    setStatusTarget(user)
+  }
 
-    setUpdatingId(user.id)
+  const handleToggleStatus = async () => {
+    if (!statusTarget) return
+
+    const nextEnabled = !(statusTarget.enabled ?? true)
+
+    setUpdatingId(statusTarget.id)
     try {
-      const updated = await updateAdminUserStatus(user.id, nextEnabled)
+      const updated = await updateAdminUserStatus(statusTarget.id, nextEnabled)
       setUsers((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
       setStats((prev) => ({
         ...prev,
         activeUsers: prev.activeUsers + (nextEnabled ? 1 : -1),
         lockedUsers: prev.lockedUsers + (nextEnabled ? -1 : 1),
       }))
+      setStatusTarget(null)
     } catch {
-      alert('Không thể cập nhật trạng thái người dùng.')
+      setStatusError('Không thể cập nhật trạng thái người dùng. Vui lòng thử lại.')
     } finally {
       setUpdatingId(null)
     }
@@ -292,7 +299,7 @@ export function AdminUsers() {
                     updating={updatingId === user.id}
                     onView={() => setViewingUser(user)}
                     isCurrentAdmin={admin?.id === user.id}
-                    onToggleStatus={() => handleToggleStatus(user)}
+                    onToggleStatus={() => openStatusConfirm(user)}
                     onChangeRole={() => openRoleEditor(user)}
                   />
                 ))
@@ -353,6 +360,19 @@ export function AdminUsers() {
       </section>
 
       {viewingUser ? <UserDetailModal user={viewingUser} onClose={() => setViewingUser(null)} /> : null}
+      {statusTarget ? (
+        <StatusConfirmModal
+          user={statusTarget}
+          updating={updatingId === statusTarget.id}
+          error={statusError}
+          onClose={() => {
+            if (updatingId === statusTarget.id) return
+            setStatusTarget(null)
+            setStatusError('')
+          }}
+          onConfirm={handleToggleStatus}
+        />
+      ) : null}
       {editingUser ? (
         <RoleEditModal
           user={editingUser}
@@ -579,6 +599,68 @@ function RoleEditModal({
           className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-60"
         >
           {updating ? 'Đang lưu...' : 'Lưu thay đổi'}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+function StatusConfirmModal({
+  user,
+  updating,
+  error,
+  onClose,
+  onConfirm,
+}: {
+  user: AdminUser
+  updating: boolean
+  error: string
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  const enabled = user.enabled ?? true
+  const actionLabel = enabled ? 'khóa' : 'mở khóa'
+  const actionTitle = enabled ? 'Khóa tài khoản người dùng' : 'Mở khóa tài khoản người dùng'
+  const buttonClass = enabled
+    ? 'bg-red-600 text-white hover:bg-red-700'
+    : 'bg-blue-700 text-white hover:bg-blue-800'
+
+  return (
+    <Modal title={actionTitle} onClose={onClose}>
+      <div className="rounded-xl bg-slate-50 p-4">
+        <p className="text-sm leading-6 text-slate-700">
+          Bạn có chắc muốn {actionLabel} tài khoản{' '}
+          <span className="font-bold text-slate-950">{user.fullName || user.email}</span>?
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          {enabled
+            ? 'Người dùng sẽ không thể đăng nhập cho đến khi tài khoản được mở khóa.'
+            : 'Người dùng sẽ có thể đăng nhập và sử dụng hệ thống trở lại.'}
+        </p>
+      </div>
+
+      {error ? (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={updating}
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          Hủy
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={updating}
+          className={`rounded-lg px-4 py-2 text-sm font-bold transition disabled:opacity-60 ${buttonClass}`}
+        >
+          {updating ? 'Đang xử lý...' : enabled ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
         </button>
       </div>
     </Modal>

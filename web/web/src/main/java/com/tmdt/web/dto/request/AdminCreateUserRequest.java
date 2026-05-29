@@ -27,6 +27,10 @@ public record AdminCreateUserRequest(
 
         String avatar,
 
+        User.Gender gender,
+
+        Integer birthday,
+
         Boolean sendWelcomeEmail
 ) {
 }

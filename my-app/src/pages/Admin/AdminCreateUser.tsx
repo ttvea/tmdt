@@ -5,6 +5,7 @@ import {
   uploadAdminUserAvatar,
   type AdminCreateUserPayload,
   type AdminSession,
+  type AdminUserGender,
   type AdminUserRole,
 } from '../../api/admin'
 import { AdminLayout } from '../../components/AdminLayout'
@@ -17,7 +18,8 @@ type FormState = {
   enabled: boolean
   phone: string
   avatar: string
-  workLocation: string
+  gender: AdminUserGender | ''
+  birthday: string
   sendWelcomeEmail: boolean
 }
 
@@ -29,7 +31,8 @@ const initialForm: FormState = {
   enabled: true,
   phone: '',
   avatar: '',
-  workLocation: '',
+  gender: '',
+  birthday: '',
   sendWelcomeEmail: true,
 }
 
@@ -126,6 +129,8 @@ export function AdminCreateUser() {
       enabled: form.enabled,
       phone: form.phone.trim() || undefined,
       avatar: avatarFile ? undefined : form.avatar.trim() || undefined,
+      gender: form.gender || undefined,
+      birthday: form.birthday ? Number(form.birthday) : undefined,
       sendWelcomeEmail: form.sendWelcomeEmail,
     }
 
@@ -352,13 +357,27 @@ export function AdminCreateUser() {
                   />
                 </Field>
 
-                <Field label="Vị trí công tác" className="col-span-2 md:col-span-1">
-                  <input
-                    value={form.workLocation}
-                    onChange={(event) => updateField('workLocation', event.target.value)}
+                <Field label="Giới tính" className="col-span-2 md:col-span-1">
+                  <select
+                    value={form.gender}
+                    onChange={(event) => updateField('gender', event.target.value as AdminUserGender | '')}
                     className={inputClass}
-                    placeholder="Ví dụ: Hà Nội, VN"
-                    type="text"
+                  >
+                    <option value="">Chưa chọn</option>
+                    <option value="MALE">Nam</option>
+                    <option value="FEMALE">Nữ</option>
+                  </select>
+                </Field>
+
+                <Field label="Năm sinh" className="col-span-2 md:col-span-1">
+                  <input
+                    value={form.birthday}
+                    onChange={(event) => updateField('birthday', event.target.value)}
+                    className={inputClass}
+                    min="1900"
+                    max={new Date().getFullYear()}
+                    placeholder="Ví dụ: 2003"
+                    type="number"
                   />
                 </Field>
               </div>

@@ -189,6 +189,8 @@ public class AdminController {
         user.setVerified(false);
         user.setPhone(normalizeOptionalText(createRequest.phone()));
         user.setAvatar(normalizeOptionalText(createRequest.avatar()));
+        user.setGender(createRequest.gender());
+        user.setBirthday(createRequest.birthday());
 
         User saved = userRep.save(user);
         return ResponseEntity.status(HttpStatus.CREATED).body(AdminUserResponse.from(saved));

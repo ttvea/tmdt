@@ -25,6 +25,7 @@ export interface AdminDashboardStats {
 }
 
 export type AdminUserRole = 'STUDENT' | 'TUTOR' | 'ADMIN'
+export type AdminUserGender = 'MALE' | 'FEMALE'
 
 export interface AdminUser {
   id: number
@@ -57,6 +58,8 @@ export interface AdminCreateUserPayload {
   enabled: boolean
   phone?: string
   avatar?: string
+  gender?: AdminUserGender
+  birthday?: number
   sendWelcomeEmail?: boolean
 }
 
