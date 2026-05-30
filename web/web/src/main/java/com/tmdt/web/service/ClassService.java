@@ -206,6 +206,16 @@ public class ClassService {
         return classMapper.toResponse(classEntity);
     }
 
+    public Page<ClassResponse> getPublicTutorTeachingClasses(Long tutorId, Pageable pageable) {
+        return classRepository.findByTutorIdAndApprovalStatusAndStatus(
+                        tutorId,
+                        ApprovalStatus.APPROVED,
+                        ClassStatus.CLOSED,
+                        pageable
+                )
+                .map(classMapper::toResponse);
+    }
+
     @Transactional
     public EnrollmentResponse enroll(Long classId, Long studentId) {
         TutorClass classEntity = classRepository.findById(classId)
