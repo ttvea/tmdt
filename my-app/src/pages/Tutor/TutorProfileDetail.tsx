@@ -205,7 +205,7 @@ export function TutorProfileDetail() {
         }
         
         try {
-          const classesResponse = await getTutorClasses(Number(tutorId))
+          const classesResponse = await getTutorClasses(apiResponse.userId)
           const teachingClasses = classesResponse.content.filter(
             (cls) => cls.approvalStatus === 'APPROVED' && cls.status === 'CLOSED'
           )
