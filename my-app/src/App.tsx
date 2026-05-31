@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import "./App.css";
 import { Login } from "./pages/Login";
 import { ResetPassword } from './pages/ResetPassword';
@@ -15,6 +15,7 @@ import { FormAddClass } from "./pages/Tutor/form-add-class";
 import { ClassDetail } from "./pages/Tutor/class-detail";
 import { TutorSchedule } from "./pages/Tutor/schedule";
 import { TutorMessages } from "./pages/Tutor/messages";
+import { TutorVouchers } from "./pages/Tutor/vouchers";
 import  StudentProfile  from "./pages/Student/StudentProfile";
 import { StudentSchedule } from "./pages/Student/schedule";
 import { StudentMessages } from "./pages/Student/messages";
@@ -25,6 +26,8 @@ import { AdminDashboard } from "./pages/Admin/AdminDashboard";
 import { AdminClasses } from "./pages/Admin/AdminClasses";
 import { AdminClassDetail } from "./pages/Admin/AdminClassDetail";
 import { AdminUsers } from "./pages/Admin/AdminUsers";
+import { AdminCreateUser } from "./pages/Admin/AdminCreateUser";
+import { AdminTutors } from "./pages/Admin/AdminTutors";
 import PricingPage from "./pages/PricingPage";
 import ContactPage from "./pages/ContactPage";
 import FaqPage from "./pages/FaqPage";
@@ -49,12 +52,15 @@ const pageTitles: Record<string, string> = {
   "/tutor/classes": "Lớp của gia sư - EduMatch Pro",
   "/tutor/schedule": "Lịch dạy - EduMatch Pro",
   "/tutor/messages": "Tin nhắn - EduMatch Pro",
+  "/tutor/vouchers": "Mã giảm giá - EduMatch Pro",
   "/tutor/classes/new": "Tạo lớp học - EduMatch Pro",
   "/student/profile": "Hồ sơ học viên - EduMatch Pro",
   "/student/schedule": "Lịch học - EduMatch Pro",
   "/student/messages": "Tin nhắn - EduMatch Pro",
   "/admin": "Quản trị - EduMatch Pro",
   "/admin/users": "Quản lý người dùng - EduMatch Pro",
+  "/admin/users/new": "Tạo người dùng mới - EduMatch Pro",
+  "/admin/tutors": "Quản lý gia sư - EduMatch Pro",
   "/admin/classes": "Quản lý lớp học - EduMatch Pro",
   "/post-class": "Đăng lớp - EduMatch Pro",
   "/discover/student-requests": "Bảng Tin - EduMatch Pro",
@@ -92,6 +98,7 @@ function App() {
   if (pathname === "/tutor/classes") return <TutorClasses />;
   if (pathname === "/tutor/schedule") return <TutorSchedule />;
   if (pathname === "/tutor/messages") return <TutorMessages />;
+  if (pathname === "/tutor/vouchers") return <TutorVouchers />;
   if (pathname === "/tutor/classes/new") return <FormAddClass />;
   if (pathname.startsWith("/tutor/classes/") && !pathname.includes("/edit/")) return <ClassDetail />;
   if (pathname.startsWith("/tutor/") && !pathname.includes("/classes")) {
@@ -103,6 +110,8 @@ function App() {
   if (pathname === "/student/messages") return <StudentMessages />;
   if (pathname === "/admin") return <AdminDashboard />;
   if (pathname === "/admin/users") return <AdminUsers />;
+  if (pathname === "/admin/users/new") return <AdminCreateUser />;
+  if (pathname === "/admin/tutors") return <AdminTutors />;
   if (pathname === "/admin/classes") return <AdminClasses />;
   if (pathname.startsWith("/admin/classes/")) return <AdminClassDetail />;
   if (pathname === "/post-class") return <PostClassPage />;
@@ -113,3 +122,4 @@ function App() {
 }
 
 export default App;
+

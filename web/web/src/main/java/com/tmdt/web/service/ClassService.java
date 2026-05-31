@@ -8,6 +8,7 @@ import com.tmdt.web.dto.response.ClassResponse;
 import com.tmdt.web.dto.response.EnrollmentResponse;
 import com.tmdt.web.entity.ClassSchedule;
 import com.tmdt.web.entity.Enrollment;
+import com.tmdt.web.entity.TutorProfile;
 import com.tmdt.web.entity.TutorClass;
 import com.tmdt.web.enums.ApprovalStatus;
 import com.tmdt.web.enums.ClassStatus;
@@ -17,6 +18,7 @@ import com.tmdt.web.exception.AppException;
 import com.tmdt.web.mapper.ClassMapper;
 import com.tmdt.web.repository.ClassRep;
 import com.tmdt.web.repository.EnrollmentRep;
+import com.tmdt.web.repository.TutorProfileRep;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,9 +36,11 @@ public class ClassService {
     private final ClassRep classRepository;
     private final EnrollmentRep enrollmentRepository;
     private final ClassMapper classMapper;
+    private final TutorProfileRep tutorProfileRepository;
 
     @Transactional
     public ClassResponse createClass(ClassCreateRequest request, Long tutorId) {
+        validateTutorVerified(tutorId);
         validateSchedule(request);
         validateTutorScheduleConflict(request, tutorId);
         validateOfflineAddress(request);
@@ -44,6 +48,15 @@ public class ClassService {
         TutorClass classEntity = classMapper.toEntity(request, tutorId);
         classRepository.save(classEntity);
         return classMapper.toResponse(classEntity);
+    }
+
+    private void validateTutorVerified(Long tutorId) {
+        TutorProfile profile = tutorProfileRepository.findByUserId(tutorId.intValue())
+                .orElseThrow(() -> AppException.forbidden("Bạn cần hoàn thiện hồ sơ gia sư và chờ admin duyệt trước khi mở lớp"));
+
+        if (!Boolean.TRUE.equals(profile.getIsVerified())) {
+            throw AppException.forbidden("Hồ sơ gia sư chưa được admin duyệt. Bạn chỉ có thể mở lớp sau khi hồ sơ được xác thực");
+        }
     }
 
     public Page<ClassResponse> getTutorClasses(Long tutorId, Pageable pageable) {
@@ -191,6 +204,16 @@ public class ClassService {
             throw AppException.notFound("Không tìm thấy lớp học");
         }
         return classMapper.toResponse(classEntity);
+    }
+
+    public Page<ClassResponse> getPublicTutorTeachingClasses(Long tutorId, Pageable pageable) {
+        return classRepository.findByTutorIdAndApprovalStatusAndStatus(
+                        tutorId,
+                        ApprovalStatus.APPROVED,
+                        ClassStatus.CLOSED,
+                        pageable
+                )
+                .map(classMapper::toResponse);
     }
 
     @Transactional

@@ -25,6 +25,7 @@ export interface AdminDashboardStats {
 }
 
 export type AdminUserRole = 'STUDENT' | 'TUTOR' | 'ADMIN'
+export type AdminUserGender = 'MALE' | 'FEMALE'
 
 export interface AdminUser {
   id: number
@@ -39,6 +40,21 @@ export interface AdminUser {
   updatedAt: string | null
 }
 
+export interface AdminTutor {
+  id: number
+  userId: number
+  profileId: number | null
+  fullName: string
+  email: string
+  avatar: string | null
+  major: string | null
+  experience: string | null
+  isVerified: boolean
+  enabled: boolean | null
+  hasProfile: boolean
+  subjects: string[]
+}
+
 export interface AdminUsersStats {
   totalUsers: number
   totalStudents: number
@@ -47,6 +63,19 @@ export interface AdminUsersStats {
   activeUsers: number
   lockedUsers: number
   newUsersThisWeek: number
+}
+
+export interface AdminCreateUserPayload {
+  fullName: string
+  email: string
+  password: string
+  role: AdminUserRole
+  enabled: boolean
+  phone?: string
+  avatar?: string
+  gender?: AdminUserGender
+  birthday?: number
+  sendWelcomeEmail?: boolean
 }
 
 export interface PageResponse<T> {
@@ -98,6 +127,24 @@ export async function getAdminUsersStats(): Promise<AdminUsersStats> {
   return res.data
 }
 
+export async function getAdminTutors(params: {
+  keyword?: string
+  page?: number
+  size?: number
+}): Promise<PageResponse<AdminTutor>> {
+  const cleanParams = {
+    ...params,
+    keyword: params.keyword?.trim() || undefined,
+  }
+  const res = await api.get('/api/admin/tutors', { params: cleanParams })
+  return res.data
+}
+
+export async function updateAdminTutorVerification(userId: number, verified: boolean): Promise<AdminTutor> {
+  const res = await api.patch(`/api/admin/tutors/${userId}/verification`, { verified })
+  return res.data
+}
+
 export async function updateAdminUserStatus(userId: number, enabled: boolean): Promise<AdminUser> {
   const res = await api.patch(`/api/admin/users/${userId}/status`, { enabled })
   return res.data
@@ -105,6 +152,22 @@ export async function updateAdminUserStatus(userId: number, enabled: boolean): P
 
 export async function updateAdminUserRole(userId: number, role: AdminUserRole): Promise<AdminUser> {
   const res = await api.patch(`/api/admin/users/${userId}/role`, { role })
+  return res.data
+}
+
+export async function createAdminUser(payload: AdminCreateUserPayload): Promise<AdminUser> {
+  const res = await api.post('/api/admin/users', payload)
+  return res.data
+}
+
+export async function uploadAdminUserAvatar(userId: number, file: File): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await api.post(`/api/users/${userId}/avatar`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
   return res.data
 }
 

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ClassRep extends JpaRepository<TutorClass, Long> {
-
+    boolean existsByIdAndTutorId(Long classId, Long tutorId);
     Page<TutorClass> findByTutorId(Long tutorId, Pageable pageable);
 
     List<TutorClass> findByTutorId(Long tutorId);
@@ -22,6 +22,11 @@ public interface ClassRep extends JpaRepository<TutorClass, Long> {
 
     Page<TutorClass> findByApprovalStatusAndStatus(ApprovalStatus approvalStatus,
                                                     ClassStatus status, Pageable pageable);
+
+    Page<TutorClass> findByTutorIdAndApprovalStatusAndStatus(Long tutorId,
+                                                             ApprovalStatus approvalStatus,
+                                                             ClassStatus status,
+                                                             Pageable pageable);
 
     long countByApprovalStatus(ApprovalStatus approvalStatus);
 

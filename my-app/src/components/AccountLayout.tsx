@@ -52,12 +52,12 @@ const tutorMenuItems: MenuItem[] = [
     ),
   },
   {
-    label: 'Doanh thu',
-    href: '/tutor/revenue',
+    label: 'Mã giảm giá',
+    href: '/tutor/vouchers',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+          d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2.25a2.75 2.75 0 0 0 0 5.5V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2.25a2.75 2.75 0 0 0 0-5.5V7zM9 9h.01M15 15h.01M15 9l-6 6" />
       </svg>
     ),
   },

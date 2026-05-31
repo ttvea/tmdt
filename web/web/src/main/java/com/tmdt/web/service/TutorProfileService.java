@@ -115,6 +115,9 @@ public class TutorProfileService {
         profile.setGraduatedYear(request.getGraduatedYear());
         profile.setExperience(request.getExperience());
         profile.setBio(request.getBio());
+        profile.setIsVerified(false);
+        user.setVerified(false);
+        userRep.save(user);
 
         if (request.getSubjectIds() != null && !request.getSubjectIds().isEmpty()) {
             List<Subject> subjects = subjectRep.findAllById(request.getSubjectIds());

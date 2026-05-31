@@ -147,6 +147,15 @@ public class ClassController {
                 classService.searchClasses(subjectId, gradeLevelId, teachingMode,title, city, pageable));
     }
 
+    @GetMapping("/tutor/{tutorId}")
+    public ResponseEntity<Page<ClassResponse>> getPublicTutorTeachingClasses(
+            @PathVariable Long tutorId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return ResponseEntity.ok(classService.getPublicTutorTeachingClasses(tutorId, pageable));
+    }
+
     @GetMapping("/{classId}")
     public ResponseEntity<ClassResponse> getClassDetail(@PathVariable Long classId) {
         return ResponseEntity.ok(classService.getClassDetail(classId));
