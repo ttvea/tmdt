@@ -64,6 +64,8 @@ function Navbar() {
               <a href="/contact" className={navLinkClass("/contact")}>
                 Liên hệ
               </a>
+              
+              {/* === TAB KHÁM PHÁ CÓ DROPDOWN === */}
               <div className="group relative">
                 <button
                   className={`flex items-center gap-1 text-sm font-medium ${
@@ -92,6 +94,12 @@ function Navbar() {
                     className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600"
                   >
                     Tìm lớp học
+                  </a>
+                  <a
+                    href="/discover/student-requests"
+                    className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600"
+                  >
+                    Bảng tin
                   </a>
                 </div>
               </div>
@@ -135,7 +143,6 @@ function Navbar() {
                   >
                     Đăng nhập
                   </a>
-                  {/* Nút Đăng ký (Giữ nguyên dạng khối nền xanh) */}
                   <a
                     href="/register"
                     className="hidden md:block rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
