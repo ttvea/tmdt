@@ -29,6 +29,7 @@ import PricingPage from "./pages/PricingPage";
 import ContactPage from "./pages/ContactPage";
 import FaqPage from "./pages/FaqPage";
 import PostClassPage from "./pages/Student/PostClassPage";
+import StudentRequestsList from "./pages/Student/StudentRequestsList";
 
 const pageTitles: Record<string, string> = {
   "/": "EduMatch Pro - Kết nối gia sư 1 kèm 1",
@@ -56,6 +57,7 @@ const pageTitles: Record<string, string> = {
   "/admin/users": "Quản lý người dùng - EduMatch Pro",
   "/admin/classes": "Quản lý lớp học - EduMatch Pro",
   "/post-class": "Đăng lớp - EduMatch Pro",
+  "/discover/student-requests": "Bảng Tin - EduMatch Pro",
 };
 
 function getPageTitle(pathname: string) {
@@ -104,6 +106,7 @@ function App() {
   if (pathname === "/admin/classes") return <AdminClasses />;
   if (pathname.startsWith("/admin/classes/")) return <AdminClassDetail />;
   if (pathname === "/post-class") return <PostClassPage />;
+  if (pathname === "/discover/student-requests") return <StudentRequestsList />;
 
 
   return <NotFoundPage />;

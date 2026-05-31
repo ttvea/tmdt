@@ -20,8 +20,6 @@ const PostClassPage = () => {
   const handleAddSubject = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     const label = e.target.options[e.target.selectedIndex].text;
-
-    // Nếu chưa có trong danh sách đã chọn thì mới thêm vào
     if (value && !formData.subject.find((item) => item.value === value)) {
       setFormData({ ...formData, subject: [...formData.subject, { value, label }] });
     }
@@ -37,9 +35,7 @@ const PostClassPage = () => {
   const handleAddTime = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     const label = e.target.options[e.target.selectedIndex].text;
-
     if (!value) return;
-
     if (!formData.studyTime.find((item) => item.value === value)) {
       setFormData({ ...formData, studyTime: [...formData.studyTime, { value, label }] });
     }
@@ -59,6 +55,61 @@ const PostClassPage = () => {
     });
   };
 
+// --- HÀM GỬI DỮ LIỆU XUỐNG BACKEND ---
+  const handleSubmit = async () => {
+    // 1. Kiểm tra validate
+    if (!formData.name || !formData.phone || !formData.area) {
+      alert("Vui lòng nhập Tên, Số điện thoại và Khu vực!");
+      return;
+    }
+
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      alert("Vui lòng đăng nhập để có thể đăng tin tìm gia sư!");
+      window.location.href = "/login"; // Chuyển hướng về trang đăng nhập
+      return;
+    }
+
+    // 2. Chuyển đổi dữ liệu
+    const payloadToSend = {
+      name: formData.name,
+      phone: formData.phone,
+      area: formData.area,
+      classLevelId: formData.classLevel ? parseInt(formData.classLevel) : null,
+      subjects: formData.subject.map(s => s.label).join(", "), 
+      studyTimes: formData.studyTime.map(t => t.label).join(", "),
+      teachingMode: formData.teachingMode,
+      sessionsPerWeek: formData.sessionsPerWeek ? parseInt(formData.sessionsPerWeek) : null,
+      budget: formData.budget ? parseFloat(formData.budget) : null,
+      requirements: formData.requirements
+    };
+
+    try {
+      // 3. KHAI BÁO BIẾN TOKEN Ở ĐÂY ĐỂ KHÔNG BỊ LỖI
+      const token = localStorage.getItem("access_token");
+
+      // 4. Gọi API
+      const response = await fetch("http://localhost:8080/api/student-requests/post", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` 
+        },
+        body: JSON.stringify(payloadToSend)
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        alert("Đăng tin tìm gia sư thành công!");
+        window.location.href = "/discover/student-requests"; 
+      } else {
+        alert("Có lỗi xảy ra: " + (data.message || "Vui lòng thử lại"));
+      }
+    } catch (error) {
+      alert("Lỗi kết nối đến Server!");
+    }
+  };
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <Navbar />
@@ -316,7 +367,7 @@ const PostClassPage = () => {
               <button
                 type="button"
                 className="mt-8 bg-[#00a859] hover:bg-green-700 text-white font-medium text-lg px-8 py-3 flex items-center justify-center gap-3 transition-colors"
-                onClick={() => console.log(formData)}
+                onClick={handleSubmit}
               >
                 Đăng tìm gia sư <i className="fa-solid fa-arrow-right"></i>
               </button>
