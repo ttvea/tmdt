@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
 import {
   getMyClassDetail, getEnrollmentsOfClass, reviewEnrollment,
@@ -91,7 +92,7 @@ export function ClassDetail() {
       const updated = await reviewEnrollment(enrollmentId, approved)
       setEnrollments(prev => prev.map(e => e.id === enrollmentId ? updated : e))
     } catch {
-      alert('Thao tác thất bại. Vui lòng thử lại.')
+      toast.error('Thao tác thất bại. Vui lòng thử lại.')
     }
     setActionMenuId(null)
   }

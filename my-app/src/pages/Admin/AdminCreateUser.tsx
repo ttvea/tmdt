@@ -1,4 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
+import { toast } from 'react-toastify'
 import {
   createAdminUser,
   getCurrentAdmin,
@@ -147,7 +148,7 @@ export function AdminCreateUser() {
         try {
           await uploadAdminUserAvatar(createdUser.id, avatarFile)
         } catch {
-          window.alert('Người dùng đã được tạo, nhưng tải ảnh đại diện chưa thành công.')
+          toast.warn('Người dùng đã được tạo, nhưng tải ảnh đại diện chưa thành công.')
         }
       }
 

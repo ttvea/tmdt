@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { toast } from 'react-toastify'
 import { AdminLayout } from '../../components/AdminLayout'
 import {
   adminGetAllClasses, adminReviewClass,
@@ -151,7 +152,7 @@ export function AdminClasses() {
       setClasses(prev => prev.filter(c => c.id !== id))
       setTotalElements(prev => prev - 1)
     } catch {
-      alert('Thao tác thất bại.')
+      toast.error('Thao tác thất bại.')
     }
     setConfirmModal(null)
     setRejectReason('')
