@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
 import { getUserProfile, updateUserProfile, uploadAvatar, type UserProfileResponse } from '../../api/userProfile'
 import { getMediaUrl } from '../../api/axios'
@@ -49,7 +50,7 @@ export default function StudentProfile() {
     console.log("Dữ liệu chuẩn bị gửi đi:", formData);
     updateUserProfile(userId, formData)
       .then((message) => {
-        alert(message);
+        toast.success(message);
         setIsEditing(false);
 
         if (profile) {
@@ -64,7 +65,7 @@ export default function StudentProfile() {
       })
       .catch((error) => {
         console.error("Lỗi cập nhật:", error);
-        alert("Cập nhật thất bại: " + (error.response?.data || error.message));
+        toast.error("Cập nhật thất bại: " + (error.response?.data || error.message));
       });
   };
 
@@ -81,9 +82,9 @@ export default function StudentProfile() {
       if (profile) {
         setProfile({ ...profile, avatar: newAvatarUrl });
       }
-      alert("Cập nhật ảnh đại diện thành công!");
+      toast.success("Cập nhật ảnh đại diện thành công!");
     } catch (error: any) {
-      alert("Lỗi khi tải ảnh lên: " + (error.response?.data || error.message));
+      toast.error("Lỗi khi tải ảnh lên: " + (error.response?.data || error.message));
     }
   };
 

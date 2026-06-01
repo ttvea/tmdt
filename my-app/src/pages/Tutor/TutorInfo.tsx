@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type ChangeEvent, type DragEvent } from 'react'
+import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
 import {
   getTutorProfileForEdit,
@@ -144,7 +145,7 @@ export function TutorInfo() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!userId) {
-      alert('Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.')
+      toast.error('Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.')
       return
     }
     setIsSubmitting(true)
@@ -188,7 +189,7 @@ export function TutorInfo() {
 
       setShowPendingReviewModal(true)
     } catch {
-      alert('Lưu thông tin thất bại. Vui lòng thử lại.')
+      toast.error('Lưu thông tin thất bại. Vui lòng thử lại.')
     } finally {
       setIsSubmitting(false)
     }

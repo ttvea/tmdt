@@ -1,7 +1,9 @@
 ﻿import { useEffect, useState } from 'react'
+import { toast } from 'react-toastify'
 import Navbar from '../../layouts/Navbar'
 import Footer from '../../layouts/Footer'
 import { getTutorProfile, type TutorProfileResponse } from '../../api/tutorProfile'
+import { getTutorRatings, getAverageRating, createRating, updateRating, deleteRating, type RatingResponse } from '../../api/ratings'
 import { createOrGetConversation } from '../../api/conversations'
 import { getTutorClasses, type ClassResponse } from '../../api/classApi'
 import { ConsultationModal } from '../../components/ConsultationModal'
@@ -31,8 +33,9 @@ interface TutorProfile {
 
 interface Review {
   id: number
+  studentId: number
   author: string
-  role: string
+  avatar: string
   content: string
   rating: number
   date: string
@@ -110,6 +113,19 @@ const StarRating = ({ rating, reviewCount }: StarRatingProps) => {
   )
 }
 
+const getInitialAvatar = (name: string) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff`
+
+const mapRatingToReview = (rating: RatingResponse): Review => ({
+  id: rating.id,
+  studentId: rating.studentId,
+  author: rating.nameStudent || `Học viên #${rating.studentId}`,
+  avatar: rating.avatar || getInitialAvatar(rating.nameStudent || `HV ${rating.studentId}`),
+  content: rating.comment ?? '',
+  rating: rating.stars,
+  date: new Date(rating.createdAt).toLocaleDateString('vi-VN'),
+})
+
 export function TutorProfileDetail() {
   const tutorId = window.location.pathname.split('/')[2]
   const [profile, setProfile] = useState<TutorProfile | null>(null)
@@ -117,6 +133,17 @@ export function TutorProfileDetail() {
   const [error, setError] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [conversationId, setConversationId] = useState<number | null>(null)
+  const [newStars, setNewStars] = useState(5)
+  const [newComment, setNewComment] = useState('')
+  const [submittingRating, setSubmittingRating] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  const [existingRatingId, setExistingRatingId] = useState<number | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingRatingId, setEditingRatingId] = useState<number | null>(null)
+  const [editingStars, setEditingStars] = useState(5)
+  const [editingComment, setEditingComment] = useState('')
+  const [savingRating, setSavingRating] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const handleNavigateBack = () => {
     window.history.back()
@@ -129,8 +156,43 @@ export function TutorProfileDetail() {
       setIsModalOpen(true)
     } catch (err) {
       console.error('Không thể mở cuộc hội thoại', err)
-      alert('Không thể mở cuộc hội thoại, vui lòng thử lại.')
+      toast.error('Không thể mở cuộc hội thoại, vui lòng thử lại.')
     }
+  }
+
+  const refreshRatings = async (userId?: number | null) => {
+    const ratings = await getTutorRatings(Number(tutorId))
+    const avg = await getAverageRating(Number(tutorId))
+
+    console.log('[Rating Debug] tutorId:', tutorId)
+    console.log('[Rating Debug] ratings response:', ratings)
+    console.log('[Rating Debug] average rating:', avg)
+
+    const resolvedUserId = userId ?? currentUserId
+    const existing = resolvedUserId
+      ? ratings.find((rating) => rating.studentId === resolvedUserId)
+      : null
+
+    console.log('[Rating Debug] currentUserId:', resolvedUserId)
+    console.log('[Rating Debug] matched existing rating:', existing)
+
+    setExistingRatingId(existing?.id ?? null)
+    if (existing) {
+      setNewStars(existing.stars)
+      setNewComment(existing.comment ?? '')
+    }
+
+    setProfile((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        rating: Number(avg) || 0,
+        totalReviews: Array.isArray(ratings) ? ratings.length : 0,
+        reviews: (ratings ?? []).map(mapRatingToReview),
+      }
+    })
+
+    return ratings
   }
 
   const buildScheduleFromClasses = (classes: ClassResponse[]): Record<string, Record<string, boolean>> => {
@@ -171,6 +233,19 @@ export function TutorProfileDetail() {
     return schedule
   }
   useEffect(() => {
+    const userData = localStorage.getItem('user')
+    let detectedUserId: number | null = null
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        const parsedUserId = Number(user.id)
+        detectedUserId = Number.isFinite(parsedUserId) ? parsedUserId : null
+        setCurrentUserId(detectedUserId)
+      } catch (e) {
+        console.error('Error parsing user data:', e)
+      }
+    }
+
     const fetchProfile = async () => {
       try {
         if (!tutorId || isNaN(Number(tutorId))) {
@@ -215,6 +290,25 @@ export function TutorProfileDetail() {
         }
 
         setProfile(mappedProfile)
+        // fetch ratings and average
+        try {
+          const ratings = await getTutorRatings(Number(tutorId))
+
+          // detect if current user already rated
+          const existing = ratings?.find((r) => r.studentId === detectedUserId)
+          if (existing) {
+            setExistingRatingId(existing.id)
+            // prefill values so user can update later if we add update feature
+            setNewStars(existing.stars)
+            setNewComment(existing.comment ?? '')
+          } else {
+            setExistingRatingId(null)
+          }
+
+          await refreshRatings(detectedUserId)
+        } catch (ratingErr) {
+          console.error('Không thể tải đánh giá:', ratingErr)
+        }
         setLoading(false)
       } catch (err) {
         setError('Không thể tải thông tin gia sư')
@@ -224,6 +318,85 @@ export function TutorProfileDetail() {
 
     fetchProfile()
   }, [tutorId])
+
+  const handleSubmitRating = async () => {
+    if (!tutorId) return
+    setSubmittingRating(true)
+    try {
+      console.log('[Rating Debug] submitting rating:', {
+        tutorId: Number(tutorId),
+        existingRatingId,
+        newStars,
+        newComment,
+      })
+
+      if (existingRatingId) {
+        await updateRating(existingRatingId, { stars: newStars, comment: newComment })
+      } else {
+        await createRating({ tutorId: Number(tutorId), stars: newStars, comment: newComment })
+      }
+      await refreshRatings(currentUserId)
+      setNewComment('')
+      setNewStars(5)
+    } catch (err) {
+      console.error('Lỗi gửi đánh giá', err)
+      toast.error('Không thể gửi đánh giá: ' + String(err))
+    } finally {
+      setSubmittingRating(false)
+    }
+  }
+
+  const handleDeleteRating = async () => {
+    setShowDeleteConfirm(true)
+  }
+
+  const handleConfirmDeleteRating = async () => {
+    setShowDeleteConfirm(false)
+
+    try {
+      await deleteRating(existingRatingId || 0)
+      setExistingRatingId(null)
+      setNewStars(5)
+      setNewComment('')
+      await refreshRatings()
+    } catch (err) {
+      console.error('Không thể xóa đánh giá', err)
+      toast.error('Không thể xóa đánh giá, vui lòng thử lại.')
+    }
+  }
+
+  const handleOpenEditModal = (review: Review) => {
+    setEditingRatingId(review.id)
+    setEditingStars(review.rating)
+    setEditingComment(review.content)
+    setShowEditModal(true)
+  }
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false)
+    setEditingRatingId(null)
+    setEditingStars(5)
+    setEditingComment('')
+  }
+
+  const handleSaveEditRating = async () => {
+    if (!editingRatingId) return
+    setSavingRating(true)
+    try {
+      await updateRating(editingRatingId, {
+        stars: editingStars,
+        comment: editingComment,
+      })
+      console.log('[Rating Debug] updated rating:', { editingRatingId, editingStars, editingComment })
+      await refreshRatings(currentUserId)
+      handleCloseEditModal()
+    } catch (err) {
+      console.error('Không thể cập nhật đánh giá', err)
+      toast.error('Không thể cập nhật đánh giá, vui lòng thử lại.')
+    } finally {
+      setSavingRating(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -254,6 +427,31 @@ export function TutorProfileDetail() {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-900">Xác nhận xóa đánh giá</h3>
+            <p className="mt-2 text-sm text-slate-600">Bạn muốn xóa đánh giá này?</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteRating}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <section className="bg-slate-900 text-white text-center py-16">
         <div className="container mx-auto px-4">
@@ -381,12 +579,45 @@ export function TutorProfileDetail() {
                 <div className="space-y-4">
                   {profile.reviews.map((review) => (
                     <div key={review.id} className="pb-4 border-b border-slate-200 last:border-b-0">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={review.avatar}
+                            alt={review.author}
+                            className="h-10 w-10 rounded-full object-cover border border-slate-200"
+                          />
+                          <div>
+                            <div className="font-semibold text-slate-900">{review.author}</div>
+                            <div className="text-xs text-slate-500">{review.date}</div>
+                          </div>
+                        </div>
+                        {review.studentId === currentUserId && (
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(review)}
+                              className="rounded p-2 text-slate-500 hover:bg-blue-50 hover:text-blue-600"
+                              aria-label="Sửa đánh giá"
+                              title="Sửa đánh giá"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRating()}
+                              className="rounded p-2 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                              aria-label="Xóa đánh giá"
+                              title="Xóa đánh giá"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        )}
+                      </div>
                       <div className="mb-2">
                         <StarRating rating={review.rating} />
                       </div>
                       <p className="text-slate-700 mb-3">{review.content}</p>
-                      <div className="font-semibold">{review.author}</div>
-                      <div className="text-sm text-slate-600">{review.role} • {review.date}</div>
                     </div>
                   ))}
                 </div>
@@ -405,7 +636,39 @@ export function TutorProfileDetail() {
                   Nhắn tin tư vấn
                 </button>
                 <hr className="my-3" />
-                
+                <div className="mt-4">
+                  <h4 className="font-semibold mb-2">Đánh giá gia sư</h4>
+                  <div className="mb-2 flex items-center gap-2">
+                    {[1,2,3,4,5].map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setNewStars(s)}
+                        className={`text-2xl ${s <= newStars ? 'text-yellow-400' : 'text-slate-300'}`}
+                        aria-label={`Chọn ${s} sao`}
+                        type="button"
+                      >
+                        ★
+                      </button>
+                    ))}
+                    <span className="text-sm text-slate-600">{newStars} sao</span>
+                  </div>
+
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Viết nhận xét của bạn..."
+                    className="w-full border border-slate-200 rounded p-2 mb-2 text-sm"
+                    rows={3}
+                  />
+
+                  <button
+                    onClick={handleSubmitRating}
+                    disabled={submittingRating}
+                    className="w-full bg-green-600 text-white py-2 rounded font-semibold hover:bg-green-700 disabled:opacity-60"
+                  >
+                    {existingRatingId ? 'Cập nhật đánh giá' : 'Gửi đánh giá'}
+                  </button>
+                </div>
               </div>
 
               <div className="bg-white p-6 rounded-lg border border-slate-200">
@@ -430,6 +693,63 @@ export function TutorProfileDetail() {
         conversationId={conversationId}
         onClose={() => setIsModalOpen(false)}
       />
+
+      {/* Edit Rating Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-xl font-bold text-slate-900">Cập nhật đánh giá</h3>
+            
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-semibold text-slate-900">Điểm sao</label>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setEditingStars(s)}
+                    className={`text-3xl transition ${
+                      s <= editingStars ? 'text-yellow-400' : 'text-slate-300'
+                    }`}
+                    type="button"
+                  >
+                    ★
+                  </button>
+                ))}
+                <span className="ml-2 text-sm text-slate-600">{editingStars} sao</span>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-semibold text-slate-900">Nhận xét</label>
+              <textarea
+                value={editingComment}
+                onChange={(e) => setEditingComment(e.target.value)}
+                placeholder="Viết nhận xét của bạn..."
+                className="w-full rounded border border-slate-200 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                rows={4}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleCloseEditModal}
+                className="flex-1 rounded bg-slate-200 py-2 font-semibold text-slate-900 hover:bg-slate-300"
+                type="button"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveEditRating}
+                disabled={savingRating}
+                className="flex-1 rounded bg-blue-600 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                type="button"
+              >
+                {savingRating ? 'Đang lưu...' : 'Cập nhật'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

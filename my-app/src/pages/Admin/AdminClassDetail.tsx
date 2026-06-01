@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'react-toastify'
 import { AdminLayout } from '../../components/AdminLayout'
 import { getMediaUrl } from '../../api/axios'
 import {
@@ -72,7 +73,7 @@ export function AdminClassDetail() {
   const handleReview = async (action: ReviewAction) => {
     if (!classDetail) return
     if (action === 'reject' && !rejectReason.trim()) {
-      alert('Vui lòng nhập lý do từ chối.')
+      toast.error('Vui lòng nhập lý do từ chối.')
       return
     }
 
@@ -96,7 +97,7 @@ export function AdminClassDetail() {
       setRejectReason('')
       setShowRejectReason(false)
     } catch {
-      alert('Thao tác thất bại.')
+      toast.error('Thao tác thất bại.')
     } finally {
       setReviewing(null)
     }

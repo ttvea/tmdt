@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { toast } from 'react-toastify'
 import {
   getAdminUsers,
   getAdminUsersStats,
@@ -157,7 +158,7 @@ export function AdminUsers() {
 
   const openRoleEditor = (user: AdminUser) => {
     if (user.role === 'ADMIN') {
-      alert('Không thể sửa quyền của tài khoản Admin.')
+      toast.error('Không thể sửa quyền của tài khoản Admin.')
       return
     }
 
@@ -175,7 +176,7 @@ export function AdminUsers() {
       getAdminUsersStats().then(setStats).catch(() => {})
       setEditingUser(null)
     } catch {
-      alert('Không thể cập nhật vai trò người dùng.')
+      toast.error('Không thể cập nhật vai trò người dùng.')
     } finally {
       setUpdatingId(null)
     }

@@ -1,4 +1,5 @@
 ﻿import { useEffect, useRef, useState } from 'react'
+import { toast } from 'react-toastify'
 import { getConversationMessages, sendMessage, sendImageMessage, getMessageMediaUrl, isImageMessage, type MessageResponse } from '../api/conversations'
 import { supabase } from '../api/supabase'
 
@@ -157,7 +158,7 @@ export function ConsultationModal({
       console.error('Send message error (modal):', error)
       const anyErr: any = error
       const serverMsg = anyErr?.response?.data || anyErr?.message || String(anyErr)
-      alert(`Có lỗi xảy ra, vui lòng thử lại\n\nChi tiết: ${JSON.stringify(serverMsg)}`)
+      toast.error(`Có lỗi xảy ra, vui lòng thử lại\n\nChi tiết: ${JSON.stringify(serverMsg)}`)
     } finally {
       setIsSending(false)
     }
@@ -179,7 +180,7 @@ export function ConsultationModal({
       console.error('Send image error (modal):', error)
       const anyErr: any = error
       const serverMsg = anyErr?.response?.data || anyErr?.message || String(anyErr)
-      alert(`Gửi ảnh thất bại\n\nChi tiết: ${JSON.stringify(serverMsg)}`)
+      toast.error(`Gửi ảnh thất bại\n\nChi tiết: ${JSON.stringify(serverMsg)}`)
     } finally {
       setIsUploadingImage(false)
     }
