@@ -94,7 +94,6 @@ export function StudentSchedule() {
     <AccountLayout activePath="/student/schedule">
       <WeeklySchedule
         title="Thời khóa biểu"
-        subtitle="Theo dõi lịch học theo tuần với tên lớp, môn học, giáo viên, thời gian và hình thức học."
         events={events}
         loading={loading}
         showTeacher

@@ -4,7 +4,10 @@ import com.tmdt.web.dto.response.AdminDashboardResponse;
 import com.tmdt.web.dto.request.AdminCreateUserRequest;
 import com.tmdt.web.dto.request.AdminUpdateUserRoleRequest;
 import com.tmdt.web.dto.request.AdminUpdateUserStatusRequest;
+import com.tmdt.web.dto.request.AdminAssignSupportTicketRequest;
+import com.tmdt.web.dto.request.AdminUpdateSupportStatusRequest;
 import com.tmdt.web.dto.request.AdminVerifyTutorRequest;
+import com.tmdt.web.dto.request.SupportReplyRequest;
 import com.tmdt.web.dto.request.VoucherRequest;
 import com.tmdt.web.dto.response.AdminTutorResponse;
 import com.tmdt.web.dto.response.AdminUserResponse;
@@ -16,12 +19,16 @@ import com.tmdt.web.entity.TutorProfile;
 import com.tmdt.web.enums.ApprovalStatus;
 import com.tmdt.web.enums.ClassStatus;
 import com.tmdt.web.enums.EnrollmentStatus;
+import com.tmdt.web.enums.SupportCategory;
+import com.tmdt.web.enums.SupportPriority;
+import com.tmdt.web.enums.SupportStatus;
 import com.tmdt.web.repository.ClassRep;
 import com.tmdt.web.repository.EnrollmentRep;
 import com.tmdt.web.repository.OrderRep;
 import com.tmdt.web.repository.TutorProfileRep;
 import com.tmdt.web.repository.UserRep;
 import com.tmdt.web.service.JwtService;
+import com.tmdt.web.service.SupportService;
 import com.tmdt.web.service.VoucherService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -52,6 +59,7 @@ public class AdminController {
     private final OrderRep orderRep;
     private final PasswordEncoder passwordEncoder;
     private final VoucherService voucherService;
+    private final SupportService supportService;
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentAdmin(HttpServletRequest request) {
@@ -273,6 +281,88 @@ public class AdminController {
         }
 
         return ResponseEntity.ok(voucherService.updatePlatformVoucherStatus(voucherId, active));
+    }
+
+    @GetMapping("/support/stats")
+    public ResponseEntity<?> getSupportStats(HttpServletRequest request) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        return ResponseEntity.ok(supportService.getAdminStats());
+    }
+
+    @GetMapping("/support/tickets")
+    public ResponseEntity<?> getSupportTickets(
+            HttpServletRequest request,
+            @RequestParam(required = false) SupportStatus status,
+            @RequestParam(required = false) SupportCategory category,
+            @RequestParam(required = false) SupportPriority priority,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return ResponseEntity.ok(supportService.getAdminTickets(status, category, priority, keyword, pageable));
+    }
+
+    @GetMapping("/support/tickets/{ticketId}")
+    public ResponseEntity<?> getSupportTicketDetail(HttpServletRequest request, @PathVariable Long ticketId) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        return ResponseEntity.ok(supportService.getAdminTicketDetail(ticketId));
+    }
+
+    @PatchMapping("/support/tickets/{ticketId}/status")
+    public ResponseEntity<?> updateSupportTicketStatus(
+            HttpServletRequest request,
+            @PathVariable Long ticketId,
+            @Valid @RequestBody AdminUpdateSupportStatusRequest statusRequest
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        return ResponseEntity.ok(supportService.updateStatus(ticketId, statusRequest.status()));
+    }
+
+    @PatchMapping("/support/tickets/{ticketId}/assign")
+    public ResponseEntity<?> assignSupportTicket(
+            HttpServletRequest request,
+            @PathVariable Long ticketId,
+            @RequestBody AdminAssignSupportTicketRequest assignRequest
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        return ResponseEntity.ok(supportService.assignTicket(ticketId, assignRequest.adminId()));
+    }
+
+    @PostMapping("/support/tickets/{ticketId}/replies")
+    public ResponseEntity<?> replySupportTicket(
+            HttpServletRequest request,
+            @PathVariable Long ticketId,
+            @Valid @RequestBody SupportReplyRequest replyRequest
+    ) {
+        User admin = getAdminUserFromRequest(request);
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        return ResponseEntity.ok(supportService.addReply(ticketId, admin, replyRequest.message(), true));
     }
 
     @PostMapping("/users")

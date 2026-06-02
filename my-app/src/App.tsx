@@ -29,11 +29,13 @@ import { AdminUsers } from "./pages/Admin/AdminUsers";
 import { AdminCreateUser } from "./pages/Admin/AdminCreateUser";
 import { AdminTutors } from "./pages/Admin/AdminTutors";
 import { AdminCoupons } from "./pages/Admin/AdminCoupons";
+import { AdminSupport } from "./pages/Admin/AdminSupport";
 import PricingPage from "./pages/PricingPage";
 import ContactPage from "./pages/ContactPage";
 import FaqPage from "./pages/FaqPage";
 import PostClassPage from "./pages/Student/PostClassPage";
 import StudentRequestsList from "./pages/Student/StudentRequestsList";
+import { MySupport } from "./pages/Support/MySupport";
 
 const pageTitles: Record<string, string> = {
   "/": "EduMatch Pro - Kết nối gia sư 1 kèm 1",
@@ -54,16 +56,19 @@ const pageTitles: Record<string, string> = {
   "/tutor/schedule": "Lịch dạy - EduMatch Pro",
   "/tutor/messages": "Tin nhắn - EduMatch Pro",
   "/tutor/vouchers": "Mã giảm giá - EduMatch Pro",
+  "/tutor/support": "Hỗ trợ của tôi - EduMatch Pro",
   "/tutor/classes/new": "Tạo lớp học - EduMatch Pro",
   "/student/profile": "Hồ sơ học viên - EduMatch Pro",
   "/student/schedule": "Lịch học - EduMatch Pro",
   "/student/messages": "Tin nhắn - EduMatch Pro",
+  "/student/support": "Hỗ trợ của tôi - EduMatch Pro",
   "/admin": "Quản trị - EduMatch Pro",
   "/admin/users": "Quản lý người dùng - EduMatch Pro",
   "/admin/users/new": "Tạo người dùng mới - EduMatch Pro",
   "/admin/tutors": "Quản lý gia sư - EduMatch Pro",
   "/admin/classes": "Quản lý lớp học - EduMatch Pro",
   "/admin/coupons": "Mã giảm giá - EduMatch Pro",
+  "/admin/support": "Hỗ trợ - EduMatch Pro",
   "/post-class": "Đăng lớp - EduMatch Pro",
   "/discover/student-requests": "Bảng Tin - EduMatch Pro",
 };
@@ -101,6 +106,7 @@ function App() {
   if (pathname === "/tutor/schedule") return <TutorSchedule />;
   if (pathname === "/tutor/messages") return <TutorMessages />;
   if (pathname === "/tutor/vouchers") return <TutorVouchers />;
+  if (pathname === "/tutor/support") return <MySupport />;
   if (pathname === "/tutor/classes/new") return <FormAddClass />;
   if (pathname.startsWith("/tutor/classes/") && !pathname.includes("/edit/")) return <ClassDetail />;
   if (pathname.startsWith("/tutor/") && !pathname.includes("/classes")) {
@@ -110,12 +116,14 @@ function App() {
   if (pathname === "/student/profile") return <StudentProfile />;
   if (pathname === "/student/schedule") return <StudentSchedule />;
   if (pathname === "/student/messages") return <StudentMessages />;
+  if (pathname === "/student/support") return <MySupport />;
   if (pathname === "/admin") return <AdminDashboard />;
   if (pathname === "/admin/users") return <AdminUsers />;
   if (pathname === "/admin/users/new") return <AdminCreateUser />;
   if (pathname === "/admin/tutors") return <AdminTutors />;
   if (pathname === "/admin/classes") return <AdminClasses />;
   if (pathname === "/admin/coupons") return <AdminCoupons />;
+  if (pathname === "/admin/support") return <AdminSupport />;
   if (pathname.startsWith("/admin/classes/")) return <AdminClassDetail />;
   if (pathname === "/post-class") return <PostClassPage />;
   if (pathname === "/discover/student-requests") return <StudentRequestsList />;
