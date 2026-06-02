@@ -221,15 +221,9 @@ export function AdminCoupons() {
         <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
           <div className="grid gap-6 border-b border-blue-100 bg-blue-50/70 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-bold text-blue-700">
-                <TicketIcon /> Chiến dịch toàn hệ thống
-              </div>
-              <div role="heading" aria-level={1} className="text-xl font-bold tracking-normal text-slate-950">
+              <div role="heading" aria-level={1} className="text-2xl font-bold text-blue-900">
                 Tài chính & Mã giảm giá
               </div>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                Thiết lập mã khuyến mãi áp dụng toàn nền tảng, theo dõi lượt dùng và kiểm soát trạng thái phát hành trong một màn hình.
-              </p>
             </div>
             <button
               type="button"
@@ -260,9 +254,6 @@ export function AdminCoupons() {
                 <p className="text-sm font-bold text-slate-950">Danh sách mã giảm giá</p>
                 <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">PLATFORM</span>
               </div>
-              <p className="mt-1 text-xs text-slate-500">
-                Chỉ hiển thị các mã `PLATFORM` do admin tạo cho toàn hệ thống.
-              </p>
             </div>
             <button className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50">
               <DownloadIcon /> Xuất CSV
@@ -271,7 +262,7 @@ export function AdminCoupons() {
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px] border-collapse text-left">
-              <thead className="border-b border-slate-200 bg-white">
+              <thead className="border-b border-blue-200 bg-blue-50">
                 <tr>
                   <TableHead>Mã</TableHead>
                   <TableHead>Giảm giá</TableHead>
@@ -406,18 +397,20 @@ function VoucherRow({
 }) {
   const expired = isExpired(voucher)
   const active = voucher.active && !expired
+  const codeClass = active
+    ? 'border-green-200 bg-green-50 text-green-800'
+    : expired
+      ? 'border-amber-200 bg-amber-50 text-amber-800'
+      : 'border-slate-200 bg-slate-100 text-slate-600'
 
   return (
     <tr className="transition hover:bg-slate-50">
       <td className="px-6 py-4">
-        <div className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-blue-700 shadow-sm">
+        <div className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 ${codeClass}`}>
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 shadow-sm">
             <TicketIcon />
           </span>
-          <span>
-            <span className="block font-mono text-sm font-bold text-slate-950">{voucher.code}</span>
-            <span className="text-xs font-semibold text-blue-700">Toàn hệ thống</span>
-          </span>
+          <span className="font-mono text-sm font-bold">{voucher.code}</span>
         </div>
       </td>
       <td className="px-6 py-4 text-sm font-semibold text-slate-800">
@@ -449,25 +442,54 @@ function VoucherRow({
       </td>
       <td className="px-6 py-4 text-right">
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
+          <ActionIconButton
+            label="Sửa"
             onClick={onEdit}
             disabled={updating}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="border-blue-200 text-blue-700 hover:bg-blue-50"
           >
-            <EditIcon /> Sửa
-          </button>
-          <button
-            type="button"
+            <EditIcon />
+          </ActionIconButton>
+          <ActionIconButton
+            label={updating ? 'Đang lưu...' : voucher.active ? 'Tắt mã' : 'Bật mã'}
             onClick={onToggle}
             disabled={updating || expired}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="border-slate-300 text-slate-700 hover:bg-slate-50"
           >
-            <PowerIcon /> {updating ? 'Đang lưu...' : voucher.active ? 'Tắt mã' : 'Bật mã'}
-          </button>
+            <PowerIcon />
+          </ActionIconButton>
         </div>
       </td>
     </tr>
+  )
+}
+
+function ActionIconButton({
+  label,
+  children,
+  onClick,
+  disabled,
+  className,
+}: {
+  label: string
+  children: ReactNode
+  onClick: () => void
+  disabled?: boolean
+  className: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={`group relative inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-white text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    >
+      {children}
+      <span className="pointer-events-none absolute bottom-full right-0 mb-2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-visible:opacity-100">
+        {label}
+      </span>
+    </button>
   )
 }
 
@@ -579,7 +601,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function TableHead({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <th className={`px-6 py-4 text-xs font-bold uppercase tracking-wide text-slate-500 ${className}`}>{children}</th>
+  return <th className={`px-6 py-4 text-xs font-bold uppercase tracking-wide text-blue-800 ${className}`}>{children}</th>
 }
 
 function toOptionalNumber(value: string) {
