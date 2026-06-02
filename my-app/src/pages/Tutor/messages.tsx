@@ -176,8 +176,7 @@ export function TutorMessages() {
       {/* Header */}
       <section className="bg-white border-b border-slate-200">
         <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-slate-900">💬 Tin nhắn</h1>
-          <p className="text-sm text-slate-600">Quản lý hội thoại với học viên</p>
+          <h1 className="text-3xl font-bold text-blue-900">Tin nhắn</h1>
         </div>
       </section>
 

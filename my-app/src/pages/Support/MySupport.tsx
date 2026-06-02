@@ -166,22 +166,22 @@ export function MySupport() {
 
   return (
     <AccountLayout activePath={activePath}>
-      <div className="min-h-screen bg-slate-100 px-4 py-6 text-left md:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="min-h-screen bg-slate-50 px-8 py-8 text-left">
+        <div className="mx-auto flex max-w-6xl flex-col gap-7">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="m-0 text-2xl font-bold text-blue-900">Hỗ trợ của tôi</h1>
+              <p className="text-3xl font-bold text-blue-900">Hỗ trợ của tôi</p>
             </div>
             <button
               type="button"
               onClick={loadTickets}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-4 text-sm font-bold text-blue-800 shadow-sm hover:bg-blue-50"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800"
             >
               <RefreshIcon /> Làm mới
             </button>
           </div>
 
-          <section className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-4">
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <StatCard label="Tổng yêu cầu" value={totalElements} detail="Ticket đã gửi" icon={<InboxIcon />} tone="from-blue-600 to-cyan-500" />
             <StatCard label="Đang xử lý" value={stats.open} detail="Admin đang kiểm tra" icon={<ClockIcon />} tone="from-violet-600 to-blue-500" />
             <StatCard label="Chờ phản hồi" value={stats.waiting} detail="Cần bạn bổ sung thông tin" icon={<ReplyIcon />} tone="from-amber-500 to-orange-500" />

@@ -140,8 +140,7 @@ export function TutorClasses() {
 
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-3xl font-bold text-slate-900">Quản lý lớp học</p>
-              <p className="text-sm text-slate-500 mt-1">Theo dõi và quản lý các lớp học đang diễn ra của bạn.</p>
+              <p className="text-3xl font-bold text-blue-900">Quản lý lớp học</p>
             </div>
             <button
               onClick={() => {

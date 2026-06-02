@@ -517,9 +517,6 @@ export function TutorVouchers() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-3xl font-bold text-blue-900">Quản lý Mã giảm giá</p>
-              <p className="mt-1 text-sm text-slate-500">
-                Tạo và tối ưu chiến dịch giảm giá để tăng lượng học viên đăng ký.
-              </p>
             </div>
             <button
               type="button"

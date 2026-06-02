@@ -16,7 +16,6 @@ export interface ScheduleEvent {
 
 interface WeeklyScheduleProps {
   title: string
-  subtitle: string
   events: ScheduleEvent[]
   loading?: boolean
   showTeacher?: boolean
@@ -116,7 +115,6 @@ function eventColorClass(categoryName?: string | null) {
 
 export function WeeklySchedule({
   title,
-  subtitle,
   events,
   loading = false,
   showTeacher = false,
@@ -146,8 +144,7 @@ export function WeeklySchedule({
       <div className="mx-auto flex max-w-7xl flex-col gap-5">
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-2xl font-bold text-slate-950">{title}</p>
-            <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+            <p className="text-3xl font-bold text-blue-900">{title}</p>
           </div>
 
           <div className="flex w-full flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">

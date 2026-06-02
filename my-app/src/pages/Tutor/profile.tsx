@@ -67,7 +67,8 @@ export function TutorProfile() {
       <div className="min-h-screen bg-slate-50 text-left">
 
         <div className="bg-white border-b border-slate-200 px-8 py-6">
-          <div className="max-w-5xl mx-auto flex items-center gap-8">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-center gap-8">
             <div className="relative shrink-0">
               <div className="w-28 h-28 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
                 {avatarUrl ? (
@@ -133,6 +134,7 @@ export function TutorProfile() {
               >
                 Cập nhật thông tin
               </button>
+            </div>
             </div>
           </div>
         </div>

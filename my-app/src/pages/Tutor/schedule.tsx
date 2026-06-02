@@ -60,7 +60,6 @@ export function TutorSchedule() {
     <AccountLayout activePath="/tutor/schedule">
       <WeeklySchedule
         title="Thời khóa biểu"
-        subtitle="Theo dõi lịch dạy theo tuần với tên lớp, môn học, thời gian và hình thức học."
         events={events}
         loading={loading}
         onExport={() => exportCsv(events)}
