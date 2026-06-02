@@ -55,6 +55,37 @@ export interface AdminTutor {
   subjects: string[]
 }
 
+export type DiscountType = 'PERCENT' | 'FIXED'
+export type VoucherScope = 'PLATFORM' | 'ALL_CLASSES' | 'SPECIFIC_CLASS'
+
+export interface AdminVoucher {
+  id: number
+  code: string
+  discountType: DiscountType
+  discountValue: number
+  minPrice: number | null
+  maxDiscount: number | null
+  usageLimit: number | null
+  usedCount: number | null
+  applicableScope: VoucherScope
+  classId: number | null
+  active: boolean
+  startDate: string | null
+  endDate: string | null
+}
+
+export interface AdminVoucherPayload {
+  code: string
+  discountType: DiscountType
+  discountValue: number
+  minPrice?: number | null
+  maxDiscount?: number | null
+  usageLimit?: number | null
+  applicableScope?: VoucherScope
+  startDate?: string | null
+  endDate?: string | null
+}
+
 export interface AdminUsersStats {
   totalUsers: number
   totalStudents: number
@@ -142,6 +173,37 @@ export async function getAdminTutors(params: {
 
 export async function updateAdminTutorVerification(userId: number, verified: boolean): Promise<AdminTutor> {
   const res = await api.patch(`/api/admin/tutors/${userId}/verification`, { verified })
+  return res.data
+}
+
+export async function getAdminVouchers(params: {
+  page?: number
+  size?: number
+} = {}): Promise<PageResponse<AdminVoucher>> {
+  const res = await api.get('/api/admin/vouchers', { params })
+  return res.data
+}
+
+export async function createAdminVoucher(payload: AdminVoucherPayload): Promise<AdminVoucher> {
+  const res = await api.post('/api/admin/vouchers', {
+    ...payload,
+    applicableScope: 'PLATFORM',
+  })
+  return res.data
+}
+
+export async function updateAdminVoucher(voucherId: number, payload: AdminVoucherPayload): Promise<AdminVoucher> {
+  const res = await api.put(`/api/admin/vouchers/${voucherId}`, {
+    ...payload,
+    applicableScope: 'PLATFORM',
+  })
+  return res.data
+}
+
+export async function updateAdminVoucherStatus(voucherId: number, active: boolean): Promise<AdminVoucher> {
+  const res = await api.patch(`/api/admin/vouchers/${voucherId}/status`, null, {
+    params: { active },
+  })
   return res.data
 }
 

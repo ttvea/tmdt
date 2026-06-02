@@ -1,6 +1,9 @@
 package com.tmdt.web.repository;
 
 import com.tmdt.web.entity.Voucher;
+import com.tmdt.web.enums.VoucherScope;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -13,4 +16,6 @@ public interface VoucherRep extends JpaRepository<Voucher, Long> {
     Optional<Voucher> findByCode(String code);
 
     List<Voucher> findByTutorId(Integer tutorId);
+
+    Page<Voucher> findByApplicableScope(VoucherScope applicableScope, Pageable pageable);
 }
