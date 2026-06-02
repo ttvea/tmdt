@@ -183,10 +183,7 @@ export function AdminCreateUser() {
             >
               <ArrowLeftIcon /> Quay lại
             </a>
-            <div role="heading" aria-level={1} className="flex h-10 items-center text-base font-bold tracking-normal text-slate-950">Tạo Người dùng Mới</div>
-            <p className="mt-1 text-sm text-slate-600">
-              Thiết lập hồ sơ người dùng mới trong hệ thống EduMatch Pro.
-            </p>
+            <div role="heading" aria-level={1} className="text-2xl font-bold text-blue-900">Tạo Người dùng Mới</div>
           </div>
 
           <div className="flex gap-3">

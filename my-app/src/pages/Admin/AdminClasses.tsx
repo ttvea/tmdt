@@ -161,8 +161,7 @@ export function AdminClasses() {
   return (
     <AdminLayout activePath="/admin/classes">
       <div className="mb-6">
-        <p className="text-2xl font-bold text-blue-900">Danh sách lớp học</p>
-        <p className="text-sm text-slate-500 mt-1">Quản lý và kiểm duyệt các yêu cầu mở lớp từ gia sư trên EduMatch Pro.</p>
+        <div role="heading" aria-level={1} className="text-2xl font-bold text-blue-900">Danh sách lớp học</div>
       </div>
 
       <div className="grid grid-cols-5 gap-4 mb-6">

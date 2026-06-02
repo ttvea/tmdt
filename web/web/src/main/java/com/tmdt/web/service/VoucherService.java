@@ -12,6 +12,8 @@ import com.tmdt.web.repository.ClassRep;
 import com.tmdt.web.repository.TutorProfileRep;
 import com.tmdt.web.repository.VoucherRep;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -25,6 +27,80 @@ public class VoucherService {
     private final VoucherRep voucherRepository;
     private final TutorProfileRep tutorProfileRepository;
     private final ClassRep tutorClassRepository;
+
+    public VoucherResponse createPlatformVoucher(VoucherRequest request) {
+        String normalizedCode = request.getCode().trim().toUpperCase();
+        if (voucherRepository.existsByCodeIgnoreCase(normalizedCode)) {
+            throw AppException.conflict("Mã voucher đã tồn tại");
+        }
+
+        validateVoucherRequest(request);
+
+        Voucher voucher = Voucher.builder()
+                .tutor(null)
+                .code(normalizedCode)
+                .discountType(request.getDiscountType())
+                .discountValue(request.getDiscountValue())
+                .minPrice(request.getMinPrice())
+                .maxDiscount(request.getMaxDiscount())
+                .usageLimit(request.getUsageLimit())
+                .usedCount(0)
+                .applicableScope(VoucherScope.PLATFORM)
+                .tutorClass(null)
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .active(true)
+                .build();
+
+        return toResponse(voucherRepository.save(voucher));
+    }
+
+    public Page<VoucherResponse> getPlatformVouchers(Pageable pageable) {
+        return voucherRepository.findByApplicableScope(VoucherScope.PLATFORM, pageable)
+                .map(this::toResponse);
+    }
+
+    public VoucherResponse updatePlatformVoucherStatus(Long voucherId, boolean active) {
+        Voucher voucher = voucherRepository.findById(voucherId)
+                .orElseThrow(() -> AppException.notFound("Voucher không tồn tại"));
+
+        if (voucher.getApplicableScope() != VoucherScope.PLATFORM) {
+            throw AppException.forbidden("Chỉ được cập nhật mã giảm giá toàn hệ thống");
+        }
+
+        voucher.setActive(active);
+        return toResponse(voucherRepository.save(voucher));
+    }
+
+    public VoucherResponse updatePlatformVoucher(Long voucherId, VoucherRequest request) {
+        Voucher voucher = voucherRepository.findById(voucherId)
+                .orElseThrow(() -> AppException.notFound("Voucher không tồn tại"));
+
+        if (voucher.getApplicableScope() != VoucherScope.PLATFORM) {
+            throw AppException.forbidden("Chỉ được cập nhật mã giảm giá toàn hệ thống");
+        }
+
+        String normalizedCode = request.getCode().trim().toUpperCase();
+        if (!voucher.getCode().equalsIgnoreCase(normalizedCode)
+                && voucherRepository.existsByCodeIgnoreCase(normalizedCode)) {
+            throw AppException.conflict("Mã voucher đã tồn tại");
+        }
+
+        validateVoucherRequest(request);
+
+        voucher.setCode(normalizedCode);
+        voucher.setDiscountType(request.getDiscountType());
+        voucher.setDiscountValue(request.getDiscountValue());
+        voucher.setMinPrice(request.getMinPrice());
+        voucher.setMaxDiscount(request.getMaxDiscount());
+        voucher.setUsageLimit(request.getUsageLimit());
+        voucher.setApplicableScope(VoucherScope.PLATFORM);
+        voucher.setTutorClass(null);
+        voucher.setStartDate(request.getStartDate());
+        voucher.setEndDate(request.getEndDate());
+
+        return toResponse(voucherRepository.save(voucher));
+    }
 
     public VoucherResponse createTutorVoucher(Long currentUserId, VoucherRequest request) {
         TutorProfile tutor = getTutorProfile(currentUserId);

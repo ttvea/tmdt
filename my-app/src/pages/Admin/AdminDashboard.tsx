@@ -117,8 +117,7 @@ export function AdminDashboard() {
     <AdminLayout activePath="/admin" adminName={admin?.fullName}>
       <div className="mb-5 flex items-start justify-between gap-5">
         <div>
-          <div role="heading" aria-level={1} className="flex h-9 items-center text-base font-bold tracking-normal text-slate-950">Tổng quan Hệ thống</div>
-          <p className="mt-1 text-sm text-slate-700">Theo dõi thời gian thực các chỉ số sức khỏe và hiệu suất giáo dục.</p>
+          <div role="heading" aria-level={1} className="text-2xl font-bold text-blue-900">Tổng quan Hệ thống</div>
         </div>
         <div className="flex gap-2">
           <button className="inline-flex h-9 items-center gap-2 rounded border border-slate-300 bg-white px-4 text-xs font-bold text-slate-800 shadow-sm hover:bg-slate-50">

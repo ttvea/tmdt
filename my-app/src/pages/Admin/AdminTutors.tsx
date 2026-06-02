@@ -148,12 +148,9 @@ export function AdminTutors() {
       <div className="space-y-6">
         <div className="flex items-end justify-between gap-5">
           <div>
-            <div role="heading" aria-level={1} className="flex h-10 items-center text-base font-bold tracking-normal text-slate-950">
+            <div role="heading" aria-level={1} className="text-2xl font-bold text-blue-900">
               Quản lý Gia sư
             </div>
-            <p className="mt-1 text-sm text-slate-700">
-              Xem, duyệt và quản lý danh sách gia sư trên hệ thống EduMatch Pro.
-            </p>
           </div>
           <a
             href="/admin/users/new?role=TUTOR"
