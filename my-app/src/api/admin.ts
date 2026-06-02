@@ -57,6 +57,9 @@ export interface AdminTutor {
 
 export type DiscountType = 'PERCENT' | 'FIXED'
 export type VoucherScope = 'PLATFORM' | 'ALL_CLASSES' | 'SPECIFIC_CLASS'
+export type SupportStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING_USER' | 'RESOLVED' | 'CLOSED'
+export type SupportCategory = 'ACCOUNT' | 'TUTOR_PROFILE' | 'VERIFICATION' | 'CLASS' | 'PAYMENT' | 'VOUCHER' | 'REPORT' | 'OTHER'
+export type SupportPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
 
 export interface AdminVoucher {
   id: number
@@ -84,6 +87,47 @@ export interface AdminVoucherPayload {
   applicableScope?: VoucherScope
   startDate?: string | null
   endDate?: string | null
+}
+
+export interface SupportReply {
+  id: number
+  senderId: number
+  senderName: string
+  senderRole: AdminUserRole | string | null
+  adminReply: boolean
+  message: string
+  createdAt: string | null
+}
+
+export interface SupportTicket {
+  id: number
+  ticketCode: string
+  requesterId: number
+  requesterName: string
+  requesterEmail: string
+  requesterRole: AdminUserRole | string | null
+  requesterAvatar: string | null
+  subject: string
+  category: SupportCategory
+  priority: SupportPriority
+  status: SupportStatus
+  message: string
+  assignedAdminId: number | null
+  assignedAdminName: string | null
+  createdAt: string | null
+  updatedAt: string | null
+  resolvedAt: string | null
+  replies: SupportReply[]
+}
+
+export interface AdminSupportStats {
+  totalTickets: number
+  openTickets: number
+  inProgressTickets: number
+  waitingUserTickets: number
+  resolvedTickets: number
+  closedTickets: number
+  urgentTickets: number
 }
 
 export interface AdminUsersStats {
@@ -204,6 +248,45 @@ export async function updateAdminVoucherStatus(voucherId: number, active: boolea
   const res = await api.patch(`/api/admin/vouchers/${voucherId}/status`, null, {
     params: { active },
   })
+  return res.data
+}
+
+export async function getAdminSupportStats(): Promise<AdminSupportStats> {
+  const res = await api.get('/api/admin/support/stats')
+  return res.data
+}
+
+export async function getAdminSupportTickets(params: {
+  status?: SupportStatus | ''
+  category?: SupportCategory | ''
+  priority?: SupportPriority | ''
+  keyword?: string
+  page?: number
+  size?: number
+}): Promise<PageResponse<SupportTicket>> {
+  const cleanParams = {
+    ...params,
+    status: params.status || undefined,
+    category: params.category || undefined,
+    priority: params.priority || undefined,
+    keyword: params.keyword?.trim() || undefined,
+  }
+  const res = await api.get('/api/admin/support/tickets', { params: cleanParams })
+  return res.data
+}
+
+export async function getAdminSupportTicket(ticketId: number): Promise<SupportTicket> {
+  const res = await api.get(`/api/admin/support/tickets/${ticketId}`)
+  return res.data
+}
+
+export async function updateAdminSupportTicketStatus(ticketId: number, status: SupportStatus): Promise<SupportTicket> {
+  const res = await api.patch(`/api/admin/support/tickets/${ticketId}/status`, { status })
+  return res.data
+}
+
+export async function replyAdminSupportTicket(ticketId: number, message: string): Promise<SupportTicket> {
+  const res = await api.post(`/api/admin/support/tickets/${ticketId}/replies`, { message })
   return res.data
 }
 
