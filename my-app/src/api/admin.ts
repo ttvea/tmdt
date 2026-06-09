@@ -63,6 +63,32 @@ export type SupportPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
 export type DisputeStatus = 'PENDING' | 'REVIEWING' | 'NEED_EVIDENCE' | 'RESOLVED' | 'REFUNDED' | 'REJECTED' | 'CLOSED'
 export type DisputePriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
 export type DisputeResolutionType = 'NONE' | 'FULL_REFUND' | 'PARTIAL_REFUND' | 'MAKE_UP_CLASS' | 'WARNING' | 'REJECTED'
+export type AdminReportType = 'DASHBOARD' | 'DISPUTES' | 'USERS' | 'TUTORS'
+
+export interface AdminReportMetric {
+  label: string
+  value: number
+  detail: string
+}
+
+export interface AdminReportChartPoint {
+  label: string
+  value: number
+}
+
+export interface AdminReportRow {
+  code: string
+  date: string | null
+  tutorName: string | null
+  studentName: string | null
+  amount: number
+}
+
+export interface AdminReportPreview {
+  metrics: AdminReportMetric[]
+  chart: AdminReportChartPoint[]
+  rows: AdminReportRow[]
+}
 
 export interface AdminVoucher {
   id: number
@@ -388,6 +414,27 @@ export async function resolveAdminDispute(disputeId: number, payload: {
 
 export async function addAdminDisputeNote(disputeId: number, note: string): Promise<AdminDispute> {
   const res = await api.post(`/api/admin/disputes/${disputeId}/notes`, { note })
+  return res.data
+}
+
+export async function exportAdminReport(params: {
+  type: AdminReportType
+  from?: string
+  to?: string
+}): Promise<Blob> {
+  const res = await api.get('/api/admin/reports/export', {
+    params,
+    responseType: 'blob',
+  })
+  return res.data
+}
+
+export async function getAdminReportPreview(params: {
+  type: AdminReportType
+  from?: string
+  to?: string
+}): Promise<AdminReportPreview> {
+  const res = await api.get('/api/admin/reports/preview', { params })
   return res.data
 }
 

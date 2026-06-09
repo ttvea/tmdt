@@ -10,11 +10,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 
 public interface DisputeRep extends JpaRepository<Dispute, Long> {
 
     boolean existsByCaseCode(String caseCode);
+
+    List<Dispute> findByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime from, LocalDateTime to);
 
     long countByStatus(DisputeStatus status);
 

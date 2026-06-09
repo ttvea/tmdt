@@ -31,6 +31,7 @@ import { AdminTutors } from "./pages/Admin/AdminTutors";
 import { AdminCoupons } from "./pages/Admin/AdminCoupons";
 import { AdminSupport } from "./pages/Admin/AdminSupport";
 import { AdminDisputes } from "./pages/Admin/AdminDisputes";
+import { AdminReports } from "./pages/Admin/AdminReports";
 import PricingPage from "./pages/PricingPage";
 import ContactPage from "./pages/ContactPage";
 import FaqPage from "./pages/FaqPage";
@@ -74,6 +75,7 @@ const pageTitles: Record<string, string> = {
   "/admin/coupons": "Mã giảm giá - EduMatch Pro",
   "/admin/support": "Hỗ trợ - EduMatch Pro",
   "/admin/disputes": "Giải quyết tranh chấp - EduMatch Pro",
+  "/admin/reports": "Tạo báo cáo - EduMatch Pro",
   "/post-class": "Đăng lớp - EduMatch Pro",
   "/discover/student-requests": "Bảng Tin - EduMatch Pro",
 };
@@ -132,6 +134,7 @@ function App() {
   if (pathname === "/admin/coupons") return <AdminCoupons />;
   if (pathname === "/admin/support") return <AdminSupport />;
   if (pathname === "/admin/disputes") return <AdminDisputes />;
+  if (pathname === "/admin/reports") return <AdminReports />;
   if (pathname.startsWith("/admin/classes/")) return <AdminClassDetail />;
   if (pathname === "/post-class") return <PostClassPage />;
   if (pathname === "/discover/student-requests") return <StudentRequestsList />;
