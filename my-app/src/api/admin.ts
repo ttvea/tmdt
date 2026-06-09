@@ -63,6 +63,7 @@ export type SupportPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
 export type DisputeStatus = 'PENDING' | 'REVIEWING' | 'NEED_EVIDENCE' | 'RESOLVED' | 'REFUNDED' | 'REJECTED' | 'CLOSED'
 export type DisputePriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
 export type DisputeResolutionType = 'NONE' | 'FULL_REFUND' | 'PARTIAL_REFUND' | 'MAKE_UP_CLASS' | 'WARNING' | 'REJECTED'
+export type AdminReportType = 'DASHBOARD' | 'DISPUTES'
 
 export interface AdminVoucher {
   id: number
@@ -388,6 +389,18 @@ export async function resolveAdminDispute(disputeId: number, payload: {
 
 export async function addAdminDisputeNote(disputeId: number, note: string): Promise<AdminDispute> {
   const res = await api.post(`/api/admin/disputes/${disputeId}/notes`, { note })
+  return res.data
+}
+
+export async function exportAdminReport(params: {
+  type: AdminReportType
+  from?: string
+  to?: string
+}): Promise<Blob> {
+  const res = await api.get('/api/admin/reports/export', {
+    params,
+    responseType: 'blob',
+  })
   return res.data
 }
 

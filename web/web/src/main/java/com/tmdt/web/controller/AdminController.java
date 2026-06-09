@@ -23,11 +23,13 @@ import com.tmdt.web.enums.ClassStatus;
 import com.tmdt.web.enums.EnrollmentStatus;
 import com.tmdt.web.enums.DisputePriority;
 import com.tmdt.web.enums.DisputeStatus;
+import com.tmdt.web.enums.ReportType;
 import com.tmdt.web.enums.SupportCategory;
 import com.tmdt.web.enums.SupportPriority;
 import com.tmdt.web.enums.SupportStatus;
 import com.tmdt.web.repository.ClassRep;
 import com.tmdt.web.repository.EnrollmentRep;
+import com.tmdt.web.repository.DisputeRep;
 import com.tmdt.web.repository.OrderRep;
 import com.tmdt.web.repository.TutorProfileRep;
 import com.tmdt.web.repository.UserRep;
@@ -43,13 +45,18 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -62,6 +69,7 @@ public class AdminController {
     private final ClassRep classRep;
     private final EnrollmentRep enrollmentRep;
     private final OrderRep orderRep;
+    private final DisputeRep disputeRep;
     private final PasswordEncoder passwordEncoder;
     private final VoucherService voucherService;
     private final SupportService supportService;
@@ -445,6 +453,37 @@ public class AdminController {
         return ResponseEntity.ok(disputeService.addNote(disputeId, admin, noteRequest.note()));
     }
 
+    @GetMapping("/reports/export")
+    public ResponseEntity<?> exportReport(
+            HttpServletRequest request,
+            @RequestParam ReportType type,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        LocalDate startDate = from != null ? from : LocalDate.now().minusDays(30);
+        LocalDate endDate = to != null ? to : LocalDate.now();
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.plusDays(1).atStartOfDay().minusNanos(1);
+
+        String csv = switch (type) {
+            case DASHBOARD -> buildDashboardReportCsv(startDate, endDate);
+            case DISPUTES -> buildDisputesReportCsv(start, end);
+        };
+
+        String fileName = "edumatch-" + type.name().toLowerCase() + "-" + LocalDate.now() + ".csv";
+        byte[] body = ("\uFEFF" + csv).getBytes(StandardCharsets.UTF_8);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .body(body);
+    }
+
     @PostMapping("/users")
     public ResponseEntity<?> createUser(
             HttpServletRequest request,
@@ -568,5 +607,62 @@ public class AdminController {
             return null;
         }
         return value.trim();
+    }
+
+    private String buildDashboardReportCsv(LocalDate from, LocalDate to) {
+        Double revenue = orderRep.sumAmountByStatus(Order.OrderStatus.PAID.name());
+
+        StringBuilder csv = new StringBuilder();
+        csv.append("Chỉ số,Giá trị,Từ ngày,Đến ngày\n");
+        appendCsvRow(csv, "Tổng doanh thu", revenue != null ? revenue : 0, from, to);
+        appendCsvRow(csv, "Tổng người dùng", userRep.count(), from, to);
+        appendCsvRow(csv, "Người dùng mới 7 ngày", userRep.countByCreatedAtAfter(LocalDateTime.now().minusDays(7)), from, to);
+        appendCsvRow(csv, "Tổng gia sư", userRep.countByRole(User.RoleAcc.TUTOR), from, to);
+        appendCsvRow(csv, "Gia sư đã xác thực", tutorProfileRep.countByVerifiedStatus(true), from, to);
+        appendCsvRow(csv, "Lớp chờ duyệt", classRep.countByApprovalStatus(ApprovalStatus.PENDING), from, to);
+        appendCsvRow(csv, "Tổng lớp học", classRep.count(), from, to);
+        appendCsvRow(csv, "Lượt đăng ký học", enrollmentRep.count(), from, to);
+        appendCsvRow(csv, "Đăng ký đang chờ", enrollmentRep.countByStatus(EnrollmentStatus.PENDING), from, to);
+        appendCsvRow(csv, "Đăng ký đã thanh toán", enrollmentRep.countByStatus(EnrollmentStatus.PAID), from, to);
+        return csv.toString();
+    }
+
+    private String buildDisputesReportCsv(LocalDateTime from, LocalDateTime to) {
+        List<com.tmdt.web.entity.Dispute> disputes = disputeRep.findByCreatedAtBetweenOrderByCreatedAtDesc(from, to);
+        StringBuilder csv = new StringBuilder();
+        csv.append("Mã case,Học viên,Gia sư,Lớp học,Số tiền,Lý do,Trạng thái,Kết quả,Ngày tạo,Ngày xử lý\n");
+
+        for (com.tmdt.web.entity.Dispute dispute : disputes) {
+            appendCsvRow(
+                    csv,
+                    dispute.getCaseCode(),
+                    dispute.getStudent() != null ? dispute.getStudent().getFullName() : "",
+                    dispute.getTutor() != null ? dispute.getTutor().getFullName() : "",
+                    dispute.getTutorClass() != null ? dispute.getTutorClass().getTitle() : "",
+                    dispute.getAmount() != null ? dispute.getAmount() : 0,
+                    dispute.getReason(),
+                    dispute.getStatus(),
+                    dispute.getResolutionType(),
+                    dispute.getCreatedAt(),
+                    dispute.getResolvedAt() != null ? dispute.getResolvedAt() : ""
+            );
+        }
+
+        return csv.toString();
+    }
+
+    private void appendCsvRow(StringBuilder csv, Object... values) {
+        for (int index = 0; index < values.length; index++) {
+            if (index > 0) {
+                csv.append(',');
+            }
+            csv.append(escapeCsv(values[index]));
+        }
+        csv.append('\n');
+    }
+
+    private String escapeCsv(Object value) {
+        String text = value == null ? "" : String.valueOf(value);
+        return "\"" + text.replace("\"", "\"\"") + "\"";
     }
 }

@@ -1,4 +1,5 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
+import { exportAdminReport, type AdminReportType } from '../api/admin'
 
 type NavItem = {
   label: string
@@ -23,10 +24,43 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children, activePath, adminName }: AdminLayoutProps) {
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportType, setReportType] = useState<AdminReportType>('DASHBOARD')
+  const [fromDate, setFromDate] = useState(() => getDefaultFromDate())
+  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [exporting, setExporting] = useState(false)
+  const [reportError, setReportError] = useState('')
+
   const handleLogout = () => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('user')
     window.location.href = '/login'
+  }
+
+  const handleExportReport = async () => {
+    setExporting(true)
+    setReportError('')
+
+    try {
+      const blob = await exportAdminReport({
+        type: reportType,
+        from: fromDate || undefined,
+        to: toDate || undefined,
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `edumatch-${reportType.toLowerCase()}-${toDate || new Date().toISOString().slice(0, 10)}.csv`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setShowReportModal(false)
+    } catch {
+      setReportError('Không thể tạo báo cáo. Vui lòng thử lại.')
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -62,9 +96,13 @@ export function AdminLayout({ children, activePath, adminName }: AdminLayoutProp
             })}
           </nav>
 
-          <div className="px-4 pb-5">
-            <div className="mb-4 border-t border-slate-300 pt-4">
-              <button className="flex h-10 w-full items-center justify-center rounded bg-blue-700 text-xs font-bold text-white shadow-sm transition hover:bg-blue-800">
+            <div className="px-4 pb-5">
+              <div className="mb-4 border-t border-slate-300 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowReportModal(true)}
+                className="flex h-10 w-full items-center justify-center rounded bg-blue-700 text-xs font-bold text-white shadow-sm transition hover:bg-blue-800"
+              >
                 Tạo báo cáo
               </button>
             </div>
@@ -111,8 +149,94 @@ export function AdminLayout({ children, activePath, adminName }: AdminLayoutProp
           </main>
         </div>
       </div>
+
+      {showReportModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-950">Tạo báo cáo</h2>
+                <p className="mt-1 text-sm text-slate-500">Xuất báo cáo CSV cho dữ liệu quản trị.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+                aria-label="Đóng"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-4">
+              <label>
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Loại báo cáo</span>
+                <select
+                  value={reportType}
+                  onChange={(event) => setReportType(event.target.value as AdminReportType)}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                >
+                  <option value="DASHBOARD">Tổng quan hệ thống</option>
+                  <option value="DISPUTES">Tranh chấp</option>
+                </select>
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label>
+                  <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Từ ngày</span>
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(event) => setFromDate(event.target.value)}
+                    className="h-11 w-full rounded-lg border border-slate-300 px-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+                <label>
+                  <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Đến ngày</span>
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(event) => setToDate(event.target.value)}
+                    className="h-11 w-full rounded-lg border border-slate-300 px-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+              </div>
+
+              {reportError ? (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                  {reportError}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleExportReport}
+                disabled={exporting}
+                className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {exporting ? 'Đang tạo...' : 'Xuất CSV'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
+}
+
+function getDefaultFromDate() {
+  const date = new Date()
+  date.setDate(date.getDate() - 30)
+  return date.toISOString().slice(0, 10)
 }
 
 function getInitials(name?: string) {
