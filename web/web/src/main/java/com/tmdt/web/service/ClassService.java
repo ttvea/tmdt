@@ -207,10 +207,10 @@ public class ClassService {
     }
 
     public Page<ClassResponse> getPublicTutorTeachingClasses(Long tutorId, Pageable pageable) {
-        return classRepository.findByTutorIdAndApprovalStatusAndStatus(
+        return classRepository.findByTutorIdAndApprovalStatusAndStatusIn(
                         tutorId,
                         ApprovalStatus.APPROVED,
-                        ClassStatus.CLOSED,
+                        List.of(ClassStatus.CLOSED, ClassStatus.COMPLETED),
                         pageable
                 )
                 .map(classMapper::toResponse);
