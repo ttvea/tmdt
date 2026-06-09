@@ -63,7 +63,7 @@ export type SupportPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
 export type DisputeStatus = 'PENDING' | 'REVIEWING' | 'NEED_EVIDENCE' | 'RESOLVED' | 'REFUNDED' | 'REJECTED' | 'CLOSED'
 export type DisputePriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
 export type DisputeResolutionType = 'NONE' | 'FULL_REFUND' | 'PARTIAL_REFUND' | 'MAKE_UP_CLASS' | 'WARNING' | 'REJECTED'
-export type AdminReportType = 'DASHBOARD' | 'DISPUTES'
+export type AdminReportType = 'DASHBOARD' | 'DISPUTES' | 'USERS' | 'TUTORS'
 
 export interface AdminReportMetric {
   label: string

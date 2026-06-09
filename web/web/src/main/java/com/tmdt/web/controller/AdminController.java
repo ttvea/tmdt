@@ -479,6 +479,8 @@ public class AdminController {
         String csv = switch (type) {
             case DASHBOARD -> buildDashboardReportCsv(startDate, endDate);
             case DISPUTES -> buildDisputesReportCsv(start, end);
+            case USERS -> buildUsersReportCsv(start, end);
+            case TUTORS -> buildTutorsReportCsv(start, end);
         };
 
         String fileName = "edumatch-" + type.name().toLowerCase() + "-" + LocalDate.now() + ".csv";
@@ -510,6 +512,8 @@ public class AdminController {
         return ResponseEntity.ok(switch (type) {
             case DASHBOARD -> buildDashboardReportPreview(startDate, endDate, start, end);
             case DISPUTES -> buildDisputesReportPreview(startDate, endDate, start, end);
+            case USERS -> buildUsersReportPreview(startDate, endDate, start, end);
+            case TUTORS -> buildTutorsReportPreview(startDate, endDate, start, end);
         });
     }
 
@@ -680,6 +684,52 @@ public class AdminController {
         return csv.toString();
     }
 
+    private String buildUsersReportCsv(LocalDateTime from, LocalDateTime to) {
+        List<User> users = userRep.findByCreatedAtBetweenOrderByCreatedAtDesc(from, to);
+        StringBuilder csv = new StringBuilder();
+        csv.append("ID,Họ tên,Email,Số điện thoại,Vai trò,Trạng thái,Xác thực,Ngày tạo\n");
+
+        for (User user : users) {
+            appendCsvRow(
+                    csv,
+                    user.getId(),
+                    user.getFullName(),
+                    user.getEmail(),
+                    user.getPhone(),
+                    user.getRole(),
+                    Boolean.FALSE.equals(user.getEnabled()) ? "Đã khóa" : "Hoạt động",
+                    Boolean.TRUE.equals(user.getVerified()) ? "Đã xác thực" : "Chưa xác thực",
+                    user.getCreatedAt()
+            );
+        }
+
+        return csv.toString();
+    }
+
+    private String buildTutorsReportCsv(LocalDateTime from, LocalDateTime to) {
+        List<User> tutors = userRep.findByRoleAndCreatedAtBetweenOrderByCreatedAtDesc(User.RoleAcc.TUTOR, from, to);
+        StringBuilder csv = new StringBuilder();
+        csv.append("ID,Họ tên,Email,Số điện thoại,Chuyên ngành,Kinh nghiệm,Hồ sơ,Trạng thái tài khoản,Ngày tạo\n");
+
+        for (User tutor : tutors) {
+            TutorProfile profile = tutorProfileRep.findByUserId(tutor.getId()).orElse(null);
+            appendCsvRow(
+                    csv,
+                    tutor.getId(),
+                    tutor.getFullName(),
+                    tutor.getEmail(),
+                    tutor.getPhone(),
+                    profile != null ? firstNonBlank(profile.getTeachMajor(), profile.getMajor()) : "",
+                    profile != null ? profile.getExperience() : "",
+                    profile == null ? "Chưa upload" : Boolean.TRUE.equals(profile.getIsVerified()) ? "Đã duyệt" : "Chờ duyệt",
+                    Boolean.FALSE.equals(tutor.getEnabled()) ? "Đã khóa" : "Hoạt động",
+                    tutor.getCreatedAt()
+            );
+        }
+
+        return csv.toString();
+    }
+
     private Map<String, Object> buildDashboardReportPreview(
             LocalDate fromDate,
             LocalDate toDate,
@@ -710,6 +760,71 @@ public class AdminController {
             row.put("tutorName", "-");
             row.put("studentName", order.getStudentId() > 0 ? "ID " + order.getStudentId() : "-");
             row.put("amount", order.getAmount() != null ? order.getAmount() : 0);
+            return row;
+        }).toList());
+        return response;
+    }
+
+    private Map<String, Object> buildUsersReportPreview(
+            LocalDate fromDate,
+            LocalDate toDate,
+            LocalDateTime from,
+            LocalDateTime to
+    ) {
+        List<User> users = userRep.findByCreatedAtBetweenOrderByCreatedAtDesc(from, to);
+        long total = users.size();
+        long students = users.stream().filter(user -> user.getRole() == User.RoleAcc.STUDENT).count();
+        long tutors = users.stream().filter(user -> user.getRole() == User.RoleAcc.TUTOR).count();
+        long locked = users.stream().filter(user -> Boolean.FALSE.equals(user.getEnabled())).count();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("metrics", List.of(
+                metric("Người dùng mới", total, "Trong khoảng thời gian đã chọn"),
+                metric("Học viên", students, "Tài khoản role STUDENT"),
+                metric("Tài khoản đã khóa", locked, tutors + " gia sư trong cùng kỳ")
+        ));
+        response.put("chart", buildUserChart(users, fromDate, toDate));
+        response.put("rows", users.stream().limit(5).map(user -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("code", "#USR-" + user.getId());
+            row.put("date", user.getCreatedAt());
+            row.put("tutorName", user.getFullName());
+            row.put("studentName", user.getRole() != null ? user.getRole().name() : "-");
+            row.put("amount", 0);
+            return row;
+        }).toList());
+        return response;
+    }
+
+    private Map<String, Object> buildTutorsReportPreview(
+            LocalDate fromDate,
+            LocalDate toDate,
+            LocalDateTime from,
+            LocalDateTime to
+    ) {
+        List<User> tutors = userRep.findByRoleAndCreatedAtBetweenOrderByCreatedAtDesc(User.RoleAcc.TUTOR, from, to);
+        long withProfile = tutors.stream().filter(tutor -> tutorProfileRep.findByUserId(tutor.getId()).isPresent()).count();
+        long verified = tutors.stream()
+                .map(tutor -> tutorProfileRep.findByUserId(tutor.getId()).orElse(null))
+                .filter(profile -> profile != null && Boolean.TRUE.equals(profile.getIsVerified()))
+                .count();
+        long locked = tutors.stream().filter(tutor -> Boolean.FALSE.equals(tutor.getEnabled())).count();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("metrics", List.of(
+                metric("Gia sư mới", tutors.size(), "Trong khoảng thời gian đã chọn"),
+                metric("Đã upload hồ sơ", withProfile, "Có hồ sơ gia sư"),
+                metric("Đã duyệt", verified, locked + " tài khoản bị khóa")
+        ));
+        response.put("chart", buildUserChart(tutors, fromDate, toDate));
+        response.put("rows", tutors.stream().limit(5).map(tutor -> {
+            TutorProfile profile = tutorProfileRep.findByUserId(tutor.getId()).orElse(null);
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("code", "#TUT-" + tutor.getId());
+            row.put("date", tutor.getCreatedAt());
+            row.put("tutorName", tutor.getFullName());
+            row.put("studentName", profile == null ? "Chưa upload hồ sơ" : Boolean.TRUE.equals(profile.getIsVerified()) ? "Đã duyệt" : "Chờ duyệt");
+            row.put("amount", 0);
             return row;
         }).toList());
         return response;
@@ -797,6 +912,22 @@ public class AdminController {
         return grouped.entrySet().stream().map(entry -> chartPoint(entry.getKey(), entry.getValue())).toList();
     }
 
+    private List<Map<String, Object>> buildUserChart(List<User> users, LocalDate from, LocalDate to) {
+        Map<LocalDate, Long> grouped = new LinkedHashMap<>();
+        for (LocalDate date : buildChartBuckets(from, to)) {
+            grouped.put(date, 0L);
+        }
+
+        for (User user : users) {
+            if (user.getCreatedAt() == null) continue;
+            LocalDate createdDate = user.getCreatedAt().toLocalDate();
+            LocalDate bucket = closestBucket(createdDate, grouped);
+            grouped.put(bucket, grouped.getOrDefault(bucket, 0L) + 1);
+        }
+
+        return grouped.entrySet().stream().map(entry -> chartPoint(entry.getKey(), entry.getValue())).toList();
+    }
+
     private List<LocalDate> buildChartBuckets(LocalDate from, LocalDate to) {
         long days = Math.max(ChronoUnit.DAYS.between(from, to), 1);
         int bucketCount = (int) Math.min(days + 1, 8);
@@ -841,5 +972,15 @@ public class AdminController {
     private String escapeCsv(Object value) {
         String text = value == null ? "" : String.valueOf(value);
         return "\"" + text.replace("\"", "\"\"") + "\"";
+    }
+
+    private String firstNonBlank(String first, String second) {
+        if (first != null && !first.isBlank()) {
+            return first;
+        }
+        if (second != null && !second.isBlank()) {
+            return second;
+        }
+        return "";
     }
 }

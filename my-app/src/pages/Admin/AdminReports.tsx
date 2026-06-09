@@ -30,8 +30,8 @@ const reportTypes: Array<{
   enabled: boolean
 }> = [
   { type: 'DASHBOARD', label: 'Doanh thu', icon: <MoneyIcon />, enabled: true },
-  { type: 'USERS', label: 'Người dùng', icon: <TrendIcon />, enabled: false },
-  { type: 'TUTORS', label: 'Gia sư', icon: <BadgeIcon />, enabled: false },
+  { type: 'USERS', label: 'Người dùng', icon: <TrendIcon />, enabled: true },
+  { type: 'TUTORS', label: 'Gia sư', icon: <BadgeIcon />, enabled: true },
   { type: 'DISPUTES', label: 'Tranh chấp', icon: <WarningIcon />, enabled: true },
 ]
 
@@ -78,10 +78,12 @@ export function AdminReports() {
 
   const selectedReport = reportTypes.find((item) => item.type === reportType)
   const canExport = selectedReport?.enabled && format === 'CSV'
-  const canPreview = reportType === 'DASHBOARD' || reportType === 'DISPUTES'
+  const canPreview = selectedReport?.enabled
 
   const chartLabel = useMemo(() => {
     if (reportType === 'DISPUTES') return 'Xu hướng Tranh chấp'
+    if (reportType === 'USERS') return 'Xu hướng Người dùng'
+    if (reportType === 'TUTORS') return 'Xu hướng Gia sư'
     if (reportType === 'DASHBOARD') return 'Xu hướng Doanh thu'
     return 'Dữ liệu xem trước'
   }, [reportType])
@@ -145,7 +147,7 @@ export function AdminReports() {
     setError('')
 
     if (!canExport) {
-      setError('Hiện tại hệ thống chỉ hỗ trợ xuất CSV cho báo cáo Tổng quan và Tranh chấp.')
+      setError('Hiện tại hệ thống hỗ trợ xuất CSV cho các báo cáo đang bật.')
       return
     }
 
@@ -297,7 +299,7 @@ export function AdminReports() {
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-slate-950">{chartLabel} ({getPresetLabel(preset)})</h2>
                 <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-800">
-                  <span className="h-3 w-3 rounded-full bg-blue-700" /> {reportType === 'DISPUTES' ? 'Tranh chấp' : 'Doanh thu ròng'}
+                  <span className="h-3 w-3 rounded-full bg-blue-700" /> {getChartUnitLabel(reportType)}
                 </span>
               </div>
               <div className="mt-8 rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-blue-50/70 p-5">
@@ -373,18 +375,18 @@ export function AdminReports() {
             <section className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-300 px-6 py-5">
                 <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-800">
-                  {reportType === 'DISPUTES' ? 'Top 5 tranh chấp gần đây' : 'Top 5 giao dịch gần đây'}
+                  {getTableTitle(reportType)}
                 </h2>
                 <span className="text-sm font-bold text-slate-500">{preview.rows.length} bản ghi</span>
               </div>
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-100 text-slate-700">
                   <tr>
-                    <th className="px-6 py-4 font-semibold">Mã GD</th>
+                    <th className="px-6 py-4 font-semibold">{getTableHeaders(reportType).code}</th>
                     <th className="px-6 py-4 font-semibold">Ngày</th>
-                    <th className="px-6 py-4 font-semibold">Gia sư</th>
-                    <th className="px-6 py-4 font-semibold">Học viên</th>
-                    <th className="px-6 py-4 text-right font-semibold">Số tiền</th>
+                    <th className="px-6 py-4 font-semibold">{getTableHeaders(reportType).primary}</th>
+                    <th className="px-6 py-4 font-semibold">{getTableHeaders(reportType).secondary}</th>
+                    <th className="px-6 py-4 text-right font-semibold">{getTableHeaders(reportType).amount}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -400,7 +402,7 @@ export function AdminReports() {
                       <td className="px-6 py-4">{formatRowDate(row.date)}</td>
                       <td className="px-6 py-4">{row.tutorName || '-'}</td>
                       <td className="px-6 py-4">{row.studentName || '-'}</td>
-                      <td className="px-6 py-4 text-right font-bold">{formatMoney(row.amount)}</td>
+                      <td className="px-6 py-4 text-right font-bold">{formatRowAmount(row.amount, reportType)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -614,6 +616,18 @@ function buildMetricCards(preview: AdminReportPreview, type: ReportCardType) {
         { label: 'Đang xử lý', value: 0, detail: 'Chưa có dữ liệu' },
         { label: 'Tỷ lệ đã giải quyết', value: 0, detail: 'Chưa có dữ liệu' },
       ]
+    : type === 'USERS'
+      ? [
+          { label: 'Người dùng mới', value: 0, detail: 'Chưa có dữ liệu' },
+          { label: 'Học viên', value: 0, detail: 'Chưa có dữ liệu' },
+          { label: 'Tài khoản đã khóa', value: 0, detail: 'Chưa có dữ liệu' },
+        ]
+      : type === 'TUTORS'
+        ? [
+            { label: 'Gia sư mới', value: 0, detail: 'Chưa có dữ liệu' },
+            { label: 'Đã upload hồ sơ', value: 0, detail: 'Chưa có dữ liệu' },
+            { label: 'Đã duyệt', value: 0, detail: 'Chưa có dữ liệu' },
+          ]
     : [
         { label: 'Tổng doanh thu', value: 0, detail: 'Chưa có dữ liệu' },
         { label: 'Học phí trung bình', value: 0, detail: 'Chưa có dữ liệu' },
@@ -627,6 +641,10 @@ function formatMetricValue(value: number, type: ReportCardType, index: number) {
     return Number(value || 0).toLocaleString('vi-VN')
   }
 
+  if (type === 'USERS' || type === 'TUTORS') {
+    return Number(value || 0).toLocaleString('vi-VN')
+  }
+
   if (index === 2) return `${Number(value || 0).toLocaleString('vi-VN')}%`
   return formatMoney(value)
 }
@@ -637,6 +655,11 @@ function formatMoney(value: number) {
     currency: 'VND',
     maximumFractionDigits: 0,
   }).format(Number(value) || 0)
+}
+
+function formatRowAmount(value: number, type: ReportCardType) {
+  if (type === 'USERS' || type === 'TUTORS') return '-'
+  return formatMoney(value)
 }
 
 function formatRowDate(value: string | null) {
@@ -671,7 +694,36 @@ function getPresetLabel(preset: DatePreset) {
 
 function formatChartValue(value: number, type?: ReportCardType) {
   if (type === 'DISPUTES') return `${Number(value || 0).toLocaleString('vi-VN')} vụ`
+  if (type === 'USERS') return `${Number(value || 0).toLocaleString('vi-VN')} người`
+  if (type === 'TUTORS') return `${Number(value || 0).toLocaleString('vi-VN')} gia sư`
   return formatMoney(value)
+}
+
+function getChartUnitLabel(type: ReportCardType) {
+  if (type === 'DISPUTES') return 'Tranh chấp'
+  if (type === 'USERS') return 'Người dùng mới'
+  if (type === 'TUTORS') return 'Gia sư mới'
+  return 'Doanh thu ròng'
+}
+
+function getTableTitle(type: ReportCardType) {
+  if (type === 'DISPUTES') return 'Top 5 tranh chấp gần đây'
+  if (type === 'USERS') return 'Top 5 người dùng mới'
+  if (type === 'TUTORS') return 'Top 5 gia sư mới'
+  return 'Top 5 giao dịch gần đây'
+}
+
+function getTableHeaders(type: ReportCardType) {
+  if (type === 'USERS') {
+    return { code: 'Mã người dùng', primary: 'Người dùng', secondary: 'Vai trò', amount: 'Giá trị' }
+  }
+  if (type === 'TUTORS') {
+    return { code: 'Mã gia sư', primary: 'Gia sư', secondary: 'Hồ sơ', amount: 'Giá trị' }
+  }
+  if (type === 'DISPUTES') {
+    return { code: 'Mã case', primary: 'Gia sư', secondary: 'Học viên', amount: 'Số tiền' }
+  }
+  return { code: 'Mã GD', primary: 'Gia sư', secondary: 'Học viên', amount: 'Số tiền' }
 }
 
 const REPORT_HISTORY_KEY = 'admin_report_history'
