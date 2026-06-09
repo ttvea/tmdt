@@ -31,6 +31,7 @@ export function TutorProfile() {
   const [error, setError] = useState('')
   const [showEmailTooltip, setShowEmailTooltip] = useState(false)
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
+  const [showCertificateModal, setShowCertificateModal] = useState(false)
 
   useEffect(() => {
     if (!userId) {
@@ -61,6 +62,10 @@ export function TutorProfile() {
 
   const displayName = profile?.fullName || user?.fullName || user?.username || user?.name || 'Chưa cập nhật tên'
   const avatarUrl = getMediaUrl(profile?.avatar || user?.avatar)
+  const certificateUrl = profile?.certificateUrl
+    ? getMediaUrl(profile.certificateUrl) ?? profile.certificateUrl
+    : ''
+  const isCertificateImage = /\.(png|jpe?g|webp|gif|bmp|svg)(\?.*)?$/i.test(certificateUrl)
 
   return (
     <AccountLayout activePath="/tutor/profile">
@@ -90,8 +95,8 @@ export function TutorProfile() {
                   ) : displayName}
                 </h2>
                 {profile?.isVerified && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold border border-slate-200">
-                    <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-600 text-xs font-semibold border border-slate-200">
+                    <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
                     Đã xác thực
@@ -267,6 +272,44 @@ export function TutorProfile() {
                   </ul>
                 </div>
 
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M14 2v6h6M8 13h8M8 17h5"
+                      />
+                    </svg>
+                    <span className="text-sm font-bold text-slate-800">Chứng chỉ</span>
+                  </div>
+
+                  {certificateUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowCertificateModal(true)}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-600 bg-blue-50 px-3 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                    >
+                      <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
+                      </svg>
+                      Xem chứng chỉ
+                    </button>
+                  ) : (
+                    <div className="rounded-lg bg-slate-50 px-3 py-2.5 text-xs font-medium text-slate-500">
+                      Chưa cập nhật chứng chỉ.
+                    </div>
+                  )}
+                </div>
+
                 <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col gap-0">
                   {[
                     { label: 'Giới tính', value: GENDER_LABELS[profile?.gender ?? ''] || '—' },
@@ -312,6 +355,51 @@ export function TutorProfile() {
           )}
         </div>
       </div>
+
+      {showCertificateModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6"
+          onClick={() => setShowCertificateModal(false)}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-950">Chứng chỉ gia sư</h3>
+                <p className="text-sm text-slate-500">{displayName}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCertificateModal(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                aria-label="Đóng xem chứng chỉ"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="min-h-[60vh] overflow-auto bg-slate-100 p-4">
+              {isCertificateImage ? (
+                <img
+                  src={certificateUrl}
+                  alt={`Chứng chỉ của ${displayName}`}
+                  className="mx-auto max-h-[72vh] max-w-full rounded-lg bg-white object-contain shadow-sm"
+                />
+              ) : (
+                <iframe
+                  src={certificateUrl}
+                  title={`Chứng chỉ của ${displayName}`}
+                  className="h-[72vh] w-full rounded-lg border border-slate-200 bg-white"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </AccountLayout>
   )
 }
