@@ -42,6 +42,11 @@ export async function createVoucher(request: VoucherRequest): Promise<VoucherRes
   return res.data
 }
 
+export async function updateVoucher(voucherId: number, request: VoucherRequest): Promise<VoucherResponse> {
+  const res = await api.put(`/api/vouchers/${voucherId}`, request)
+  return res.data
+}
+
 export async function updateVoucherStatus(voucherId: number, active: boolean): Promise<VoucherResponse> {
   const res = await api.patch(`/api/vouchers/${voucherId}/status`, null, {
     params: { active },

@@ -158,6 +158,55 @@ public class VoucherService {
                 .toList();
     }
 
+    public VoucherResponse updateTutorVoucher(Long currentUserId, Long voucherId, VoucherRequest request) {
+        TutorProfile tutor = getTutorProfile(currentUserId);
+
+        Voucher voucher = voucherRepository.findById(voucherId)
+                .orElseThrow(() -> AppException.notFound("Voucher không tồn tại"));
+
+        if (voucher.getTutor() == null || voucher.getTutor().getId() != tutor.getId()) {
+            throw AppException.forbidden("Bạn không có quyền cập nhật voucher này");
+        }
+
+        String normalizedCode = request.getCode().trim().toUpperCase();
+        if (!voucher.getCode().equalsIgnoreCase(normalizedCode)
+                && voucherRepository.existsByCodeIgnoreCase(normalizedCode)) {
+            throw AppException.conflict("Mã voucher đã tồn tại");
+        }
+
+        validateVoucherRequest(request);
+
+        TutorClass tutorClass = null;
+        VoucherScope applicableScope = request.getApplicableScope() != null
+                ? request.getApplicableScope()
+                : VoucherScope.ALL_CLASSES;
+
+        if (applicableScope == VoucherScope.SPECIFIC_CLASS) {
+            if (request.getClassId() == null) {
+                throw AppException.badRequest("Vui lòng chọn lớp áp dụng voucher");
+            }
+
+            tutorClass = tutorClassRepository.findById(request.getClassId())
+                    .orElseThrow(() -> AppException.notFound("Lớp học không tồn tại"));
+
+            if (!tutorClass.getTutorId().equals(currentUserId)) {
+                throw AppException.forbidden("Bạn không có quyền cập nhật voucher cho lớp này");
+            }
+        }
+
+        voucher.setCode(normalizedCode);
+        voucher.setDiscountType(request.getDiscountType());
+        voucher.setDiscountValue(request.getDiscountValue());
+        voucher.setMinPrice(request.getMinPrice());
+        voucher.setMaxDiscount(request.getMaxDiscount());
+        voucher.setUsageLimit(request.getUsageLimit());
+        voucher.setApplicableScope(applicableScope);
+        voucher.setTutorClass(tutorClass);
+        voucher.setStartDate(request.getStartDate());
+        voucher.setEndDate(request.getEndDate());
+
+        return toResponse(voucherRepository.save(voucher));
+    }
     public VoucherResponse updateVoucherStatus(Long currentUserId, Long voucherId, boolean active) {
         TutorProfile tutor = getTutorProfile(currentUserId);
 
@@ -234,3 +283,4 @@ public class VoucherService {
                 .build();
     }
 }
+

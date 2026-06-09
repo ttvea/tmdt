@@ -37,6 +37,15 @@ public class VoucherController {
         return ResponseEntity.ok(voucherService.getMyVouchers(currentUserId));
     }
 
+    @PutMapping("/{voucherId}")
+    public ResponseEntity<VoucherResponse> updateVoucher(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long voucherId,
+            @Valid @RequestBody VoucherRequest request) {
+        Long currentUserId = getUserId(authHeader);
+        return ResponseEntity.ok(voucherService.updateTutorVoucher(currentUserId, voucherId, request));
+    }
+
     @PatchMapping("/{voucherId}/status")
     public ResponseEntity<VoucherResponse> updateVoucherStatus(
             @RequestHeader("Authorization") String authHeader,

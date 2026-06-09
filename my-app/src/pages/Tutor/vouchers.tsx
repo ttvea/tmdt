@@ -5,6 +5,7 @@ import {
   createVoucher,
   deleteVoucher,
   getMyVouchers,
+  updateVoucher,
   updateVoucherStatus,
   type DiscountType,
   type VoucherRequest,
@@ -47,6 +48,11 @@ function toDateTime(value: string, endOfDay = false) {
   return `${value}T${endOfDay ? '23:59:59' : '00:00:00'}`
 }
 
+function toDateInput(value: string | null | undefined) {
+  if (!value) return ''
+  return value.slice(0, 10)
+}
+
 function formatMoney(value: number | null | undefined) {
   if (value == null) return '-'
   return `${value.toLocaleString('vi-VN')}đ`
@@ -73,6 +79,21 @@ function classScopeLabel(voucher: VoucherResponse, classMap: Map<number, string>
   if (voucher.applicableScope === 'ALL_CLASSES') return 'Tất cả lớp học'
   if (!voucher.classId) return 'Lớp cụ thể'
   return classMap.get(voucher.classId) ?? `Lớp #${voucher.classId}`
+}
+
+function voucherToForm(voucher: VoucherResponse): VoucherForm {
+  return {
+    code: voucher.code,
+    discountType: voucher.discountType,
+    discountValue: String(voucher.discountValue ?? ''),
+    minPrice: voucher.minPrice != null ? String(voucher.minPrice) : '',
+    maxDiscount: voucher.maxDiscount != null ? String(voucher.maxDiscount) : '',
+    usageLimit: voucher.usageLimit != null ? String(voucher.usageLimit) : '',
+    applicableScope: voucher.applicableScope,
+    classId: voucher.classId != null ? String(voucher.classId) : '',
+    startDate: toDateInput(voucher.startDate),
+    endDate: toDateInput(voucher.endDate),
+  }
 }
 
 function VoucherPreviewCard({
@@ -186,6 +207,7 @@ function VoucherCreatePanel({
   form,
   classes,
   saving,
+  mode,
   onChange,
   onSubmit,
   onClose,
@@ -193,6 +215,7 @@ function VoucherCreatePanel({
   form: VoucherForm
   classes: ClassResponse[]
   saving: boolean
+  mode: 'create' | 'edit'
   onChange: (field: keyof VoucherForm, value: string) => void
   onSubmit: (event: React.FormEvent) => void
   onClose: () => void
@@ -208,7 +231,7 @@ function VoucherCreatePanel({
       <button
         type="button"
         onClick={onClose}
-        aria-label="Đóng form tạo mã giảm giá"
+        aria-label="Đóng form mã giảm giá"
         className="absolute right-4 top-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50 hover:text-slate-900"
       >
         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,9 +241,13 @@ function VoucherCreatePanel({
       <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_430px]">
         <div className="space-y-5 p-6">
           <div>
-            <h2 className="text-2xl font-bold text-slate-950">Tạo mã giảm giá mới</h2>
+            <h2 className="text-2xl font-bold text-slate-950">
+              {mode === 'edit' ? 'Chỉnh sửa mã giảm giá' : 'Tạo mã giảm giá mới'}
+            </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Thiết lập các chương trình khuyến mãi và ưu đãi cho học viên trên EduMatch Pro.
+              {mode === 'edit'
+                ? 'Cập nhật thông tin mã giảm giá và phạm vi áp dụng cho học viên.'
+                : 'Thiết lập các chương trình khuyến mãi và ưu đãi cho học viên trên EduMatch Pro.'}
             </p>
           </div>
 
@@ -369,10 +396,40 @@ function VoucherCreatePanel({
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 13 9 17 19 7" />
           </svg>
-          {saving ? 'Đang lưu...' : 'Lưu mã giảm giá'}
+          {saving ? 'Đang lưu...' : mode === 'edit' ? 'Cập nhật mã giảm giá' : 'Lưu mã giảm giá'}
         </button>
       </div>
     </form>
+  )
+}
+
+function VoucherStatCard({
+  label,
+  value,
+  iconBg,
+  iconColor,
+  iconPath,
+}: {
+  label: string
+  value: number
+  iconBg: string
+  iconColor: string
+  iconPath: string
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-500">{label}</p>
+          <p className="mt-2 text-2xl font-bold text-slate-950">{value.toLocaleString('vi-VN')}</p>
+        </div>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
+          <svg className={`h-5 w-5 ${iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={iconPath} />
+          </svg>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -383,6 +440,7 @@ export function TutorVouchers() {
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<VoucherForm>(emptyForm)
+  const [editingVoucher, setEditingVoucher] = useState<VoucherResponse | null>(null)
   const [selectedVoucher, setSelectedVoucher] = useState<VoucherResponse | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -393,6 +451,21 @@ export function TutorVouchers() {
 
   const visibleVouchers = useMemo(() => {
     return [...vouchers].sort((a, b) => b.id - a.id)
+  }, [vouchers])
+
+  const voucherStats = useMemo(() => {
+    const expiredCount = vouchers.filter(isVoucherExpired).length
+    const activeCount = vouchers.filter((voucher) => voucher.active && !isVoucherExpired(voucher)).length
+    const inactiveCount = vouchers.filter((voucher) => !voucher.active).length
+    const totalUsed = vouchers.reduce((total, voucher) => total + voucher.usedCount, 0)
+
+    return {
+      total: vouchers.length,
+      active: activeCount,
+      inactive: inactiveCount,
+      expired: expiredCount,
+      used: totalUsed,
+    }
   }, [vouchers])
 
   const fetchData = async () => {
@@ -429,6 +502,8 @@ export function TutorVouchers() {
   const openCreateForm = () => {
     setError('')
     setSuccess('')
+    setEditingVoucher(null)
+    setForm(emptyForm)
     setShowForm(true)
   }
 
@@ -436,6 +511,17 @@ export function TutorVouchers() {
     setError('')
     setSuccess('')
     setShowForm(false)
+    setEditingVoucher(null)
+    setForm(emptyForm)
+  }
+
+  const openEditForm = (voucher: VoucherResponse) => {
+    setError('')
+    setSuccess('')
+    setSelectedVoucher(null)
+    setEditingVoucher(voucher)
+    setForm(voucherToForm(voucher))
+    setShowForm(true)
   }
 
   const handleChange = (field: keyof VoucherForm, value: string) => {
@@ -466,13 +552,23 @@ export function TutorVouchers() {
         endDate: toDateTime(form.endDate, true),
       }
 
-      const created = await createVoucher(request)
-      setVouchers((prev) => [created, ...prev])
+      if (editingVoucher) {
+        const updated = await updateVoucher(editingVoucher.id, request)
+        setVouchers((prev) =>
+          prev.map((voucher) => (voucher.id === updated.id ? updated : voucher))
+        )
+        setSuccess('Cập nhật mã giảm giá thành công.')
+      } else {
+        const created = await createVoucher(request)
+        setVouchers((prev) => [created, ...prev])
+        setSuccess('Tạo mã giảm giá thành công.')
+      }
+
       setForm(emptyForm)
       setShowForm(false)
-      setSuccess('Tạo mã giảm giá thành công.')
+      setEditingVoucher(null)
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.response?.data || 'Không thể tạo mã giảm giá.')
+      setError(err?.response?.data?.message || err?.response?.data || 'Không thể lưu mã giảm giá.')
     } finally {
       setSaving(false)
     }
@@ -527,12 +623,50 @@ export function TutorVouchers() {
               Tạo mã mới
             </button>
           </div>
-
+          
           <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
             <p>
               <span className="font-bold">Gợi ý:</span> Tạo mã giảm giá để thu hút học viên mới đăng ký lớp học của bạn.
               Các mã giảm giá 10-15% thường mang lại tỷ lệ chuyển đổi cao nhất.
             </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <VoucherStatCard
+              label="Tổng mã"
+              value={voucherStats.total}
+              iconBg="bg-blue-100"
+              iconColor="text-blue-700"
+              iconPath="M9 14.25 14.25 9M9.75 9h.008v.008H9.75zm4.5 6h.008v.008h-.008zM3.75 6.75A3 3 0 0 1 6.75 3.75h10.5a3 3 0 0 1 3 3v10.5a3 3 0 0 1-3 3H6.75a3 3 0 0 1-3-3z"
+            />
+            <VoucherStatCard
+              label="Đang hoạt động"
+              value={voucherStats.active}
+              iconBg="bg-emerald-100"
+              iconColor="text-emerald-700"
+              iconPath="M4.5 12.75 10 18.25 19.5 5.75"
+            />
+            <VoucherStatCard
+              label="Đã ẩn"
+              value={voucherStats.inactive}
+              iconBg="bg-slate-100"
+              iconColor="text-slate-600"
+              iconPath="M18.364 18.364A9 9 0 0 1 5.636 5.636m12.728 12.728A9 9 0 0 0 5.636 5.636m12.728 12.728L5.636 5.636"
+            />
+            <VoucherStatCard
+              label="Hết hạn"
+              value={voucherStats.expired}
+              iconBg="bg-rose-100"
+              iconColor="text-rose-700"
+              iconPath="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
+            />
+            <VoucherStatCard
+              label="Lượt đã dùng"
+              value={voucherStats.used}
+              iconBg="bg-amber-100"
+              iconColor="text-amber-700"
+              iconPath="M3 13.125C3 12.504 3.504 12 4.125 12h3.75C8.496 12 9 12.504 9 13.125v6.75C9 20.496 8.496 21 7.875 21h-3.75A1.125 1.125 0 0 1 3 19.875zm6-4.5C9 8.004 9.504 7.5 10.125 7.5h3.75c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-3.75A1.125 1.125 0 0 1 9 19.875zm6-4.5C15 3.504 15.504 3 16.125 3h3.75C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-3.75A1.125 1.125 0 0 1 15 19.875z"
+            />
           </div>
 
           {error ? (
@@ -623,7 +757,12 @@ export function TutorVouchers() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                                 </svg>
                               </button>
-                              <button type="button" title="Chỉnh sửa" className="text-slate-500 hover:text-blue-700">
+                              <button
+                                type="button"
+                                title="Chỉnh sửa"
+                                onClick={() => openEditForm(voucher)}
+                                className="text-slate-500 hover:text-blue-700"
+                              >
                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m16.862 4.487 1.651-1.651a2.121 2.121 0 1 1 3 3L7.5 19.85 3 21l1.15-4.5L16.862 4.487z" />
                                 </svg>
@@ -681,6 +820,7 @@ export function TutorVouchers() {
                   form={form}
                   classes={classes}
                   saving={saving}
+                  mode={editingVoucher ? 'edit' : 'create'}
                   onChange={handleChange}
                   onSubmit={handleSubmit}
                   onClose={closeCreateForm}
