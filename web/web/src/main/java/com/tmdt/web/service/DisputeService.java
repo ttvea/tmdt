@@ -52,7 +52,7 @@ public class DisputeService {
 
         TutorClass tutorClass = null;
         if (request.classId() != null) {
-            tutorClass = classRep.findById(request.classId())
+            tutorClass = classRep.findById(request.classId().longValue())
                     .orElseThrow(() -> AppException.notFound("Không tìm thấy lớp học liên quan"));
         }
 

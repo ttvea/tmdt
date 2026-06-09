@@ -12,7 +12,7 @@ import java.util.List;
 public record DisputeResponse(
         Long id,
         String caseCode,
-        Integer classId,
+        Long classId,
         String classTitle,
         Integer studentId,
         String studentName,

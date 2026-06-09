@@ -37,6 +37,7 @@ import FaqPage from "./pages/FaqPage";
 import PostClassPage from "./pages/Student/PostClassPage";
 import StudentRequestsList from "./pages/Student/StudentRequestsList";
 import { MySupport } from "./pages/Support/MySupport";
+import { MyDisputes } from "./pages/Disputes/MyDisputes";
 
 const pageTitles: Record<string, string> = {
   "/": "EduMatch Pro - Kết nối gia sư 1 kèm 1",
@@ -58,11 +59,13 @@ const pageTitles: Record<string, string> = {
   "/tutor/messages": "Tin nhắn - EduMatch Pro",
   "/tutor/vouchers": "Mã giảm giá - EduMatch Pro",
   "/tutor/support": "Hỗ trợ của tôi - EduMatch Pro",
+  "/tutor/disputes": "Tranh chấp của tôi - EduMatch Pro",
   "/tutor/classes/new": "Tạo lớp học - EduMatch Pro",
   "/student/profile": "Hồ sơ học viên - EduMatch Pro",
   "/student/schedule": "Lịch học - EduMatch Pro",
   "/student/messages": "Tin nhắn - EduMatch Pro",
   "/student/support": "Hỗ trợ của tôi - EduMatch Pro",
+  "/student/disputes": "Tranh chấp của tôi - EduMatch Pro",
   "/admin": "Quản trị - EduMatch Pro",
   "/admin/users": "Quản lý người dùng - EduMatch Pro",
   "/admin/users/new": "Tạo người dùng mới - EduMatch Pro",
@@ -109,6 +112,7 @@ function App() {
   if (pathname === "/tutor/messages") return <TutorMessages />;
   if (pathname === "/tutor/vouchers") return <TutorVouchers />;
   if (pathname === "/tutor/support") return <MySupport />;
+  if (pathname === "/tutor/disputes") return <MyDisputes />;
   if (pathname === "/tutor/classes/new") return <FormAddClass />;
   if (pathname.startsWith("/tutor/classes/") && !pathname.includes("/edit/")) return <ClassDetail />;
   if (pathname.startsWith("/tutor/") && !pathname.includes("/classes")) {
@@ -119,6 +123,7 @@ function App() {
   if (pathname === "/student/schedule") return <StudentSchedule />;
   if (pathname === "/student/messages") return <StudentMessages />;
   if (pathname === "/student/support") return <MySupport />;
+  if (pathname === "/student/disputes") return <MyDisputes />;
   if (pathname === "/admin") return <AdminDashboard />;
   if (pathname === "/admin/users") return <AdminUsers />;
   if (pathname === "/admin/users/new") return <AdminCreateUser />;
