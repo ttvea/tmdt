@@ -28,6 +28,11 @@ public interface ClassRep extends JpaRepository<TutorClass, Long> {
                                                              ClassStatus status,
                                                              Pageable pageable);
 
+    Page<TutorClass> findByTutorIdAndApprovalStatusAndStatusIn(Long tutorId,
+                                                               ApprovalStatus approvalStatus,
+                                                               List<ClassStatus> statuses,
+                                                               Pageable pageable);
+
     long countByApprovalStatus(ApprovalStatus approvalStatus);
 
     long countByApprovalStatusAndStatus(ApprovalStatus approvalStatus, ClassStatus status);

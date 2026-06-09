@@ -3,6 +3,7 @@ import { toast } from 'react-toastify'
 import Navbar from '../../layouts/Navbar'
 import Footer from '../../layouts/Footer'
 import { getTutorProfile, type TutorProfileResponse } from '../../api/tutorProfile'
+import { getMediaUrl } from '../../api/axios'
 import { getTutorRatings, getAverageRating, createRating, updateRating, deleteRating, type RatingResponse } from '../../api/ratings'
 import { createOrGetConversation } from '../../api/conversations'
 import { getTutorClasses, type ClassResponse } from '../../api/classApi'
@@ -29,6 +30,7 @@ interface TutorProfile {
   reviews: Review[]
   verified: boolean
   hoursPerLesson: number
+  certificateUrl: string
 }
 
 interface Review {
@@ -126,6 +128,21 @@ const mapRatingToReview = (rating: RatingResponse): Review => ({
   date: new Date(rating.createdAt).toLocaleDateString('vi-VN'),
 })
 
+const TUTOR_CLASS_PAGE_SIZE = 100
+
+async function getAllTutorClassesForProfile(tutorId: number) {
+  const firstPage = await getTutorClasses(tutorId, 0, TUTOR_CLASS_PAGE_SIZE)
+  if (firstPage.totalPages <= 1) return firstPage.content
+
+  const restPages = await Promise.all(
+    Array.from({ length: firstPage.totalPages - 1 }, (_, index) =>
+      getTutorClasses(tutorId, index + 1, TUTOR_CLASS_PAGE_SIZE)
+    )
+  )
+
+  return [firstPage, ...restPages].flatMap((pageData) => pageData.content)
+}
+
 export function TutorProfileDetail() {
   const tutorId = window.location.pathname.split('/')[2]
   const [profile, setProfile] = useState<TutorProfile | null>(null)
@@ -144,6 +161,7 @@ export function TutorProfileDetail() {
   const [editingComment, setEditingComment] = useState('')
   const [savingRating, setSavingRating] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showCertificateModal, setShowCertificateModal] = useState(false)
 
   const handleNavigateBack = () => {
     window.history.back()
@@ -277,14 +295,27 @@ export function TutorProfileDetail() {
           schedule: createEmptySchedule(),
           reviews: [],
           verified: apiResponse.isVerified,
+          certificateUrl: apiResponse.certificateUrl || '',
         }
         
         try {
-          const classesResponse = await getTutorClasses(apiResponse.userId)
-          const teachingClasses = classesResponse.content.filter(
+          const tutorClasses = await getAllTutorClassesForProfile(apiResponse.userId)
+          const teachingClasses = tutorClasses.filter(
             (cls) => cls.approvalStatus === 'APPROVED' && cls.status === 'CLOSED'
           )
+          const completedClasses = tutorClasses.filter(
+            (cls) => cls.approvalStatus === 'APPROVED' && cls.status === 'COMPLETED'
+          )
+
           mappedProfile.schedule = buildScheduleFromClasses(teachingClasses)
+          mappedProfile.lessons = completedClasses.reduce(
+            (total, cls) => total + (Number(cls.totalSessions) || 0),
+            0
+          )
+          mappedProfile.students = completedClasses.reduce(
+            (total, cls) => total + (Number(cls.currentStudents) || 0),
+            0
+          )
         } catch (scheduleError) {
           console.error('Không thể tải thời khóa biểu:', scheduleError)
         }
@@ -423,6 +454,11 @@ export function TutorProfileDetail() {
       </div>
     )
   }
+
+  const certificateUrl = profile.certificateUrl
+    ? getMediaUrl(profile.certificateUrl) ?? profile.certificateUrl
+    : ''
+  const isCertificateImage = /\.(png|jpe?g|webp|gif|bmp|svg)(\?.*)?$/i.test(certificateUrl)
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -671,6 +707,37 @@ export function TutorProfileDetail() {
                 </div>
               </div>
 
+              <div className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
+                <h3 className="mb-4 font-bold text-slate-950">Chứng chỉ gia sư</h3>
+                {profile.certificateUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowCertificateModal(true)}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-600 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                  >
+                    <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.8}
+                        d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.8}
+                        d="M14 2v6h6M8 13h8M8 17h5"
+                      />
+                    </svg>
+                    Xem chứng chỉ
+                  </button>
+                ) : (
+                  <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
+                    Gia sư chưa cập nhật chứng chỉ.
+                  </div>
+                )}
+              </div>
+
               <div className="bg-white p-6 rounded-lg border border-slate-200">
                 <h3 className="font-bold mb-4">Hồ sơ đã xác minh</h3>
                 <div className="space-y-3 text-sm text-slate-700">
@@ -693,6 +760,51 @@ export function TutorProfileDetail() {
         conversationId={conversationId}
         onClose={() => setIsModalOpen(false)}
       />
+
+      {showCertificateModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6"
+          onClick={() => setShowCertificateModal(false)}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-950">Chứng chỉ gia sư</h3>
+                <p className="text-sm text-slate-500">{profile.fullName}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCertificateModal(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                aria-label="Đóng xem chứng chỉ"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="min-h-[60vh] overflow-auto bg-slate-100 p-4">
+              {isCertificateImage ? (
+                <img
+                  src={certificateUrl}
+                  alt={`Chứng chỉ của ${profile.fullName}`}
+                  className="mx-auto max-h-[72vh] max-w-full rounded-lg bg-white object-contain shadow-sm"
+                />
+              ) : (
+                <iframe
+                  src={certificateUrl}
+                  title={`Chứng chỉ của ${profile.fullName}`}
+                  className="h-[72vh] w-full rounded-lg border border-slate-200 bg-white"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Rating Modal */}
       {showEditModal && (
