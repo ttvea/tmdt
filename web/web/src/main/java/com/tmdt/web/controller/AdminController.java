@@ -5,6 +5,8 @@ import com.tmdt.web.dto.request.AdminCreateUserRequest;
 import com.tmdt.web.dto.request.AdminUpdateUserRoleRequest;
 import com.tmdt.web.dto.request.AdminUpdateUserStatusRequest;
 import com.tmdt.web.dto.request.AdminAssignSupportTicketRequest;
+import com.tmdt.web.dto.request.AdminDisputeNoteRequest;
+import com.tmdt.web.dto.request.AdminResolveDisputeRequest;
 import com.tmdt.web.dto.request.AdminUpdateSupportStatusRequest;
 import com.tmdt.web.dto.request.AdminVerifyTutorRequest;
 import com.tmdt.web.dto.request.SupportReplyRequest;
@@ -19,6 +21,8 @@ import com.tmdt.web.entity.TutorProfile;
 import com.tmdt.web.enums.ApprovalStatus;
 import com.tmdt.web.enums.ClassStatus;
 import com.tmdt.web.enums.EnrollmentStatus;
+import com.tmdt.web.enums.DisputePriority;
+import com.tmdt.web.enums.DisputeStatus;
 import com.tmdt.web.enums.SupportCategory;
 import com.tmdt.web.enums.SupportPriority;
 import com.tmdt.web.enums.SupportStatus;
@@ -28,6 +32,7 @@ import com.tmdt.web.repository.OrderRep;
 import com.tmdt.web.repository.TutorProfileRep;
 import com.tmdt.web.repository.UserRep;
 import com.tmdt.web.service.JwtService;
+import com.tmdt.web.service.DisputeService;
 import com.tmdt.web.service.SupportService;
 import com.tmdt.web.service.VoucherService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -60,6 +65,7 @@ public class AdminController {
     private final PasswordEncoder passwordEncoder;
     private final VoucherService voucherService;
     private final SupportService supportService;
+    private final DisputeService disputeService;
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentAdmin(HttpServletRequest request) {
@@ -363,6 +369,80 @@ public class AdminController {
         }
 
         return ResponseEntity.ok(supportService.addReply(ticketId, admin, replyRequest.message(), true));
+    }
+
+    @GetMapping("/disputes/stats")
+    public ResponseEntity<?> getDisputeStats(HttpServletRequest request) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        return ResponseEntity.ok(disputeService.getAdminStats());
+    }
+
+    @GetMapping("/disputes")
+    public ResponseEntity<?> getDisputes(
+            HttpServletRequest request,
+            @RequestParam(required = false) DisputeStatus status,
+            @RequestParam(required = false) DisputePriority priority,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return ResponseEntity.ok(disputeService.getAdminDisputes(status, priority, keyword, pageable));
+    }
+
+    @GetMapping("/disputes/{disputeId}")
+    public ResponseEntity<?> getDisputeDetail(HttpServletRequest request, @PathVariable Long disputeId) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        return ResponseEntity.ok(disputeService.getAdminDisputeDetail(disputeId));
+    }
+
+    @PatchMapping("/disputes/{disputeId}/resolve")
+    public ResponseEntity<?> resolveDispute(
+            HttpServletRequest request,
+            @PathVariable Long disputeId,
+            @Valid @RequestBody AdminResolveDisputeRequest resolveRequest
+    ) {
+        User admin = getAdminUserFromRequest(request);
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        return ResponseEntity.ok(disputeService.resolveDispute(
+                disputeId,
+                admin,
+                resolveRequest.status(),
+                resolveRequest.resolutionType(),
+                resolveRequest.resolutionNote()
+        ));
+    }
+
+    @PostMapping("/disputes/{disputeId}/notes")
+    public ResponseEntity<?> addDisputeNote(
+            HttpServletRequest request,
+            @PathVariable Long disputeId,
+            @Valid @RequestBody AdminDisputeNoteRequest noteRequest
+    ) {
+        User admin = getAdminUserFromRequest(request);
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        return ResponseEntity.ok(disputeService.addNote(disputeId, admin, noteRequest.note()));
     }
 
     @PostMapping("/users")

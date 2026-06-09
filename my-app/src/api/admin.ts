@@ -60,6 +60,9 @@ export type VoucherScope = 'PLATFORM' | 'ALL_CLASSES' | 'SPECIFIC_CLASS'
 export type SupportStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING_USER' | 'RESOLVED' | 'CLOSED'
 export type SupportCategory = 'ACCOUNT' | 'TUTOR_PROFILE' | 'VERIFICATION' | 'CLASS' | 'PAYMENT' | 'VOUCHER' | 'REPORT' | 'OTHER'
 export type SupportPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
+export type DisputeStatus = 'PENDING' | 'REVIEWING' | 'NEED_EVIDENCE' | 'RESOLVED' | 'REFUNDED' | 'REJECTED' | 'CLOSED'
+export type DisputePriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
+export type DisputeResolutionType = 'NONE' | 'FULL_REFUND' | 'PARTIAL_REFUND' | 'MAKE_UP_CLASS' | 'WARNING' | 'REJECTED'
 
 export interface AdminVoucher {
   id: number
@@ -128,6 +131,63 @@ export interface AdminSupportStats {
   resolvedTickets: number
   closedTickets: number
   urgentTickets: number
+}
+
+export interface DisputeNote {
+  id: number
+  adminId: number
+  adminName: string
+  note: string
+  createdAt: string | null
+}
+
+export interface DisputeEvidence {
+  id: number
+  uploadedById: number
+  uploadedByName: string
+  uploadedByRole: AdminUserRole | string | null
+  note: string | null
+  fileUrl: string | null
+  fileType: string | null
+  createdAt: string | null
+}
+
+export interface AdminDispute {
+  id: number
+  caseCode: string
+  classId: number | null
+  classTitle: string | null
+  studentId: number | null
+  studentName: string | null
+  tutorId: number | null
+  tutorName: string | null
+  createdById: number
+  createdByName: string
+  reason: string
+  description: string
+  amount: number | null
+  status: DisputeStatus
+  priority: DisputePriority
+  resolutionType: DisputeResolutionType
+  resolutionNote: string | null
+  resolvedByAdminId: number | null
+  resolvedByAdminName: string | null
+  createdAt: string | null
+  updatedAt: string | null
+  resolvedAt: string | null
+  notes: DisputeNote[]
+  evidences: DisputeEvidence[]
+}
+
+export interface AdminDisputeStats {
+  totalDisputes: number
+  activeDisputes: number
+  pendingDisputes: number
+  resolvedDisputes: number
+  refundedDisputes: number
+  rejectedDisputes: number
+  activeAmount: number
+  successRate: number
 }
 
 export interface AdminUsersStats {
@@ -287,6 +347,47 @@ export async function updateAdminSupportTicketStatus(ticketId: number, status: S
 
 export async function replyAdminSupportTicket(ticketId: number, message: string): Promise<SupportTicket> {
   const res = await api.post(`/api/admin/support/tickets/${ticketId}/replies`, { message })
+  return res.data
+}
+
+export async function getAdminDisputeStats(): Promise<AdminDisputeStats> {
+  const res = await api.get('/api/admin/disputes/stats')
+  return res.data
+}
+
+export async function getAdminDisputes(params: {
+  status?: DisputeStatus | ''
+  priority?: DisputePriority | ''
+  keyword?: string
+  page?: number
+  size?: number
+}): Promise<PageResponse<AdminDispute>> {
+  const cleanParams = {
+    ...params,
+    status: params.status || undefined,
+    priority: params.priority || undefined,
+    keyword: params.keyword?.trim() || undefined,
+  }
+  const res = await api.get('/api/admin/disputes', { params: cleanParams })
+  return res.data
+}
+
+export async function getAdminDispute(disputeId: number): Promise<AdminDispute> {
+  const res = await api.get(`/api/admin/disputes/${disputeId}`)
+  return res.data
+}
+
+export async function resolveAdminDispute(disputeId: number, payload: {
+  status: DisputeStatus
+  resolutionType: DisputeResolutionType
+  resolutionNote?: string | null
+}): Promise<AdminDispute> {
+  const res = await api.patch(`/api/admin/disputes/${disputeId}/resolve`, payload)
+  return res.data
+}
+
+export async function addAdminDisputeNote(disputeId: number, note: string): Promise<AdminDispute> {
+  const res = await api.post(`/api/admin/disputes/${disputeId}/notes`, { note })
   return res.data
 }
 
