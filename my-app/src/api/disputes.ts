@@ -31,3 +31,12 @@ export async function getMyDispute(disputeId: number): Promise<AdminDispute> {
   const res = await api.get(`/api/disputes/${disputeId}`)
   return res.data
 }
+
+export async function addDisputeEvidence(disputeId: number, payload: {
+  note?: string | null
+  fileUrl?: string | null
+  fileType?: string | null
+}): Promise<AdminDispute> {
+  const res = await api.post(`/api/disputes/${disputeId}/evidence`, payload)
+  return res.data
+}

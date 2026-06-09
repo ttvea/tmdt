@@ -1,10 +1,13 @@
 package com.tmdt.web.service;
 
 import com.tmdt.web.dto.request.DisputeCreateRequest;
+import com.tmdt.web.dto.request.DisputeEvidenceRequest;
 import com.tmdt.web.dto.response.AdminDisputeStatsResponse;
+import com.tmdt.web.dto.response.DisputeEvidenceResponse;
 import com.tmdt.web.dto.response.DisputeNoteResponse;
 import com.tmdt.web.dto.response.DisputeResponse;
 import com.tmdt.web.entity.Dispute;
+import com.tmdt.web.entity.DisputeEvidence;
 import com.tmdt.web.entity.DisputeNote;
 import com.tmdt.web.entity.TutorClass;
 import com.tmdt.web.entity.User;
@@ -13,6 +16,7 @@ import com.tmdt.web.enums.DisputeResolutionType;
 import com.tmdt.web.enums.DisputeStatus;
 import com.tmdt.web.exception.AppException;
 import com.tmdt.web.repository.ClassRep;
+import com.tmdt.web.repository.DisputeEvidenceRep;
 import com.tmdt.web.repository.DisputeNoteRep;
 import com.tmdt.web.repository.DisputeRep;
 import com.tmdt.web.repository.UserRep;
@@ -39,6 +43,7 @@ public class DisputeService {
 
     private final DisputeRep disputeRep;
     private final DisputeNoteRep disputeNoteRep;
+    private final DisputeEvidenceRep disputeEvidenceRep;
     private final UserRep userRep;
     private final ClassRep classRep;
 
@@ -95,12 +100,38 @@ public class DisputeService {
         Dispute dispute = disputeRep.findById(disputeId)
                 .orElseThrow(() -> AppException.notFound("Không tìm thấy tranh chấp"));
 
-        boolean allowed = dispute.getCreatedBy().getId().equals(user.getId())
-                || (dispute.getStudent() != null && dispute.getStudent().getId().equals(user.getId()))
-                || (dispute.getTutor() != null && dispute.getTutor().getId().equals(user.getId()));
+        validateUserAccess(dispute, user);
 
-        if (!allowed) {
-            throw AppException.forbidden("Bạn không có quyền xem tranh chấp này");
+        return toDetailResponse(dispute);
+    }
+
+    @Transactional
+    public DisputeResponse addEvidence(Long disputeId, User user, DisputeEvidenceRequest request) {
+        Dispute dispute = disputeRep.findById(disputeId)
+                .orElseThrow(() -> AppException.notFound("Không tìm thấy tranh chấp"));
+
+        validateUserAccess(dispute, user);
+
+        String note = normalize(request.note());
+        String fileUrl = normalize(request.fileUrl());
+
+        if (note == null && fileUrl == null) {
+            throw AppException.badRequest("Vui lòng nhập ghi chú hoặc link bằng chứng");
+        }
+
+        DisputeEvidence evidence = DisputeEvidence.builder()
+                .dispute(dispute)
+                .uploadedBy(user)
+                .note(note)
+                .fileUrl(fileUrl)
+                .fileType(normalize(request.fileType()))
+                .build();
+
+        disputeEvidenceRep.save(evidence);
+
+        if (dispute.getStatus() == DisputeStatus.NEED_EVIDENCE) {
+            dispute.setStatus(DisputeStatus.REVIEWING);
+            disputeRep.save(dispute);
         }
 
         return toDetailResponse(dispute);
@@ -207,7 +238,21 @@ public class DisputeService {
                 .stream()
                 .map(DisputeNoteResponse::from)
                 .toList();
-        return DisputeResponse.from(dispute, notes);
+        List<DisputeEvidenceResponse> evidences = disputeEvidenceRep.findByDisputeIdOrderByCreatedAtDesc(dispute.getId())
+                .stream()
+                .map(DisputeEvidenceResponse::from)
+                .toList();
+        return DisputeResponse.from(dispute, notes, evidences);
+    }
+
+    private void validateUserAccess(Dispute dispute, User user) {
+        boolean allowed = dispute.getCreatedBy().getId().equals(user.getId())
+                || (dispute.getStudent() != null && dispute.getStudent().getId().equals(user.getId()))
+                || (dispute.getTutor() != null && dispute.getTutor().getId().equals(user.getId()));
+
+        if (!allowed) {
+            throw AppException.forbidden("Bạn không có quyền xem tranh chấp này");
+        }
     }
 
     private String generateCaseCode() {

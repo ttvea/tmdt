@@ -3,6 +3,7 @@ import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
 import { isTutorRole } from '../../utils/userRole'
 import {
+  addDisputeEvidence,
   createDispute,
   getMyDispute,
   getMyDisputes,
@@ -64,6 +65,10 @@ export function MyDisputes() {
     classId: null,
     respondentId: null,
   })
+  const [evidenceForm, setEvidenceForm] = useState({
+    note: '',
+    fileUrl: '',
+  })
 
   useEffect(() => {
     if (!localStorage.getItem('access_token')) {
@@ -107,8 +112,35 @@ export function MyDisputes() {
     try {
       const detail = await getMyDispute(dispute.id)
       setSelectedDispute(detail)
+      setEvidenceForm({ note: '', fileUrl: '' })
     } catch {
       if (showError) toast.error('Không thể tải chi tiết tranh chấp.')
+    }
+  }
+
+  async function handleAddEvidence() {
+    if (!selectedDispute) return
+
+    if (!evidenceForm.note.trim() && !evidenceForm.fileUrl.trim()) {
+      toast.error('Vui lòng nhập ghi chú hoặc link bằng chứng.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const updated = await addDisputeEvidence(selectedDispute.id, {
+        note: evidenceForm.note.trim() || null,
+        fileUrl: evidenceForm.fileUrl.trim() || null,
+        fileType: evidenceForm.fileUrl.trim() ? 'LINK' : null,
+      })
+      setSelectedDispute(updated)
+      setDisputes((prev) => prev.map((item) => (item.id === updated.id ? { ...item, ...updated, notes: item.notes, evidences: item.evidences } : item)))
+      setEvidenceForm({ note: '', fileUrl: '' })
+      toast.success('Đã gửi bằng chứng bổ sung.')
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Không thể gửi bằng chứng.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -301,7 +333,13 @@ export function MyDisputes() {
                 </div>
               </div>
 
-              <DisputeDetail dispute={selectedDispute} />
+              <DisputeDetail
+                dispute={selectedDispute}
+                evidenceForm={evidenceForm}
+                submitting={submitting}
+                onEvidenceChange={(field, value) => setEvidenceForm((prev) => ({ ...prev, [field]: value }))}
+                onAddEvidence={handleAddEvidence}
+              />
             </section>
           </div>
         </div>
@@ -310,7 +348,19 @@ export function MyDisputes() {
   )
 }
 
-function DisputeDetail({ dispute }: { dispute: AdminDispute | null }) {
+function DisputeDetail({
+  dispute,
+  evidenceForm,
+  submitting,
+  onEvidenceChange,
+  onAddEvidence,
+}: {
+  dispute: AdminDispute | null
+  evidenceForm: { note: string; fileUrl: string }
+  submitting: boolean
+  onEvidenceChange: (field: 'note' | 'fileUrl', value: string) => void
+  onAddEvidence: () => void
+}) {
   if (!dispute) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
@@ -359,6 +409,68 @@ function DisputeDetail({ dispute }: { dispute: AdminDispute | null }) {
           {dispute.resolvedByAdminName ? (
             <p className="mt-3 text-xs font-semibold text-blue-700">Xử lý bởi {dispute.resolvedByAdminName}</p>
           ) : null}
+        </div>
+
+        {dispute.status === 'NEED_EVIDENCE' ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-bold text-amber-900">Admin cần bạn bổ sung bằng chứng</p>
+            <p className="mt-1 text-sm leading-6 text-amber-800">
+              Hãy gửi thêm mô tả, ảnh chụp màn hình, biên lai hoặc link Google Drive/Zoom/Meet liên quan.
+            </p>
+            <div className="mt-4 grid gap-3">
+              <textarea
+                value={evidenceForm.note}
+                onChange={(event) => onEvidenceChange('note', event.target.value)}
+                rows={3}
+                className="w-full resize-none rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm leading-6 text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+                placeholder="Mô tả bằng chứng bổ sung..."
+              />
+              <input
+                value={evidenceForm.fileUrl}
+                onChange={(event) => onEvidenceChange('fileUrl', event.target.value)}
+                className="h-10 w-full rounded-lg border border-amber-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+                placeholder="Dán link bằng chứng nếu có"
+              />
+              <button
+                type="button"
+                onClick={onAddEvidence}
+                disabled={submitting}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 text-sm font-bold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <SendIcon /> Gửi bằng chứng
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <div>
+          <p className="mb-3 text-sm font-bold text-slate-950">Bằng chứng đã gửi</p>
+          <div className="space-y-3">
+            {dispute.evidences.map((evidence) => (
+              <div key={evidence.id} className="rounded-xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-slate-950">{evidence.uploadedByName}</p>
+                  <span className="text-xs font-semibold text-slate-400">{formatDateTime(evidence.createdAt)}</span>
+                </div>
+                {evidence.note ? <p className="mt-2 text-sm leading-6 text-slate-700">{evidence.note}</p> : null}
+                {evidence.fileUrl ? (
+                  <a
+                    href={evidence.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex text-sm font-bold text-blue-700 hover:underline"
+                  >
+                    Mở bằng chứng
+                  </a>
+                ) : null}
+              </div>
+            ))}
+            {dispute.evidences.length === 0 && (
+              <div className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm font-semibold text-slate-500">
+                Chưa có bằng chứng bổ sung.
+              </div>
+            )}
+          </div>
         </div>
 
         <div>

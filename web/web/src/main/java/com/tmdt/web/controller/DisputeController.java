@@ -1,6 +1,7 @@
 package com.tmdt.web.controller;
 
 import com.tmdt.web.dto.request.DisputeCreateRequest;
+import com.tmdt.web.dto.request.DisputeEvidenceRequest;
 import com.tmdt.web.entity.User;
 import com.tmdt.web.repository.UserRep;
 import com.tmdt.web.service.DisputeService;
@@ -61,6 +62,20 @@ public class DisputeController {
         }
 
         return ResponseEntity.ok(disputeService.getMyDisputeDetail(user, disputeId));
+    }
+
+    @PostMapping("/{disputeId}/evidence")
+    public ResponseEntity<?> addEvidence(
+            HttpServletRequest request,
+            @PathVariable Long disputeId,
+            @RequestBody DisputeEvidenceRequest evidenceRequest
+    ) {
+        User user = getUserFromRequest(request);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Vui lòng đăng nhập");
+        }
+
+        return ResponseEntity.ok(disputeService.addEvidence(disputeId, user, evidenceRequest));
     }
 
     private User getUserFromRequest(HttpServletRequest request) {

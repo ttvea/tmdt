@@ -32,13 +32,18 @@ public record DisputeResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         LocalDateTime resolvedAt,
-        List<DisputeNoteResponse> notes
+        List<DisputeNoteResponse> notes,
+        List<DisputeEvidenceResponse> evidences
 ) {
     public static DisputeResponse from(Dispute dispute) {
-        return from(dispute, List.of());
+        return from(dispute, List.of(), List.of());
     }
 
-    public static DisputeResponse from(Dispute dispute, List<DisputeNoteResponse> notes) {
+    public static DisputeResponse from(
+            Dispute dispute,
+            List<DisputeNoteResponse> notes,
+            List<DisputeEvidenceResponse> evidences
+    ) {
         return new DisputeResponse(
                 dispute.getId(),
                 dispute.getCaseCode(),
@@ -62,7 +67,8 @@ public record DisputeResponse(
                 dispute.getCreatedAt(),
                 dispute.getUpdatedAt(),
                 dispute.getResolvedAt(),
-                notes
+                notes,
+                evidences
         );
     }
 }

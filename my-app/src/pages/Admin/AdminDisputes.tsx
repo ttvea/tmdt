@@ -384,6 +384,35 @@ function DisputeDetailModal({ dispute, noteText, submitting, onClose, onResolve,
             <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">{dispute.description}</p>
           </div>
           <div>
+            <p className="mb-3 text-sm font-bold text-slate-950">Bằng chứng bổ sung</p>
+            <div className="space-y-3">
+              {dispute.evidences.map((evidence) => (
+                <div key={evidence.id} className="rounded-lg border border-slate-200 p-4">
+                  <div className="flex justify-between gap-3">
+                    <p className="text-sm font-bold text-slate-950">
+                      {evidence.uploadedByName}
+                      {evidence.uploadedByRole ? <span className="ml-2 text-xs font-semibold text-slate-400">{evidence.uploadedByRole}</span> : null}
+                    </p>
+                    <span className="text-xs text-slate-500">{formatDateTime(evidence.createdAt)}</span>
+                  </div>
+                  {evidence.note ? <p className="mt-2 text-sm leading-6 text-slate-700">{evidence.note}</p> : null}
+                  {evidence.fileUrl ? (
+                    <a
+                      href={evidence.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex text-sm font-bold text-blue-700 hover:underline"
+                    >
+                      Mở bằng chứng
+                    </a>
+                  ) : null}
+                </div>
+              ))}
+              {dispute.evidences.length === 0 ? <p className="text-sm text-slate-500">Chưa có bằng chứng bổ sung.</p> : null}
+            </div>
+          </div>
+
+          <div>
             <p className="mb-3 text-sm font-bold text-slate-950">Ghi chú xử lý</p>
             <div className="space-y-3">
               {dispute.notes.map((note) => (

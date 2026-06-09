@@ -141,6 +141,17 @@ export interface DisputeNote {
   createdAt: string | null
 }
 
+export interface DisputeEvidence {
+  id: number
+  uploadedById: number
+  uploadedByName: string
+  uploadedByRole: AdminUserRole | string | null
+  note: string | null
+  fileUrl: string | null
+  fileType: string | null
+  createdAt: string | null
+}
+
 export interface AdminDispute {
   id: number
   caseCode: string
@@ -165,6 +176,7 @@ export interface AdminDispute {
   updatedAt: string | null
   resolvedAt: string | null
   notes: DisputeNote[]
+  evidences: DisputeEvidence[]
 }
 
 export interface AdminDisputeStats {
