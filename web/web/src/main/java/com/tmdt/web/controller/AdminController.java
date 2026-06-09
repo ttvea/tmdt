@@ -52,10 +52,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 
 @RestController
@@ -484,6 +490,29 @@ public class AdminController {
                 .body(body);
     }
 
+    @GetMapping("/reports/preview")
+    public ResponseEntity<?> previewReport(
+            HttpServletRequest request,
+            @RequestParam ReportType type,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        LocalDate startDate = from != null ? from : LocalDate.now().minusDays(30);
+        LocalDate endDate = to != null ? to : LocalDate.now();
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.plusDays(1).atStartOfDay().minusNanos(1);
+
+        return ResponseEntity.ok(switch (type) {
+            case DASHBOARD -> buildDashboardReportPreview(startDate, endDate, start, end);
+            case DISPUTES -> buildDisputesReportPreview(startDate, endDate, start, end);
+        });
+    }
+
     @PostMapping("/users")
     public ResponseEntity<?> createUser(
             HttpServletRequest request,
@@ -649,6 +678,154 @@ public class AdminController {
         }
 
         return csv.toString();
+    }
+
+    private Map<String, Object> buildDashboardReportPreview(
+            LocalDate fromDate,
+            LocalDate toDate,
+            LocalDateTime from,
+            LocalDateTime to
+    ) {
+        Date start = Date.from(from.atZone(ZoneId.systemDefault()).toInstant());
+        Date end = Date.from(to.atZone(ZoneId.systemDefault()).toInstant());
+        List<Order> paidOrders = orderRep.findByStatusAndDateCreateBetweenOrderByDateCreateDesc(Order.OrderStatus.PAID, start, end);
+        double revenue = paidOrders.stream().mapToDouble(order -> order.getAmount() != null ? order.getAmount() : 0).sum();
+        double averageFee = paidOrders.isEmpty() ? 0 : revenue / paidOrders.size();
+
+        List<com.tmdt.web.entity.Dispute> disputes = disputeRep.findByCreatedAtBetweenOrderByCreatedAtDesc(from, to);
+        long refundedDisputes = disputes.stream().filter(dispute -> dispute.getStatus() == DisputeStatus.REFUNDED).count();
+        double refundRate = disputes.isEmpty() ? 0 : Math.round((refundedDisputes * 1000.0) / disputes.size()) / 10.0;
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("metrics", List.of(
+                metric("Tổng doanh thu", revenue, "Từ đơn hàng đã thanh toán"),
+                metric("Học phí trung bình", averageFee, paidOrders.isEmpty() ? "Chưa có giao dịch" : paidOrders.size() + " giao dịch"),
+                metric("Tỷ lệ hoàn tiền", refundRate, disputes.isEmpty() ? "Chưa có tranh chấp" : refundedDisputes + " tranh chấp hoàn tiền")
+        ));
+        response.put("chart", buildRevenueChart(paidOrders, fromDate, toDate));
+        response.put("rows", paidOrders.stream().limit(5).map(order -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("code", "#ORD-" + order.getId());
+            row.put("date", order.getDateCreate());
+            row.put("tutorName", "-");
+            row.put("studentName", order.getStudentId() > 0 ? "ID " + order.getStudentId() : "-");
+            row.put("amount", order.getAmount() != null ? order.getAmount() : 0);
+            return row;
+        }).toList());
+        return response;
+    }
+
+    private Map<String, Object> buildDisputesReportPreview(
+            LocalDate fromDate,
+            LocalDate toDate,
+            LocalDateTime from,
+            LocalDateTime to
+    ) {
+        List<com.tmdt.web.entity.Dispute> disputes = disputeRep.findByCreatedAtBetweenOrderByCreatedAtDesc(from, to);
+        BigDecimal totalAmount = disputes.stream()
+                .map(dispute -> dispute.getAmount() != null ? dispute.getAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        long activeDisputes = disputes.stream()
+                .filter(dispute -> dispute.getStatus() == DisputeStatus.PENDING
+                        || dispute.getStatus() == DisputeStatus.REVIEWING
+                        || dispute.getStatus() == DisputeStatus.NEED_EVIDENCE)
+                .count();
+        long resolvedDisputes = disputes.stream()
+                .filter(dispute -> dispute.getStatus() == DisputeStatus.RESOLVED
+                        || dispute.getStatus() == DisputeStatus.REFUNDED
+                        || dispute.getStatus() == DisputeStatus.REJECTED
+                        || dispute.getStatus() == DisputeStatus.CLOSED)
+                .count();
+        double successRate = disputes.isEmpty() ? 0 : Math.round((resolvedDisputes * 1000.0) / disputes.size()) / 10.0;
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("metrics", List.of(
+                metric("Tổng tranh chấp", disputes.size(), "Trong khoảng thời gian đã chọn"),
+                metric("Đang xử lý", activeDisputes, "Cần admin theo dõi"),
+                metric("Tỷ lệ đã giải quyết", successRate, resolvedDisputes + " hồ sơ đã xử lý")
+        ));
+        response.put("chart", buildDisputeChart(disputes, fromDate, toDate));
+        response.put("rows", disputes.stream().limit(5).map(dispute -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("code", "#" + dispute.getCaseCode());
+            row.put("date", dispute.getCreatedAt());
+            row.put("tutorName", dispute.getTutor() != null ? dispute.getTutor().getFullName() : "-");
+            row.put("studentName", dispute.getStudent() != null ? dispute.getStudent().getFullName() : "-");
+            row.put("amount", dispute.getAmount() != null ? dispute.getAmount() : BigDecimal.ZERO);
+            return row;
+        }).toList());
+        return response;
+    }
+
+    private Map<String, Object> metric(String label, Object value, String detail) {
+        Map<String, Object> metric = new LinkedHashMap<>();
+        metric.put("label", label);
+        metric.put("value", value != null ? value : 0);
+        metric.put("detail", detail != null ? detail : "");
+        return metric;
+    }
+
+    private List<Map<String, Object>> buildRevenueChart(List<Order> orders, LocalDate from, LocalDate to) {
+        Map<LocalDate, Double> grouped = new LinkedHashMap<>();
+        for (LocalDate date : buildChartBuckets(from, to)) {
+            grouped.put(date, 0.0);
+        }
+
+        for (Order order : orders) {
+            if (order.getDateCreate() == null) continue;
+            LocalDate orderDate = order.getDateCreate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            LocalDate bucket = closestBucket(orderDate, grouped);
+            grouped.put(bucket, grouped.getOrDefault(bucket, 0.0) + (order.getAmount() != null ? order.getAmount() : 0));
+        }
+
+        return grouped.entrySet().stream().map(entry -> chartPoint(entry.getKey(), entry.getValue())).toList();
+    }
+
+    private List<Map<String, Object>> buildDisputeChart(List<com.tmdt.web.entity.Dispute> disputes, LocalDate from, LocalDate to) {
+        Map<LocalDate, Long> grouped = new LinkedHashMap<>();
+        for (LocalDate date : buildChartBuckets(from, to)) {
+            grouped.put(date, 0L);
+        }
+
+        for (com.tmdt.web.entity.Dispute dispute : disputes) {
+            if (dispute.getCreatedAt() == null) continue;
+            LocalDate disputeDate = dispute.getCreatedAt().toLocalDate();
+            LocalDate bucket = closestBucket(disputeDate, grouped);
+            grouped.put(bucket, grouped.getOrDefault(bucket, 0L) + 1);
+        }
+
+        return grouped.entrySet().stream().map(entry -> chartPoint(entry.getKey(), entry.getValue())).toList();
+    }
+
+    private List<LocalDate> buildChartBuckets(LocalDate from, LocalDate to) {
+        long days = Math.max(ChronoUnit.DAYS.between(from, to), 1);
+        int bucketCount = (int) Math.min(days + 1, 8);
+        List<LocalDate> buckets = new ArrayList<>();
+        for (int index = 0; index < bucketCount; index++) {
+            long offset = bucketCount == 1 ? 0 : Math.round((double) index * days / (bucketCount - 1));
+            buckets.add(from.plusDays(offset));
+        }
+        return buckets;
+    }
+
+    private LocalDate closestBucket(LocalDate date, Map<LocalDate, ?> buckets) {
+        LocalDate selected = buckets.keySet().iterator().next();
+        long smallestDistance = Long.MAX_VALUE;
+        for (LocalDate bucket : buckets.keySet()) {
+            long distance = Math.abs(ChronoUnit.DAYS.between(date, bucket));
+            if (distance < smallestDistance) {
+                selected = bucket;
+                smallestDistance = distance;
+            }
+        }
+        return selected;
+    }
+
+    private Map<String, Object> chartPoint(LocalDate date, Object value) {
+        Map<String, Object> point = new LinkedHashMap<>();
+        point.put("label", String.format("%02d/%02d", date.getDayOfMonth(), date.getMonthValue()));
+        point.put("value", value != null ? value : 0);
+        return point;
     }
 
     private void appendCsvRow(StringBuilder csv, Object... values) {

@@ -98,13 +98,12 @@ export function AdminLayout({ children, activePath, adminName }: AdminLayoutProp
 
             <div className="px-4 pb-5">
               <div className="mb-4 border-t border-slate-300 pt-4">
-              <button
-                type="button"
-                onClick={() => setShowReportModal(true)}
+              <a
+                href="/admin/reports"
                 className="flex h-10 w-full items-center justify-center rounded bg-blue-700 text-xs font-bold text-white shadow-sm transition hover:bg-blue-800"
               >
                 Tạo báo cáo
-              </button>
+              </a>
             </div>
             <div className="space-y-1">
               <a href="/admin/settings" className="flex h-9 w-full items-center gap-3 rounded px-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 [&_svg]:h-5 [&_svg]:w-5">

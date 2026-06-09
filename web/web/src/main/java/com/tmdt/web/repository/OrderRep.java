@@ -5,8 +5,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Date;
+import java.util.List;
+
 public interface OrderRep extends JpaRepository<Order, Integer> {
 
     @Query(value = "SELECT COALESCE(SUM(amount), 0) FROM orders WHERE status = :status", nativeQuery = true)
     Double sumAmountByStatus(@Param("status") String status);
+
+    List<Order> findByStatusAndDateCreateBetweenOrderByDateCreateDesc(
+            Order.OrderStatus status,
+            Date from,
+            Date to
+    );
 }
