@@ -1,6 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "../../layouts/Navbar";
 import Footer from "../../layouts/Footer";
+import { ApplicationModal } from "../../components/ApplicationModal";
+import { isTutorRole } from "../../utils/userRole";
+import { toast } from "react-toastify";
 
 type StudentRequest = {
   id: number;
@@ -20,13 +23,20 @@ const StudentRequestsList = () => {
   const [keyword, setKeyword] = useState("");
   const [subject, setSubject] = useState("");
   const [mode, setMode] = useState("");
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  
+  // Get current user info
+  const userRaw = localStorage.getItem("user");
+  const user = userRaw ? JSON.parse(userRaw) : null;
+  const isTutor = user ? isTutorRole(user.role) : false;
   
   // Thêm 2 state này để lưu dữ liệu thật
   const [requests, setRequests] = useState<StudentRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Gọi API lấy dữ liệu khi vừa vào trang
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchRequests = async () => {
       try {
         const response = await fetch("http://localhost:8080/api/student-requests/all");
@@ -42,6 +52,26 @@ const StudentRequestsList = () => {
     };
     fetchRequests();
   }, []);
+
+  const handleApplyClick = (requestId: number) => {
+    if (!user) {
+      toast.error("Vui lòng đăng nhập để ứng tuyển");
+      window.location.href = "/login";
+      return;
+    }
+
+    if (!isTutor) {
+      toast.error("Chỉ gia sư mới có thể ứng tuyển");
+      return;
+    }
+
+    setSelectedRequestId(requestId);
+    setShowApplicationModal(true);
+  };
+
+  const handleApplicationSuccess = () => {
+    toast.success("Ứng tuyển thành công!");
+  };
 
   // ... (Phần return giao diện giữ nguyên)
 
@@ -216,7 +246,10 @@ const StudentRequestsList = () => {
                         {req.budget.toLocaleString("vi-VN")} đ <span className="text-sm font-normal text-slate-500">/tháng</span>
                       </span>
                     </div>
-                    <button className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-5 rounded-md text-sm transition-colors shadow-sm">
+                    <button 
+                      onClick={() => handleApplyClick(req.id)}
+                      className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-5 rounded-md text-sm transition-colors shadow-sm"
+                    >
                       Yêu cầu dạy
                     </button>
                   </div>
@@ -246,6 +279,15 @@ const StudentRequestsList = () => {
 
         </div>
       </main>
+
+      {showApplicationModal && selectedRequestId && (
+        <ApplicationModal
+          isOpen={showApplicationModal}
+          onClose={() => setShowApplicationModal(false)}
+          requestId={selectedRequestId}
+          onSuccess={handleApplicationSuccess}
+        />
+      )}
       
       <Footer />
     </div>

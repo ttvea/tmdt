@@ -16,10 +16,13 @@ import { ClassDetail } from "./pages/Tutor/class-detail";
 import { TutorSchedule } from "./pages/Tutor/schedule";
 import { TutorMessages } from "./pages/Tutor/messages";
 import { TutorVouchers } from "./pages/Tutor/vouchers";
+import { TutorApplications } from "./pages/Tutor/applications";
 import  StudentProfile  from "./pages/Student/StudentProfile";
 import { StudentSchedule } from "./pages/Student/schedule";
 import { StudentMessages } from "./pages/Student/messages";
+import { MyStudentRequests } from "./pages/Student/MyStudentRequests";
 import { TutorProfileDetail } from "./pages/Tutor/TutorProfileDetail";
+import { StudentRequestDetail } from "./pages/Student/StudentRequestDetail";
 import AboutPage from "./pages/AboutPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import { AdminDashboard } from "./pages/Admin/AdminDashboard";
@@ -106,6 +109,7 @@ function App() {
   if (pathname === "/tutor/schedule") return <TutorSchedule />;
   if (pathname === "/tutor/messages") return <TutorMessages />;
   if (pathname === "/tutor/vouchers") return <TutorVouchers />;
+  if (pathname === "/tutor/applications") return <TutorApplications />;
   if (pathname === "/tutor/support") return <MySupport />;
   if (pathname === "/tutor/classes/new") return <FormAddClass />;
   if (pathname.startsWith("/tutor/classes/") && !pathname.includes("/edit/")) return <ClassDetail />;
@@ -116,6 +120,7 @@ function App() {
   if (pathname === "/student/profile") return <StudentProfile />;
   if (pathname === "/student/schedule") return <StudentSchedule />;
   if (pathname === "/student/messages") return <StudentMessages />;
+  if (pathname === "/student/my-requests") return <MyStudentRequests />;
   if (pathname === "/student/support") return <MySupport />;
   if (pathname === "/admin") return <AdminDashboard />;
   if (pathname === "/admin/users") return <AdminUsers />;
@@ -127,7 +132,10 @@ function App() {
   if (pathname.startsWith("/admin/classes/")) return <AdminClassDetail />;
   if (pathname === "/post-class") return <PostClassPage />;
   if (pathname === "/discover/student-requests") return <StudentRequestsList />;
-
+  if (pathname.startsWith("/discover/student-requests/")) {
+    const requestId = pathname.split("/")[3];
+    if (requestId && !isNaN(Number(requestId))) return <StudentRequestDetail />;
+  }
 
   return <NotFoundPage />;
 }
