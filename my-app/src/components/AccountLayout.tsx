@@ -62,6 +62,16 @@ const tutorMenuItems: MenuItem[] = [
     ),
   },
   {
+    label: 'Ứng tuyển',
+    href: '/tutor/applications',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+          d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+      </svg>
+    ),
+  },
+  {
     label: 'Hỗ trợ',
     href: '/tutor/support',
     icon: (
@@ -103,6 +113,16 @@ const studentMenuItems: MenuItem[] = [
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
           d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM12 14a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Bảng tin của tôi',
+    href: '/student/my-requests',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+          d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 0 0 1.946-.806 3.42 3.42 0 0 1 4.438 0 3.42 3.42 0 0 0 1.946.806 3.42 3.42 0 0 1 3.138 3.138 3.42 3.42 0 0 0 .806 1.946 3.42 3.42 0 0 1 0 4.438 3.42 3.42 0 0 0-.806 1.946 3.42 3.42 0 0 1-3.138 3.138 3.42 3.42 0 0 0-1.946.806 3.42 3.42 0 0 1-4.438 0 3.42 3.42 0 0 0-1.946-.806 3.42 3.42 0 0 1-3.138-3.138 3.42 3.42 0 0 0-.806-1.946 3.42 3.42 0 0 1 0-4.438 3.42 3.42 0 0 0 .806-1.946 3.42 3.42 0 0 1 3.138-3.138z" />
       </svg>
     ),
   },
@@ -177,7 +197,17 @@ interface AccountLayoutProps {
 
 export function AccountLayout({ children, activePath }: AccountLayoutProps) {
   const userRaw = localStorage.getItem('user')
-  const user = userRaw ? JSON.parse(userRaw) : null
+  let user: any = null
+
+  if (userRaw) {
+    try {
+      user = JSON.parse(userRaw)
+    } catch (error) {
+      console.warn('Invalid user data in localStorage:', error, userRaw)
+      localStorage.removeItem('user')
+      localStorage.removeItem('access_token')
+    }
+  }
   const userId: number = user?.id
   const isTutor = isTutorRole(user?.role)
 

@@ -50,4 +50,9 @@ public class StudentRequestService {
                 .map(StudentRequestResponse::new)
                 .collect(Collectors.toList());
     }
+    public List<StudentRequest> getMyRequests(
+            Integer userId
+    ) {
+        return studentRequestRep.findByUserId(userId);
+    }
 }

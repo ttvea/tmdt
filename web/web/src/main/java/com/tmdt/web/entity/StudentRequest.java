@@ -52,6 +52,9 @@ public class StudentRequest {
     private String requirements;
 
     private String status = "PENDING";
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "selected_tutor_id")
+    private User selectedTutor;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

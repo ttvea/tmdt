@@ -8,7 +8,9 @@ import com.tmdt.web.repository.UserRep;
 import com.tmdt.web.service.StudentRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -56,5 +58,22 @@ public class StudentRequestController {
     public ResponseEntity<ApiResponse<List<StudentRequestResponse>>> getAllRequests() {
         List<StudentRequestResponse> data = studentRequestService.getAllOpenRequests();
         return ResponseEntity.ok(new ApiResponse<>(true, "Lấy danh sách thành công", data));
+    }
+    @GetMapping("/my-requests")
+    public ResponseEntity<?> getMyRequests(
+            @AuthenticationPrincipal UserDetails springUser
+    ) {
+
+        String email = springUser.getUsername();
+
+        com.tmdt.web.entity.User user =
+                userRep.findByEmail(email)
+                        .orElseThrow();
+
+        return ResponseEntity.ok(
+                studentRequestService.getMyRequests(
+                        user.getId()
+                )
+        );
     }
 }
