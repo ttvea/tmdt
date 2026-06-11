@@ -66,7 +66,7 @@ const PostClassPage = () => {
     const token = localStorage.getItem("access_token");
     if (!token) {
       alert("Vui lòng đăng nhập để có thể đăng tin tìm gia sư!");
-      window.location.href = "/login"; // Chuyển hướng về trang đăng nhập
+      window.location.href = "/login";
       return;
     }
 
@@ -85,7 +85,6 @@ const PostClassPage = () => {
     };
 
     try {
-      // 3. KHAI BÁO BIẾN TOKEN Ở ĐÂY ĐỂ KHÔNG BỊ LỖI
       const token = localStorage.getItem("access_token");
 
       // 4. Gọi API
