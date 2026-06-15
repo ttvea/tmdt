@@ -146,7 +146,7 @@ export async function getAllCategories(): Promise<CategoryOption[]> {
   return res.data
 }
 
-export type EnrollmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'PAID'
+export type EnrollmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'CASH_REQUESTED' | 'PAID'
 
 export interface EnrollmentResponse {
   id: number
@@ -162,6 +162,8 @@ export interface EnrollmentResponse {
   approvedAt: string | null
   paidAt: string | null
   createdAt: string
+  orderId: number | null
+  amount: number | null
 }
 
 export async function getEnrollmentsOfClass(
@@ -234,6 +236,34 @@ export async function adminReviewClass(
   rejectReason?: string
 ): Promise<ClassResponse> {
   const res = await api.put(`/api/classes/admin/${classId}/review`, { approved, rejectReason }, {
+    headers: getAuthHeader(),
+  })
+  return res.data
+}
+
+export async function enroll(classId: number): Promise<EnrollmentResponse> {
+  const res = await api.post(`/api/classes/${classId}/enroll`, null, {
+    headers: getAuthHeader(),
+  })
+  return res.data
+}
+
+export async function confirmPayment(enrollmentId: number): Promise<EnrollmentResponse> {
+  const res = await api.post(`/api/classes/enrollments/${enrollmentId}/pay`, null, {
+    headers: getAuthHeader(),
+  })
+  return res.data
+}
+
+export async function requestCashPayment(enrollmentId: number): Promise<EnrollmentResponse> {
+  const res = await api.post(`/api/classes/enrollments/${enrollmentId}/request-cash`, null, {
+    headers: getAuthHeader(),
+  })
+  return res.data
+}
+
+export async function confirmCashReceived(enrollmentId: number): Promise<EnrollmentResponse> {
+  const res = await api.post(`/api/classes/enrollments/${enrollmentId}/confirm-cash`, null, {
     headers: getAuthHeader(),
   })
   return res.data

@@ -29,12 +29,25 @@ public class ConversationController {
         com.tmdt.web.entity.User user = userRep.findByEmail(email)
                 .orElseThrow();
 
-        Integer studentId = user.getId();
+        Integer currentUserId = user.getId();
+
+        Integer studentId;
+        Integer tutorId;
+
+        // If the current user is a tutor (they provide studentId), create with their studentId
+        if (request.getStudentId() != null) {
+            studentId = request.getStudentId();
+            tutorId = currentUserId;
+        } else {
+            // Student is creating conversation with a tutor
+            studentId = currentUserId;
+            tutorId = request.getTutorId();
+        }
 
         Conversation conversation =
                 conversationService.createOrGetConversation(
                         studentId,
-                        request.getTutorId()
+                        tutorId
                 );
 
         return ResponseEntity.ok(conversation.getId());

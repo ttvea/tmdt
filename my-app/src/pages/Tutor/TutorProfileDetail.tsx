@@ -169,7 +169,7 @@ export function TutorProfileDetail() {
 
   const handleOpenConsultation = async () => {
     try {
-      const id = await createOrGetConversation(Number(tutorId))
+      const id = await createOrGetConversation({ tutorId: Number(tutorId) })
       setConversationId(id)
       setIsModalOpen(true)
     } catch (err) {

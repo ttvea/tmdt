@@ -9,6 +9,7 @@ import com.tmdt.web.dto.response.EnrollmentResponse;
 import com.tmdt.web.entity.ClassSchedule;
 import com.tmdt.web.entity.Enrollment;
 import com.tmdt.web.entity.TutorProfile;
+import com.tmdt.web.entity.Order;
 import com.tmdt.web.entity.TutorClass;
 import com.tmdt.web.enums.ApprovalStatus;
 import com.tmdt.web.enums.ClassStatus;
@@ -18,6 +19,7 @@ import com.tmdt.web.exception.AppException;
 import com.tmdt.web.mapper.ClassMapper;
 import com.tmdt.web.repository.ClassRep;
 import com.tmdt.web.repository.EnrollmentRep;
+import com.tmdt.web.repository.OrderRep;
 import com.tmdt.web.repository.TutorProfileRep;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -37,6 +39,7 @@ public class ClassService {
     private final EnrollmentRep enrollmentRepository;
     private final ClassMapper classMapper;
     private final TutorProfileRep tutorProfileRepository;
+    private final OrderRep orderRepository;
 
     @Transactional
     public ClassResponse createClass(ClassCreateRequest request, Long tutorId) {
@@ -251,6 +254,16 @@ public class ClassService {
                 .build();
 
         enrollmentRepository.save(enrollment);
+
+        // Tạo Order ngay khi enroll thành công
+        Order order = Order.builder()
+                .studentId(studentId.intValue())
+                .tutorClass(classEntity)
+                .amount(classEntity.getPricePerCourse().doubleValue())
+                .status(Order.OrderStatus.PENDING)
+                .build();
+        orderRepository.save(order);
+
         return classMapper.toEnrollmentResponse(enrollment);
     }
 
@@ -296,6 +309,66 @@ public class ClassService {
 
         classRepository.save(classEntity);
         enrollmentRepository.save(enrollment);
+
+        // Cập nhật Order status sang PAID
+        orderRepository.findByStudentIdAndClassId(studentId.intValue(), classEntity.getId()).ifPresent(order -> {
+            order.setStatus(Order.OrderStatus.PAID);
+            order.setPaidAt(new java.util.Date());
+            orderRepository.save(order);
+        });
+
+        return classMapper.toEnrollmentResponse(enrollment);
+    }
+
+    @Transactional
+    public EnrollmentResponse requestCashPayment(Long enrollmentId, Long studentId) {
+        Enrollment enrollment = enrollmentRepository.findByIdAndStudentId(enrollmentId, studentId)
+                .orElseThrow(() -> AppException.notFound("Không tìm thấy đơn đăng ký"));
+
+        if (enrollment.getStatus() != EnrollmentStatus.APPROVED) {
+            throw AppException.badRequest("Đơn đăng ký chưa được gia sư duyệt hoặc đã thanh toán");
+        }
+
+        enrollment.setStatus(EnrollmentStatus.CASH_REQUESTED);
+        enrollmentRepository.save(enrollment);
+        return classMapper.toEnrollmentResponse(enrollment);
+    }
+
+    @Transactional
+    public EnrollmentResponse confirmCashReceived(Long enrollmentId, Long tutorId) {
+        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+                .orElseThrow(() -> AppException.notFound("Không tìm thấy đơn đăng ký"));
+
+        if (enrollment.getStatus() != EnrollmentStatus.CASH_REQUESTED) {
+            throw AppException.badRequest("Học viên chưa yêu cầu thanh toán tiền mặt");
+        }
+
+        TutorClass classEntity = enrollment.getClassEntity();
+        if (!classEntity.getTutorId().equals(tutorId)) {
+            throw AppException.forbidden("Bạn không phải gia sư của lớp học này");
+        }
+
+        enrollment.setStatus(EnrollmentStatus.PAID);
+        enrollment.setPaidAt(LocalDateTime.now());
+
+        classEntity.setCurrentStudents(classEntity.getCurrentStudents() + 1);
+
+        long paidCount = enrollmentRepository.countByClassEntityIdAndStatusIn(
+                classEntity.getId(), List.of(EnrollmentStatus.PAID));
+        if (paidCount + 1 >= classEntity.getMaxStudents()) {
+            classEntity.setStatus(ClassStatus.CLOSED);
+        }
+
+        classRepository.save(classEntity);
+        enrollmentRepository.save(enrollment);
+
+        // Cập nhật Order status sang PAID
+        orderRepository.findByStudentIdAndClassId(enrollment.getStudentId().intValue(), classEntity.getId()).ifPresent(order -> {
+            order.setStatus(Order.OrderStatus.PAID);
+            order.setPaidAt(new java.util.Date());
+            orderRepository.save(order);
+        });
+
         return classMapper.toEnrollmentResponse(enrollment);
     }
 

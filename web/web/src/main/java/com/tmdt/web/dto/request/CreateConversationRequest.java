@@ -6,4 +6,5 @@ import lombok.Data;
 public class CreateConversationRequest {
 
     private Integer tutorId;
+    private Integer studentId;
 }

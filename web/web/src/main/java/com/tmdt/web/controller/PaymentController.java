@@ -30,6 +30,11 @@ public class PaymentController {
                 order.getAmount()
         );
 
+        order.setStatus(Order.OrderStatus.PENDING);
+        order.setVnpTxnRef(String.valueOf(order.getId()));
+        order.setPaymentUrl(paymentUrl);
+        orderRepository.save(order);
+
         return Map.of(
                 "paymentUrl",
                 paymentUrl
@@ -39,21 +44,30 @@ public class PaymentController {
     @GetMapping("/vnpay-return")
     public String paymentReturn(
             @RequestParam String vnp_ResponseCode,
-            @RequestParam String vnp_TxnRef
+            @RequestParam String vnp_TxnRef,
+            @RequestParam(required = false) String vnp_TransactionNo
     ) {
 
         Order order = orderRepository.findById(
                 Integer.parseInt(vnp_TxnRef)
         ).orElseThrow();
 
+        order.setVnpTxnRef(vnp_TxnRef);
+        order.setVnpResponseCode(vnp_ResponseCode);
+        order.setVnpTransactionNo(vnp_TransactionNo);
+
         if (vnp_ResponseCode.equals("00")) {
 
             order.setStatus(Order.OrderStatus.PAID);
+            order.setPaidAt(new Date());
 
             orderRepository.save(order);
 
             return "Thanh toán thành công";
         }
+
+        order.setStatus(Order.OrderStatus.CANCELLED);
+        orderRepository.save(order);
 
         return "Thanh toán thất bại";
     }

@@ -172,6 +172,15 @@ public class ApplicationService {
                 .tutorId(
                         application.getTutor().getId()
                 )
+                .studentUserId(
+                        application.getStudentRequest().getUser().getId()
+                )
+                .studentName(
+                        application.getStudentRequest().getUser().getFullName()
+                )
+                .studentAvatar(
+                        application.getStudentRequest().getUser().getAvatar()
+                )
                 .tutorName(
                         application.getTutor().getFullName()
                 )

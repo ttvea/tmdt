@@ -24,29 +24,46 @@ export function ConversationsList() {
   }, [])
 
   useEffect(() => {
-    if (!supabase) return
-
-    const channel = supabase
-      .channel('msg-changes-conversations')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
-        void getConversationsList()
-          .then((data) => setConversations(data))
-          .catch((err) => console.error('Realtime conversations refresh failed:', err))
-      })
-
-    try {
-      void channel.subscribe((status: any) => {
-        // eslint-disable-next-line no-console
-        console.log('[supabase] channel status (conversations):', status)
-      })
-      // eslint-disable-next-line no-console
-      console.log('[supabase] channel object (conversations):', channel)
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[supabase] subscribe error (conversations):', err)
+    if (!supabase) {
+      console.log('[ConversationsList] supabase client is NULL - check env vars')
+      return
     }
 
+    console.log('[ConversationsList] Setting up realtime subscription...')
+
+    // Subscribe to cả messages và conversations table
+    const channel = supabase
+      .channel('msg-changes-conversations')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload: any) => {
+        console.log('[ConversationsList] ===== REALTIME MESSAGES PAYLOAD =====')
+        console.log('[ConversationsList] Full payload:', JSON.stringify(payload, null, 2))
+        console.log('[ConversationsList] payload.eventType:', payload?.eventType)
+        void getConversationsList()
+          .then((data) => {
+            console.log('[ConversationsList] Conversations refreshed, count:', data.length)
+            setConversations(data)
+          })
+          .catch((err) => console.error('Realtime conversations refresh failed:', err))
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, (payload: any) => {
+        console.log('[ConversationsList] ===== REALTIME CONVERSATIONS PAYLOAD =====')
+        console.log('[ConversationsList] Payload:', JSON.stringify(payload, null, 2))
+        void getConversationsList()
+          .then((data) => {
+            console.log('[ConversationsList] Conversations refreshed, count:', data.length)
+            setConversations(data)
+          })
+          .catch((err) => console.error('Realtime conversations refresh failed:', err))
+      })
+      .subscribe((status: any) => {
+        console.log('[ConversationsList] 📡 Subscription status:', status)
+        console.log('[ConversationsList] 📡 Is SUBSCRIBED?', status === 'SUBSCRIBED')
+      })
+
+    console.log('[ConversationsList] Channel created:', channel)
+
     return () => {
+      console.log('[ConversationsList] Cleaning up realtime channel')
       void supabase.removeChannel(channel)
     }
   }, [])

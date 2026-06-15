@@ -2,7 +2,9 @@ import { useState, useCallback } from 'react'
 import { toast } from 'react-toastify'
 import type { StudentRequestsWithApplications } from '../api/studentRequests'
 import { getReceivedApplications, acceptApplication, rejectApplication, type ApplicationResponse } from '../api/applications'
+import { createOrGetConversation } from '../api/conversations'
 import { getMediaUrl } from '../api/axios'
+import { ConsultationModal } from './ConsultationModal'
 
 interface StudentRequestCardProps {
   request: StudentRequestsWithApplications
@@ -13,6 +15,10 @@ interface StudentRequestCardProps {
 export function StudentRequestCard({ request, onApplicationUpdated, defaultExpandedApplications = false }: StudentRequestCardProps) {
   const [expandedApplications, setExpandedApplications] = useState(defaultExpandedApplications)
   const [processingId, setProcessingId] = useState<number | null>(null)
+  const [messagingId, setMessagingId] = useState<number | null>(null)
+  const [conversationId, setConversationId] = useState<number | null>(null)
+  const [selectedTutor, setSelectedTutor] = useState<{ name: string; avatar?: string } | null>(null)
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const [applications, setApplications] = useState<ApplicationResponse[]>(request.applications ?? [])
   const [isLoadingApplications, setIsLoadingApplications] = useState(false)
 
@@ -67,7 +73,31 @@ export function StudentRequestCard({ request, onApplicationUpdated, defaultExpan
     }
   }
 
+  const handleOpenChat = async (application: ApplicationResponse) => {
+    if (!application.tutorId) {
+      toast.error('Không tìm thấy thông tin gia sư để nhắn tin')
+      return
+    }
+
+    setMessagingId(application.id)
+    try {
+      const id = await createOrGetConversation({ tutorId: application.tutorId })
+      setConversationId(id)
+      setSelectedTutor({
+        name: application.tutorName,
+        avatar: application.tutorAvatar ? getMediaUrl(application.tutorAvatar) ?? undefined : undefined,
+      })
+      setIsChatOpen(true)
+    } catch (error) {
+      console.error('Error opening conversation:', error)
+      toast.error('Không thể mở cuộc hội thoại, vui lòng thử lại.')
+    } finally {
+      setMessagingId(null)
+    }
+  }
+
   return (
+    <>
     <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-slate-200 p-5">
@@ -240,6 +270,24 @@ export function StudentRequestCard({ request, onApplicationUpdated, defaultExpan
                   {/* Actions */}
                   {app.status === 'PENDING' && (
                     <div className="flex gap-2 pt-3 border-t border-slate-200">
+                      <a
+                        href={`/tutor/${app.tutorId}`}
+                        className="flex-1 bg-white hover:bg-blue-50 text-blue-600 border border-blue-300 font-semibold py-2 px-3 rounded text-sm transition-colors text-center"
+                      >
+                        <i className="fa-regular fa-user mr-1"></i>
+                        Xem hồ sơ
+                      </a>
+                      <button
+                        onClick={() => handleOpenChat(app)}
+                        disabled={messagingId !== null}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {messagingId === app.id && (
+                          <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1"></span>
+                        )}
+                        <i className="fa-regular fa-comment-dots mr-1"></i>
+                        Nhắn tin
+                      </button>
                       <button
                         onClick={() => handleAccept(app.id)}
                         disabled={processingId !== null}
@@ -264,9 +312,31 @@ export function StudentRequestCard({ request, onApplicationUpdated, defaultExpan
                   )}
 
                   {app.status !== 'PENDING' && (
-                    <p className="text-xs text-slate-500 pt-3 border-t border-slate-200">
-                      {app.status === 'ACCEPTED' ? '✓ Bạn đã chọn gia sư này' : '✗ Bạn đã từ chối'}
-                    </p>
+                    <div className="pt-3 border-t border-slate-200 space-y-2">
+                      <div className="flex gap-2">
+                        <a
+                          href={`/tutor/${app.tutorId}`}
+                          className="flex-1 bg-white hover:bg-blue-50 text-blue-600 border border-blue-300 font-semibold py-2 px-3 rounded text-sm transition-colors text-center"
+                        >
+                          <i className="fa-regular fa-user mr-1"></i>
+                          Xem hồ sơ
+                        </a>
+                        <button
+                          onClick={() => handleOpenChat(app)}
+                          disabled={messagingId !== null}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {messagingId === app.id && (
+                            <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1"></span>
+                          )}
+                          <i className="fa-regular fa-comment-dots mr-1"></i>
+                          Nhắn tin
+                        </button>
+                      </div>
+                      <p className="text-xs text-slate-500 text-center">
+                        {app.status === 'ACCEPTED' ? '✓ Bạn đã chọn gia sư này' : '✗ Bạn đã từ chối'}
+                      </p>
+                    </div>
                   )}
                 </div>
               ))
@@ -286,5 +356,13 @@ export function StudentRequestCard({ request, onApplicationUpdated, defaultExpan
         </a>
       </div>
     </div>
+    <ConsultationModal
+      isOpen={isChatOpen}
+      tutorName={selectedTutor?.name ?? ''}
+      tutorAvatar={selectedTutor?.avatar}
+      conversationId={conversationId}
+      onClose={() => setIsChatOpen(false)}
+    />
+    </>
   )
 }

@@ -17,6 +17,8 @@ import { TutorSchedule } from "./pages/Tutor/schedule";
 import { TutorMessages } from "./pages/Tutor/messages";
 import { TutorVouchers } from "./pages/Tutor/vouchers";
 import { TutorApplications } from "./pages/Tutor/applications";
+import { TutorEnrollments } from "./pages/Tutor/enrollments";
+import { StudentEnrollments } from "./pages/Student/enrollments";
 import  StudentProfile  from "./pages/Student/StudentProfile";
 import { StudentSchedule } from "./pages/Student/schedule";
 import { StudentMessages } from "./pages/Student/messages";
@@ -117,6 +119,8 @@ function App() {
   if (pathname === "/tutor/messages") return <TutorMessages />;
   if (pathname === "/tutor/vouchers") return <TutorVouchers />;
   if (pathname === "/tutor/applications") return <TutorApplications />;
+  if (pathname === "/tutor/enrollments") return <TutorEnrollments />;
+  if (pathname === "/student/enrollments") return <StudentEnrollments />;
   if (pathname === "/tutor/support") return <MySupport />;
   if (pathname === "/tutor/disputes") return <MyDisputes />;
   if (pathname === "/tutor/classes/new") return <FormAddClass />;

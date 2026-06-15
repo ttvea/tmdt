@@ -2,11 +2,19 @@ import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
 import { getMyApplications, type ApplicationResponse } from '../api/applications'
 import { getMediaUrl } from '../api/axios'
+import { createOrGetConversation } from '../api/conversations'
+import { ConsultationModal } from './ConsultationModal'
 
 export function TutorApplicationsList() {
   const [applications, setApplications] = useState<ApplicationResponse[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filteredStatus, setFilteredStatus] = useState<'ALL' | 'PENDING' | 'ACCEPTED' | 'REJECTED'>('ALL')
+
+  // Chat state
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [conversationId, setConversationId] = useState<number | null>(null)
+  const [selectedStudent, setSelectedStudent] = useState<{ name: string; avatar?: string } | null>(null)
+  const [messagingId, setMessagingId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchApplications()
@@ -22,6 +30,29 @@ export function TutorApplicationsList() {
       toast.error('Không thể tải danh sách ứng tuyển')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleOpenChat = async (app: ApplicationResponse) => {
+    if (!app.studentUserId) {
+      toast.error('Không thể xác định học viên để nhắn tin')
+      return
+    }
+
+    setMessagingId(app.id)
+    try {
+      const id = await createOrGetConversation({ studentId: app.studentUserId })
+      setConversationId(id)
+      setSelectedStudent({
+        name: app.studentName || 'Học viên',
+        avatar: app.studentAvatar ? getMediaUrl(app.studentAvatar) ?? undefined : undefined,
+      })
+      setIsChatOpen(true)
+    } catch (error) {
+      console.error('Error opening conversation:', error)
+      toast.error('Không thể mở cuộc hội thoại, vui lòng thử lại.')
+    } finally {
+      setMessagingId(null)
     }
   }
 
@@ -119,7 +150,7 @@ export function TutorApplicationsList() {
                 {/* Avatar */}
                 <div className="shrink-0">
                   <img
-                    src={app.tutorAvatar ? getMediaUrl(app.tutorAvatar) : `https://ui-avatars.com/api/?name=${encodeURIComponent(app.tutorName)}&background=random`}
+                    src={app.tutorAvatar ? (getMediaUrl(app.tutorAvatar) ?? '') : `https://ui-avatars.com/api/?name=${encodeURIComponent(app.tutorName)}&background=random`}
                     alt={app.tutorName}
                     className="w-16 h-16 rounded-full object-cover border border-slate-200"
                   />
@@ -157,18 +188,33 @@ export function TutorApplicationsList() {
                     <p className="text-xs text-slate-500">
                       Ứng tuyển ngày {new Date(app.createdAt).toLocaleDateString('vi-VN')}
                     </p>
-                    {app.status === 'ACCEPTED' && (
-                      <div className="flex items-center gap-2 text-green-700 font-semibold">
-                        <i className="fa-solid fa-check-circle"></i>
-                        Bạn được chọn cho vị trí này
-                      </div>
-                    )}
-                    {app.status === 'REJECTED' && (
-                      <div className="flex items-center gap-2 text-red-700 font-semibold">
-                        <i className="fa-solid fa-circle-xmark"></i>
-                        Ứng tuyển bị từ chối
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {app.status === 'ACCEPTED' && (
+                        <div className="flex items-center gap-2 text-green-700 font-semibold">
+                          <i className="fa-solid fa-check-circle"></i>
+                          Bạn được chọn cho vị trí này
+                        </div>
+                      )}
+                      {app.status === 'REJECTED' && (
+                        <div className="flex items-center gap-2 text-red-700 font-semibold">
+                          <i className="fa-solid fa-circle-xmark"></i>
+                          Ứng tuyển bị từ chối
+                        </div>
+                      )}
+                      {app.studentUserId && (
+                        <button
+                          onClick={() => handleOpenChat(app)}
+                          disabled={messagingId !== null}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {messagingId === app.id && (
+                            <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1"></span>
+                          )}
+                          <i className="fa-regular fa-message"></i>
+                          Nhắn tin
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -176,6 +222,15 @@ export function TutorApplicationsList() {
           ))}
         </div>
       )}
+
+      {/* Chat Modal */}
+      <ConsultationModal
+        isOpen={isChatOpen}
+        tutorName={selectedStudent?.name ?? ''}
+        tutorAvatar={selectedStudent?.avatar}
+        conversationId={conversationId}
+        onClose={() => setIsChatOpen(false)}
+      />
     </div>
   )
 }

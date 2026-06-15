@@ -125,6 +125,46 @@ export function TutorMessages() {
     fetchMessages()
   }, [selectedConvId])
 
+  // Polling fallback: refresh conversations list and messages every 3 seconds
+  useEffect(() => {
+    if (!selectedConvId) return
+
+    console.log('[TutorMessages] Setting up polling fallback for conv:', selectedConvId)
+    
+    const interval = setInterval(() => {
+      // Refresh conversations list
+      void getConversationsList()
+        .then((data) => {
+          setConversations((prev) => {
+            if (JSON.stringify(data) !== JSON.stringify(prev)) {
+              console.log('[TutorMessages] Polling: conversations updated!')
+              return data
+            }
+            return prev
+          })
+        })
+        .catch((err) => console.error('[TutorMessages] Polling conversations refresh failed:', err))
+
+      // Refresh messages for selected conversation
+      void getConversationMessages(selectedConvId)
+        .then((data) => {
+          setMessages((prev) => {
+            if (data.length !== prev.length) {
+              console.log('[TutorMessages] Polling: new messages detected!', prev.length, '->', data.length)
+              return data
+            }
+            return prev
+          })
+        })
+        .catch((err) => console.error('[TutorMessages] Polling messages refresh failed:', err))
+    }, 3000)
+
+    return () => {
+      console.log('[TutorMessages] Cleaning up polling')
+      clearInterval(interval)
+    }
+  }, [selectedConvId])
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
 
