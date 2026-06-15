@@ -88,14 +88,17 @@ export function ApplicationsList({ currentUserId }: ApplicationsListProps) {
 
   return (
     <div className="space-y-4">
-      {applications.map((app) => (
-        <div key={app.id} className="bg-white border border-slate-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+      {applications.map((app) => {
+        const tutorName = app.tutorName || 'Gia sư'
+        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(tutorName)}&background=random`
+        return (
+          <div key={app.id} className="bg-white border border-slate-200 rounded-lg p-6 hover:shadow-md transition-shadow">
           <div className="flex gap-4">
             {/* Avatar */}
             <div className="shrink-0">
               <img
-                src={app.tutorAvatar ? getMediaUrl(app.tutorAvatar) : `https://ui-avatars.com/api/?name=${encodeURIComponent(app.tutorName)}&background=random`}
-                alt={app.tutorName}
+                src={(app.tutorAvatar ? getMediaUrl(app.tutorAvatar) : null) || avatarUrl}
+                alt={tutorName}
                 className="w-16 h-16 rounded-full object-cover border border-slate-200"
               />
             </div>
@@ -104,7 +107,7 @@ export function ApplicationsList({ currentUserId }: ApplicationsListProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-4 mb-2">
                 <div>
-                  <h3 className="font-bold text-slate-900 text-lg">{app.tutorName}</h3>
+                  <h3 className="font-bold text-slate-900 text-lg">{tutorName}</h3>
                   <p className="text-sm text-slate-500">
                     Ứng tuyển {new Date(app.createdAt).toLocaleDateString('vi-VN')}
                   </p>
@@ -162,8 +165,9 @@ export function ApplicationsList({ currentUserId }: ApplicationsListProps) {
               )}
             </div>
           </div>
-        </div>
-      ))}
+          </div>
+        )
+      })}
     </div>
   )
 }
