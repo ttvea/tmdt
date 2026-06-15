@@ -90,6 +90,59 @@ export interface AdminReportPreview {
   rows: AdminReportRow[]
 }
 
+export interface AdminProfileSettings {
+  id?: number
+  fullName: string
+  email: string
+  phone: string
+  avatar: string
+  role?: string | null
+  currentPassword?: string
+  newPassword?: string
+}
+
+export interface AdminPlatformSettings {
+  siteName: string
+  brandName: string
+  logoUrl: string
+  faviconUrl: string
+  hotline: string
+  supportEmail: string
+  officeAddress: string
+  workingHours: string
+  zaloUrl: string
+  messengerUrl: string
+  facebookUrl: string
+}
+
+export interface AdminApprovalSettings {
+  requireTutorVerification: boolean
+  tutorMustBeVerifiedToOpenClass: boolean
+  requiredTutorDocuments: string
+  tutorApprovedMessage: string
+  tutorRejectedMessage: string
+  requireClassApproval: boolean
+  maxClassesForUnverifiedTutor: number
+  autoCloseClassAfterDays: number
+}
+
+export interface AdminSupportDisputeSettings {
+  supportSlaHours: number
+  supportCategories: string
+  disputeReasons: string
+  evidenceDeadlineHours: number
+  defaultRefundPolicy: string
+  needEvidenceMessage: string
+  disputeResolvedMessage: string
+}
+
+export interface AdminSettings {
+  profile: AdminProfileSettings
+  platform: AdminPlatformSettings
+  approval: AdminApprovalSettings
+  supportDisputes: AdminSupportDisputeSettings
+}
+
 export interface AdminVoucher {
   id: number
   code: string
@@ -435,6 +488,31 @@ export async function getAdminReportPreview(params: {
   to?: string
 }): Promise<AdminReportPreview> {
   const res = await api.get('/api/admin/reports/preview', { params })
+  return res.data
+}
+
+export async function getAdminSettings(): Promise<AdminSettings> {
+  const res = await api.get('/api/admin/settings')
+  return res.data
+}
+
+export async function updateAdminProfileSettings(payload: AdminProfileSettings): Promise<AdminProfileSettings> {
+  const res = await api.put('/api/admin/settings/profile', payload)
+  return res.data
+}
+
+export async function updateAdminPlatformSettings(payload: AdminPlatformSettings): Promise<AdminSettings> {
+  const res = await api.put('/api/admin/settings/platform', payload)
+  return res.data
+}
+
+export async function updateAdminApprovalSettings(payload: AdminApprovalSettings): Promise<AdminSettings> {
+  const res = await api.put('/api/admin/settings/approval', payload)
+  return res.data
+}
+
+export async function updateAdminSupportDisputeSettings(payload: AdminSupportDisputeSettings): Promise<AdminSettings> {
+  const res = await api.put('/api/admin/settings/support-disputes', payload)
   return res.data
 }
 

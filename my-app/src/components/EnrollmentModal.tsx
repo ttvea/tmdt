@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { toast } from 'react-toastify'
 import { enroll, confirmPayment } from '../api/classApi'
 import { createPayment } from '../api/payment'
 
