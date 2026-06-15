@@ -6,6 +6,8 @@ import {
   updateAdminPlatformSettings,
   updateAdminProfileSettings,
   updateAdminSupportDisputeSettings,
+  uploadAdminSettingsAsset,
+  uploadAdminUserAvatar,
   type AdminApprovalSettings,
   type AdminPlatformSettings,
   type AdminProfileSettings,
@@ -67,6 +69,9 @@ export function AdminSettings() {
   const [saving, setSaving] = useState<SaveSection | ''>('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [faviconFile, setFaviconFile] = useState<File | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
@@ -112,14 +117,28 @@ export function AdminSettings() {
 
     try {
       if (section === 'profile') {
-        const profile = await updateAdminProfileSettings(settings.profile)
+        let profile = await updateAdminProfileSettings(settings.profile)
+        if (avatarFile && profile.id) {
+          const avatar = await uploadAdminUserAvatar(profile.id, avatarFile)
+          profile = { ...profile, avatar }
+          setAvatarFile(null)
+        }
         setSettings((current) => ({
           ...current,
           profile: { ...profile, currentPassword: '', newPassword: '', phone: profile.phone ?? '', avatar: profile.avatar ?? '' },
         }))
         setAdmin((current) => current ? { ...current, fullName: profile.fullName, email: profile.email, avatar: profile.avatar || null } : current)
       } else if (section === 'platform') {
-        setSettings(normalizeSettings(await updateAdminPlatformSettings(settings.platform)))
+        let platformPayload = { ...settings.platform }
+        if (logoFile) {
+          platformPayload = { ...platformPayload, logoUrl: await uploadAdminSettingsAsset(logoFile) }
+          setLogoFile(null)
+        }
+        if (faviconFile) {
+          platformPayload = { ...platformPayload, faviconUrl: await uploadAdminSettingsAsset(faviconFile) }
+          setFaviconFile(null)
+        }
+        setSettings(normalizeSettings(await updateAdminPlatformSettings(platformPayload)))
       } else if (section === 'approval') {
         setSettings(normalizeSettings(await updateAdminApprovalSettings(settings.approval)))
       } else {
@@ -176,9 +195,40 @@ export function AdminSettings() {
               <Field label="Số điện thoại">
                 <input className={inputClass} value={settings.profile.phone ?? ''} onChange={(e) => updateProfile('phone', e.target.value)} />
               </Field>
-              <Field label="Ảnh đại diện URL">
-                <input className={inputClass} value={settings.profile.avatar ?? ''} onChange={(e) => updateProfile('avatar', e.target.value)} />
-              </Field>
+              <div className="sm:col-span-2">
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">Ảnh đại diện</span>
+                <div className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-blue-100 text-lg font-bold text-blue-800">
+                    {avatarPreview(settings.profile.avatar, avatarFile) ? (
+                      <img src={avatarPreview(settings.profile.avatar, avatarFile) ?? ''} alt="Ảnh đại diện admin" className="h-full w-full object-cover" />
+                    ) : (
+                      getInitials(settings.profile.fullName)
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-900">{avatarFile ? avatarFile.name : 'Chọn ảnh từ máy tính'}</p>
+                    <p className="mt-1 text-xs text-slate-500">Hỗ trợ JPG, PNG hoặc WebP. Ảnh sẽ được tải lên khi lưu hồ sơ.</p>
+                  </div>
+                  <label className="inline-flex h-10 cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 shadow-sm hover:bg-slate-50">
+                    Tải ảnh lên
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  {avatarFile ? (
+                    <button
+                      type="button"
+                      onClick={() => setAvatarFile(null)}
+                      className="h-10 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-600 hover:bg-white"
+                    >
+                      Bỏ chọn
+                    </button>
+                  ) : null}
+                </div>
+              </div>
               <Field label="Mật khẩu hiện tại">
                 <input className={inputClass} type="password" value={settings.profile.currentPassword ?? ''} onChange={(e) => updateProfile('currentPassword', e.target.value)} />
               </Field>
@@ -202,12 +252,27 @@ export function AdminSettings() {
               <Field label="Tên thương hiệu">
                 <input className={inputClass} value={settings.platform.brandName} onChange={(e) => updatePlatform('brandName', e.target.value)} />
               </Field>
-              <Field label="Logo URL">
-                <input className={inputClass} value={settings.platform.logoUrl} onChange={(e) => updatePlatform('logoUrl', e.target.value)} />
-              </Field>
-              <Field label="Favicon URL">
-                <input className={inputClass} value={settings.platform.faviconUrl} onChange={(e) => updatePlatform('faviconUrl', e.target.value)} />
-              </Field>
+              <div className="sm:col-span-2">
+                <AssetUpload
+                  label="Logo"
+                  currentUrl={settings.platform.logoUrl}
+                  file={logoFile}
+                  onFileChange={setLogoFile}
+                  onClear={() => setLogoFile(null)}
+                  hint="Logo dùng cho Navbar, sidebar và các khu vực nhận diện thương hiệu."
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <AssetUpload
+                  label="Favicon"
+                  currentUrl={settings.platform.faviconUrl}
+                  file={faviconFile}
+                  onFileChange={setFaviconFile}
+                  onClear={() => setFaviconFile(null)}
+                  compact
+                  hint="Favicon dùng trên tab trình duyệt. Nên dùng ảnh vuông PNG hoặc WebP."
+                />
+              </div>
               <Field label="Hotline">
                 <input className={inputClass} value={settings.platform.hotline} onChange={(e) => updatePlatform('hotline', e.target.value)} />
               </Field>
@@ -316,6 +381,21 @@ function normalizeSettings(data: AdminSettingsData): AdminSettingsData {
   }
 }
 
+function avatarPreview(currentAvatar: string | null | undefined, file: File | null) {
+  if (file) return URL.createObjectURL(file)
+  return currentAvatar || ''
+}
+
+function getInitials(name?: string) {
+  if (!name) return 'AD'
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(-2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'AD'
+}
+
 function SettingsCard({ title, icon, children, actionLabel, saving, onSave }: {
   title: string
   icon: ReactNode
@@ -365,6 +445,63 @@ function Toggle({ checked, onChange, title }: { checked: boolean; onChange: (val
         className="h-5 w-5 rounded border-slate-300 text-blue-700 focus:ring-blue-200"
       />
     </label>
+  )
+}
+
+function AssetUpload({
+  label,
+  currentUrl,
+  file,
+  onFileChange,
+  onClear,
+  hint,
+  compact,
+}: {
+  label: string
+  currentUrl: string
+  file: File | null
+  onFileChange: (file: File | null) => void
+  onClear: () => void
+  hint: string
+  compact?: boolean
+}) {
+  const preview = avatarPreview(currentUrl, file)
+
+  return (
+    <div>
+      <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">{label}</span>
+      <div className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-300 bg-white ${compact ? 'h-12 w-12' : 'h-16 w-28'}`}>
+          {preview ? (
+            <img src={preview} alt={label} className="h-full w-full object-contain p-1" />
+          ) : (
+            <span className="text-xs font-bold text-slate-400">No image</span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-900">{file ? file.name : currentUrl || `Chọn file ${label.toLowerCase()}`}</p>
+          <p className="mt-1 text-xs text-slate-500">{hint}</p>
+        </div>
+        <label className="inline-flex h-10 cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 shadow-sm hover:bg-slate-50">
+          Tải ảnh lên
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/x-icon"
+            className="sr-only"
+            onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
+          />
+        </label>
+        {file ? (
+          <button
+            type="button"
+            onClick={onClear}
+            className="h-10 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-600 hover:bg-white"
+          >
+            Bỏ chọn
+          </button>
+        ) : null}
+      </div>
+    </div>
   )
 }
 

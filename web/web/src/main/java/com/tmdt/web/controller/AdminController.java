@@ -19,6 +19,8 @@ import com.tmdt.web.dto.response.AdminTutorResponse;
 import com.tmdt.web.dto.response.AdminUserResponse;
 import com.tmdt.web.dto.response.AdminUsersStatsResponse;
 import com.tmdt.web.dto.response.VoucherResponse;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.tmdt.web.entity.User;
 import com.tmdt.web.entity.Order;
 import com.tmdt.web.entity.SystemSetting;
@@ -56,6 +58,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -84,6 +87,7 @@ public class AdminController {
     private final DisputeRep disputeRep;
     private final SystemSettingRep systemSettingRep;
     private final PasswordEncoder passwordEncoder;
+    private final Cloudinary cloudinary;
     private final VoucherService voucherService;
     private final SupportService supportService;
     private final DisputeService disputeService;
@@ -266,6 +270,31 @@ public class AdminController {
         saveSetting("dispute.needEvidenceMessage", settingsRequest.needEvidenceMessage());
         saveSetting("dispute.resolvedMessage", settingsRequest.disputeResolvedMessage());
         return getSettings(request);
+    }
+
+    @PostMapping("/settings/assets")
+    public ResponseEntity<?> uploadSettingsAsset(
+            HttpServletRequest request,
+            @RequestParam("file") MultipartFile file
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Vui lòng chọn file ảnh");
+        }
+
+        try {
+            Map uploadResult = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap("folder", "edumatch/settings")
+            );
+            return ResponseEntity.ok(uploadResult.get("secure_url").toString());
+        } catch (Exception exception) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Không thể upload ảnh: " + exception.getMessage());
+        }
     }
 
     @GetMapping("/dashboard")

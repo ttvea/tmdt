@@ -516,6 +516,17 @@ export async function updateAdminSupportDisputeSettings(payload: AdminSupportDis
   return res.data
 }
 
+export async function uploadAdminSettingsAsset(file: File): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await api.post('/api/admin/settings/assets', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+  return res.data
+}
+
 export async function updateAdminUserStatus(userId: number, enabled: boolean): Promise<AdminUser> {
   const res = await api.patch(`/api/admin/users/${userId}/status`, { enabled })
   return res.data
