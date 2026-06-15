@@ -4,6 +4,9 @@ export interface ApplicationResponse {
   id: number
   studentRequestId: number
   tutorId: number
+  studentUserId?: number
+  studentName?: string
+  studentAvatar?: string
   tutorName: string
   tutorAvatar: string
   introduction: string
@@ -50,6 +53,9 @@ function normalizeApplication(application: any): ApplicationResponse {
     id: Number(application?.id ?? 0),
     studentRequestId,
     tutorId: Number(application?.tutorId ?? application?.tutor?.id ?? 0),
+    studentUserId: application?.studentUserId ? Number(application.studentUserId) : undefined,
+    studentName: toDisplayString(application?.studentName ?? application?.studentRequest?.user?.fullName),
+    studentAvatar: toDisplayString(application?.studentAvatar ?? application?.studentRequest?.user?.avatar),
     tutorName: toDisplayString(application?.tutorName ?? application?.tutor?.name ?? application?.tutor?.fullName),
     tutorAvatar: toDisplayString(application?.tutorAvatar ?? application?.tutor?.avatar),
     introduction: toDisplayString(application?.introduction),

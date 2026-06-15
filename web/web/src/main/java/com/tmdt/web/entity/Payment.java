@@ -34,6 +34,5 @@ public class Payment {
 
     private String transactionId;
 
-    @Temporal(TemporalType.TIMESTAMP)
     private Date paidAt;
 }

@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react'
+﻿﻿import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import { getConversationMessages, sendMessage, sendImageMessage, getMessageMediaUrl, isImageMessage, type MessageResponse } from '../api/conversations'
 import { supabase } from '../api/supabase'
@@ -38,6 +38,7 @@ export function ConsultationModal({
       try {
         const user = JSON.parse(userData)
         setCurrentUserId(user.id)
+        console.log('[ConsultationModal] currentUserId:', user.id)
       } catch (e) {
         console.error('Error parsing user data:', e)
       }
@@ -51,7 +52,9 @@ export function ConsultationModal({
       try {
         setLoading(true)
         setError('')
+        console.log('[ConsultationModal] Fetching messages for conversation:', conversationId)
         const data = await getConversationMessages(conversationId)
+        console.log('[ConsultationModal] Loaded messages count:', data.length)
         setMessages(data)
       } catch (err) {
         console.error('Failed to load consultation messages:', err)
@@ -65,38 +68,90 @@ export function ConsultationModal({
   }, [isOpen, conversationId])
 
   useEffect(() => {
-    if (!supabase || !isOpen || !conversationId) return
+    if (!supabase || !isOpen || !conversationId) {
+      console.log('[ConsultationModal] Supabase not available or modal closed', { hasSupabase: !!supabase, isOpen, conversationId })
+      return
+    }
+
+    console.log('[ConsultationModal] Setting up Supabase realtime channel for conversation:', conversationId)
 
     const channel = supabase
       .channel('msg-changes-modal')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload: any) => {
-        console.log('Realtime modal payload:', payload)
+        console.log('[ConsultationModal] ===== REALTIME PAYLOAD RECEIVED =====')
+        console.log('[ConsultationModal] Full payload:', JSON.stringify(payload, null, 2))
+        console.log('[ConsultationModal] payload.new:', JSON.stringify(payload?.new))
+        console.log('[ConsultationModal] payload.old:', JSON.stringify(payload?.old))
+        console.log('[ConsultationModal] payload.eventType:', payload?.eventType)
+
+        // Log tất cả các key có trong payload.new để debug
+        if (payload?.new) {
+          console.log('[ConsultationModal] Keys in payload.new:', Object.keys(payload.new))
+        }
 
         const changedConversationId = Number(
-          payload?.new?.conversation_id ?? payload?.new?.conversationId ?? payload?.old?.conversation_id ?? payload?.old?.conversationId
+          payload?.new?.conversation_id ?? payload?.old?.conversation_id
         )
+        console.log('[ConsultationModal] Changed conversationId:', changedConversationId, '(type:', typeof changedConversationId, ') | current:', conversationId, '(type:', typeof conversationId, ')')
 
-        if (changedConversationId && changedConversationId !== conversationId) return
+        if (!changedConversationId) {
+          console.log('[ConsultationModal] ❌ No conversation_id found in payload!')
+          return
+        }
 
+        if (changedConversationId !== conversationId) {
+          console.log('[ConsultationModal] 👉 Ignoring message from different conversation (payload conv:', changedConversationId, '!= current conv:', conversationId, ')')
+          return
+        }
+
+        console.log('[ConsultationModal] ✅ Realtime update matched! Refreshing messages...')
         void getConversationMessages(conversationId)
-          .then((data) => setMessages(data))
-          .catch((err) => console.error('Realtime modal refresh failed:', err))
+          .then((data) => {
+            console.log('[ConsultationModal] ✅ Messages refreshed via realtime, count:', data.length)
+            setMessages(data)
+          })
+          .catch((err) => console.error('[ConsultationModal] ❌ Realtime modal refresh failed:', err))
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, (payload: any) => {
+        console.log('[ConsultationModal] 🔔 conversations table change:', JSON.stringify(payload))
+      })
+      .subscribe((status: any) => {
+        console.log('[ConsultationModal] 📡 Channel subscription status:', status)
+        console.log('[ConsultationModal] 📡 Subscription status === SUBSCRIBED?', status === 'SUBSCRIBED')
       })
 
-    try {
-      void channel.subscribe((status: any) => {
-        // eslint-disable-next-line no-console
-        console.log('[supabase] channel status (modal):', status)
-      })
-      // eslint-disable-next-line no-console
-      console.log('[supabase] channel object (modal):', channel)
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[supabase] subscribe error (modal):', err)
-    }
+    console.log('[ConsultationModal] Channel created:', channel)
 
     return () => {
+      console.log('[ConsultationModal] Cleaning up realtime channel for conversation:', conversationId)
       void supabase.removeChannel(channel)
+    }
+  }, [isOpen, conversationId])
+
+  // Polling fallback: refresh messages every 3 seconds when modal is open
+  useEffect(() => {
+    if (!isOpen || !conversationId) return
+
+    console.log('[ConsultationModal] Setting up polling fallback for conversation:', conversationId)
+    
+    const interval = setInterval(() => {
+      void getConversationMessages(conversationId)
+        .then((data) => {
+          setMessages((prev) => {
+            // Only update if there are new messages (compare by length)
+            if (data.length !== prev.length) {
+              console.log('[ConsultationModal] Polling: new messages detected!', prev.length, '->', data.length)
+              return data
+            }
+            return prev
+          })
+        })
+        .catch((err) => console.error('[ConsultationModal] Polling refresh failed:', err))
+    }, 3000)
+
+    return () => {
+      console.log('[ConsultationModal] Cleaning up polling')
+      clearInterval(interval)
     }
   }, [isOpen, conversationId])
 
@@ -150,7 +205,9 @@ export function ConsultationModal({
     try {
       setIsSending(true)
       setError('')
+      console.log('[ConsultationModal] Sending message to conversation:', conversationId, 'content:', inputValue)
       await sendMessage(conversationId, inputValue)
+      console.log('[ConsultationModal] Message sent successfully, refreshing...')
       setInputValue('')
       const updatedMessages = await getConversationMessages(conversationId)
       setMessages(updatedMessages)
@@ -171,7 +228,9 @@ export function ConsultationModal({
     try {
       setIsUploadingImage(true)
       setError('')
+      console.log('[ConsultationModal] Sending image to conversation:', conversationId)
       await sendImageMessage(conversationId, file)
+      console.log('[ConsultationModal] Image sent, refreshing...')
       const updatedMessages = await getConversationMessages(conversationId)
       setMessages(updatedMessages)
       // Reset file input

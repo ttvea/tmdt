@@ -2,6 +2,7 @@
 import { getCategories, type GradeLevel, type SubjectCategory } from "../api/category";
 import { searchClassesPaged, type ClassResponse, type TeachingMode } from "../api/classApi";
 import Navbar from "../layouts/Navbar";
+import { EnrollmentModal } from "../components/EnrollmentModal";
 
 const PAGE_SIZE = 9;
 
@@ -50,10 +51,12 @@ function ClassCard({
   classPost,
   subjectName,
   gradeName,
+  onEnroll,
 }: {
   classPost: ClassPost;
   subjectName: string;
   gradeName: string;
+  onEnroll: (classPost: ClassPost) => void;
 }) {
   const isUrgent = /cần|gấp|ngay/i.test(`${classPost.title} ${classPost.description}`);
 
@@ -110,12 +113,12 @@ function ClassCard({
             {classPost.totalSessions ? `${classPost.totalSessions} buổi` : "Theo lộ trình"}
           </div>
         </div>
-        <a
-          href="/login"
+        <button
+          onClick={() => onEnroll(classPost)}
           className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
         >
           Ứng tuyển
-        </a>
+        </button>
       </div>
     </article>
   );
@@ -203,6 +206,11 @@ function DiscoverClasses() {
   const [totalElements, setTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [enrollingClass, setEnrollingClass] = useState<ClassPost | null>(null);
+
+  const handleOpenEnrollment = (classPost: ClassPost) => {
+    setEnrollingClass(classPost)
+  }
 
   useEffect(() => {
     getCategories()
@@ -475,6 +483,7 @@ function DiscoverClasses() {
                     classPost={classPost}
                     subjectName={subjectNameById.get(classPost.subjectId) ?? "Môn học"}
                     gradeName={gradeNameById.get(classPost.gradeLevelId) ?? "Cấp học"}
+                    onEnroll={handleOpenEnrollment}
                   />
                 ))}
               </div>
@@ -484,6 +493,18 @@ function DiscoverClasses() {
           </div>
         </section>
       </main>
+
+      {/* Enrollment Modal */}
+      {enrollingClass && (
+        <EnrollmentModal
+          isOpen={true}
+          classId={enrollingClass.id}
+          classTitle={enrollingClass.title}
+          budget={enrollingClass.budget}
+          totalSessions={enrollingClass.totalSessions}
+          onClose={() => setEnrollingClass(null)}
+        />
+      )}
     </div>
   );
 }

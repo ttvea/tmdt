@@ -22,5 +22,6 @@ public class EnrollmentResponse {
     private LocalDateTime approvedAt;
     private LocalDateTime paidAt;
     private LocalDateTime createdAt;
+    private Integer orderId;          // <-- THÊM: orderId để FE dùng
+    private Long amount;              // <-- THÊM: số tiền của order
 }
-

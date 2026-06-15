@@ -13,6 +13,9 @@ public class ApplicationResponse {
     private Long id;
     private Long studentRequestId;
     private Integer tutorId;
+    private Integer studentUserId;
+    private String studentName;
+    private String studentAvatar;
 
     private String tutorName;
 

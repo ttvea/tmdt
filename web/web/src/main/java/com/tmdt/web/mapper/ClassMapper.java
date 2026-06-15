@@ -16,6 +16,7 @@ import com.tmdt.web.enums.EnrollmentStatus;
 import com.tmdt.web.repository.CategoryRep;
 import com.tmdt.web.repository.EnrollmentRep;
 import com.tmdt.web.repository.GradeLevelRep;
+import com.tmdt.web.repository.OrderRep;
 import com.tmdt.web.repository.SubjectRep;
 import com.tmdt.web.repository.UserRep;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class ClassMapper {
     private final CategoryRep categoryRep;
     private final UserRep userRep;
     private final EnrollmentRep enrollmentRepository;
+    private final OrderRep orderRep;
 
     private static final String[] DAY_LABELS = {
             "", "", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"
@@ -138,6 +140,18 @@ public class ClassMapper {
     public EnrollmentResponse toEnrollmentResponse(Enrollment e) {
         User student = userRep.findById(e.getStudentId().intValue()).orElse(null);
 
+        // Tìm Order tương ứng để lấy orderId và amount
+        Integer orderId = null;
+        Long amount = null;
+        if (e.getClassEntity() != null) {
+            java.util.Optional<com.tmdt.web.entity.Order> orderOpt = orderRep.findByStudentIdAndClassId(
+                    e.getStudentId().intValue(), e.getClassEntity().getId());
+            if (orderOpt.isPresent()) {
+                orderId = orderOpt.get().getId();
+                amount = orderOpt.get().getAmount().longValue();
+            }
+        }
+
         return EnrollmentResponse.builder()
                 .id(e.getId())
                 .classId(e.getClassEntity().getId())
@@ -152,6 +166,8 @@ public class ClassMapper {
                 .approvedAt(e.getApprovedAt())
                 .paidAt(e.getPaidAt())
                 .createdAt(e.getCreatedAt())
+                .orderId(orderId)
+                .amount(amount)
                 .build();
     }
 }

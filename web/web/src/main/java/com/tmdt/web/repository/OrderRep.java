@@ -18,4 +18,7 @@ public interface OrderRep extends JpaRepository<Order, Integer> {
             Date from,
             Date to
     );
+
+    @Query("SELECT o FROM Order o WHERE o.studentId = :studentId AND o.tutorClass.id = :classId")
+    java.util.Optional<Order> findByStudentIdAndClassId(@Param("studentId") int studentId, @Param("classId") Long classId);
 }

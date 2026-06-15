@@ -45,7 +45,8 @@ export interface SendMessageRequest {
 }
 
 export interface CreateConversationRequest {
-  tutorId: number
+  tutorId?: number
+  studentId?: number
 }
 
 /**
@@ -62,11 +63,11 @@ export async function getConversationsList(): Promise<ConversationResponse[]> {
 }
 
 /**
- * Get or create a conversation with a tutor
+ * Get or create a conversation with a tutor (student) or student (tutor)
  */
-export async function createOrGetConversation(tutorId: number): Promise<number> {
+export async function createOrGetConversation(params: CreateConversationRequest): Promise<number> {
   try {
-    const response = await api.post('/api/conversations', { tutorId })
+    const response = await api.post('/api/conversations', params)
     return response.data
   } catch (error) {
     console.error('Failed to create/get conversation:', error)

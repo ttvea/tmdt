@@ -194,4 +194,20 @@ public class ClassController {
         Long studentId = getUserId(authHeader);
         return ResponseEntity.ok(classService.confirmPayment(enrollmentId, studentId));
     }
+
+    @PostMapping("/enrollments/{enrollmentId}/request-cash")
+    public ResponseEntity<EnrollmentResponse> requestCashPayment(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long enrollmentId) {
+        Long studentId = getUserId(authHeader);
+        return ResponseEntity.ok(classService.requestCashPayment(enrollmentId, studentId));
+    }
+
+    @PostMapping("/enrollments/{enrollmentId}/confirm-cash")
+    public ResponseEntity<EnrollmentResponse> confirmCashReceived(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long enrollmentId) {
+        Long tutorId = getUserId(authHeader);
+        return ResponseEntity.ok(classService.confirmCashReceived(enrollmentId, tutorId));
+    }
 }
