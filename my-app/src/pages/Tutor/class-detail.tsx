@@ -17,6 +17,7 @@ const STATUS_CONFIG: Record<EnrollmentStatus, { label: string; className: string
   PENDING:   { label: 'Chờ duyệt',      className: 'bg-yellow-100 text-yellow-700' },
   APPROVED:  { label: 'Đã duyệt',       className: 'bg-blue-100 text-blue-700' },
   PAID:      { label: 'Đã nộp học phí', className: 'bg-green-100 text-green-700' },
+  CASH_REQUESTED: { label: 'Chờ xác nhận tiền mặt', className: 'bg-orange-100 text-orange-700' },
   REJECTED:  { label: 'Từ chối',        className: 'bg-red-100 text-red-600' },
   CANCELLED: { label: 'Đã huỷ',         className: 'bg-slate-100 text-slate-500' },
 }

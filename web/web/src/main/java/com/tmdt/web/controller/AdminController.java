@@ -2,11 +2,15 @@ package com.tmdt.web.controller;
 
 import com.tmdt.web.dto.response.AdminDashboardResponse;
 import com.tmdt.web.dto.request.AdminCreateUserRequest;
+import com.tmdt.web.dto.request.AdminApprovalSettingsRequest;
 import com.tmdt.web.dto.request.AdminUpdateUserRoleRequest;
 import com.tmdt.web.dto.request.AdminUpdateUserStatusRequest;
 import com.tmdt.web.dto.request.AdminAssignSupportTicketRequest;
 import com.tmdt.web.dto.request.AdminDisputeNoteRequest;
+import com.tmdt.web.dto.request.AdminPlatformSettingsRequest;
+import com.tmdt.web.dto.request.AdminProfileSettingsRequest;
 import com.tmdt.web.dto.request.AdminResolveDisputeRequest;
+import com.tmdt.web.dto.request.AdminSupportDisputeSettingsRequest;
 import com.tmdt.web.dto.request.AdminUpdateSupportStatusRequest;
 import com.tmdt.web.dto.request.AdminVerifyTutorRequest;
 import com.tmdt.web.dto.request.SupportReplyRequest;
@@ -15,8 +19,11 @@ import com.tmdt.web.dto.response.AdminTutorResponse;
 import com.tmdt.web.dto.response.AdminUserResponse;
 import com.tmdt.web.dto.response.AdminUsersStatsResponse;
 import com.tmdt.web.dto.response.VoucherResponse;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.tmdt.web.entity.User;
 import com.tmdt.web.entity.Order;
+import com.tmdt.web.entity.SystemSetting;
 import com.tmdt.web.entity.TutorProfile;
 import com.tmdt.web.enums.ApprovalStatus;
 import com.tmdt.web.enums.ClassStatus;
@@ -31,6 +38,7 @@ import com.tmdt.web.repository.ClassRep;
 import com.tmdt.web.repository.EnrollmentRep;
 import com.tmdt.web.repository.DisputeRep;
 import com.tmdt.web.repository.OrderRep;
+import com.tmdt.web.repository.SystemSettingRep;
 import com.tmdt.web.repository.TutorProfileRep;
 import com.tmdt.web.repository.UserRep;
 import com.tmdt.web.service.JwtService;
@@ -50,6 +58,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -76,7 +85,9 @@ public class AdminController {
     private final EnrollmentRep enrollmentRep;
     private final OrderRep orderRep;
     private final DisputeRep disputeRep;
+    private final SystemSettingRep systemSettingRep;
     private final PasswordEncoder passwordEncoder;
+    private final Cloudinary cloudinary;
     private final VoucherService voucherService;
     private final SupportService supportService;
     private final DisputeService disputeService;
@@ -107,6 +118,183 @@ public class AdminController {
         response.put("role", user.getRole().name());
         response.put("avatar", user.getAvatar());
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/settings")
+    public ResponseEntity<?> getSettings(HttpServletRequest request) {
+        User admin = getAdminUserFromRequest(request);
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("profile", adminProfile(admin));
+        response.put("platform", Map.ofEntries(
+                Map.entry("siteName", getSetting("platform.siteName", "EduMatch Pro")),
+                Map.entry("brandName", getSetting("platform.brandName", "EduMatch Pro")),
+                Map.entry("logoUrl", getSetting("platform.logoUrl", "")),
+                Map.entry("faviconUrl", getSetting("platform.faviconUrl", "")),
+                Map.entry("hotline", getSetting("platform.hotline", "0369 148 660")),
+                Map.entry("supportEmail", getSetting("platform.supportEmail", "giasuhome.vn@gmail.com")),
+                Map.entry("officeAddress", getSetting("platform.officeAddress", "107A Nguyễn Phong Sắc, Dịch Vọng Hậu, Cầu Giấy, Hà Nội")),
+                Map.entry("workingHours", getSetting("platform.workingHours", "Thứ 2 - Chủ nhật: 08:00 - 22:00")),
+                Map.entry("zaloUrl", getSetting("platform.zaloUrl", "")),
+                Map.entry("messengerUrl", getSetting("platform.messengerUrl", "")),
+                Map.entry("facebookUrl", getSetting("platform.facebookUrl", ""))
+        ));
+        response.put("approval", Map.ofEntries(
+                Map.entry("requireTutorVerification", getBooleanSetting("approval.requireTutorVerification", true)),
+                Map.entry("tutorMustBeVerifiedToOpenClass", getBooleanSetting("approval.tutorMustBeVerifiedToOpenClass", true)),
+                Map.entry("requiredTutorDocuments", getSetting("approval.requiredTutorDocuments", "CCCD, thẻ sinh viên/bằng cấp, chứng chỉ liên quan")),
+                Map.entry("tutorApprovedMessage", getSetting("approval.tutorApprovedMessage", "Hồ sơ gia sư của bạn đã được xác thực.")),
+                Map.entry("tutorRejectedMessage", getSetting("approval.tutorRejectedMessage", "Hồ sơ chưa đạt yêu cầu. Vui lòng cập nhật thêm thông tin.")),
+                Map.entry("requireClassApproval", getBooleanSetting("approval.requireClassApproval", true)),
+                Map.entry("maxClassesForUnverifiedTutor", getIntSetting("approval.maxClassesForUnverifiedTutor", 0)),
+                Map.entry("autoCloseClassAfterDays", getIntSetting("approval.autoCloseClassAfterDays", 30))
+        ));
+        response.put("supportDisputes", Map.ofEntries(
+                Map.entry("supportSlaHours", getIntSetting("support.slaHours", 24)),
+                Map.entry("supportCategories", getSetting("support.categories", "Tài khoản, Hồ sơ gia sư, Xác thực, Lớp học, Thanh toán, Mã giảm giá, Báo cáo, Khác")),
+                Map.entry("disputeReasons", getSetting("dispute.reasons", "Chất lượng kém, Không xuất hiện, Thanh toán, Lịch học, Khác")),
+                Map.entry("evidenceDeadlineHours", getIntSetting("dispute.evidenceDeadlineHours", 48)),
+                Map.entry("defaultRefundPolicy", getSetting("dispute.defaultRefundPolicy", "Admin xem xét từng trường hợp dựa trên bằng chứng và lịch sử lớp học.")),
+                Map.entry("needEvidenceMessage", getSetting("dispute.needEvidenceMessage", "Vui lòng bổ sung bằng chứng để admin tiếp tục xử lý tranh chấp.")),
+                Map.entry("disputeResolvedMessage", getSetting("dispute.resolvedMessage", "Tranh chấp đã được xử lý. Vui lòng kiểm tra kết quả trong tài khoản của bạn."))
+        ));
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/settings/profile")
+    public ResponseEntity<?> updateProfileSettings(
+            HttpServletRequest request,
+            @RequestBody AdminProfileSettingsRequest settingsRequest
+    ) {
+        User admin = getAdminUserFromRequest(request);
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        String email = normalizeOptionalText(settingsRequest.email());
+        if (email != null && !email.equalsIgnoreCase(admin.getEmail()) && userRep.existsByEmail(email.toLowerCase())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Email đã được sử dụng");
+        }
+
+        String newPassword = normalizeOptionalText(settingsRequest.newPassword());
+        if (newPassword != null) {
+            String currentPassword = normalizeOptionalText(settingsRequest.currentPassword());
+            if (currentPassword == null || admin.getPassword() == null || !passwordEncoder.matches(currentPassword, admin.getPassword())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Mật khẩu hiện tại không đúng");
+            }
+            if (newPassword.length() < 8) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Mật khẩu mới phải có ít nhất 8 ký tự");
+            }
+            admin.setPassword(passwordEncoder.encode(newPassword));
+        }
+
+        String fullName = normalizeOptionalText(settingsRequest.fullName());
+        if (fullName != null) {
+            admin.setFullName(fullName);
+        }
+        if (email != null) {
+            admin.setEmail(email.toLowerCase());
+        }
+        admin.setPhone(normalizeOptionalText(settingsRequest.phone()));
+        admin.setAvatar(normalizeOptionalText(settingsRequest.avatar()));
+
+        User saved = userRep.save(admin);
+        return ResponseEntity.ok(adminProfile(saved));
+    }
+
+    @PutMapping("/settings/platform")
+    public ResponseEntity<?> updatePlatformSettings(
+            HttpServletRequest request,
+            @RequestBody AdminPlatformSettingsRequest settingsRequest
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        saveSetting("platform.siteName", settingsRequest.siteName());
+        saveSetting("platform.brandName", settingsRequest.brandName());
+        saveSetting("platform.logoUrl", settingsRequest.logoUrl());
+        saveSetting("platform.faviconUrl", settingsRequest.faviconUrl());
+        saveSetting("platform.hotline", settingsRequest.hotline());
+        saveSetting("platform.supportEmail", settingsRequest.supportEmail());
+        saveSetting("platform.officeAddress", settingsRequest.officeAddress());
+        saveSetting("platform.workingHours", settingsRequest.workingHours());
+        saveSetting("platform.zaloUrl", settingsRequest.zaloUrl());
+        saveSetting("platform.messengerUrl", settingsRequest.messengerUrl());
+        saveSetting("platform.facebookUrl", settingsRequest.facebookUrl());
+        return getSettings(request);
+    }
+
+    @PutMapping("/settings/approval")
+    public ResponseEntity<?> updateApprovalSettings(
+            HttpServletRequest request,
+            @RequestBody AdminApprovalSettingsRequest settingsRequest
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        saveSetting("approval.requireTutorVerification", settingsRequest.requireTutorVerification());
+        saveSetting("approval.tutorMustBeVerifiedToOpenClass", settingsRequest.tutorMustBeVerifiedToOpenClass());
+        saveSetting("approval.requiredTutorDocuments", settingsRequest.requiredTutorDocuments());
+        saveSetting("approval.tutorApprovedMessage", settingsRequest.tutorApprovedMessage());
+        saveSetting("approval.tutorRejectedMessage", settingsRequest.tutorRejectedMessage());
+        saveSetting("approval.requireClassApproval", settingsRequest.requireClassApproval());
+        saveSetting("approval.maxClassesForUnverifiedTutor", settingsRequest.maxClassesForUnverifiedTutor());
+        saveSetting("approval.autoCloseClassAfterDays", settingsRequest.autoCloseClassAfterDays());
+        return getSettings(request);
+    }
+
+    @PutMapping("/settings/support-disputes")
+    public ResponseEntity<?> updateSupportDisputeSettings(
+            HttpServletRequest request,
+            @RequestBody AdminSupportDisputeSettingsRequest settingsRequest
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        saveSetting("support.slaHours", settingsRequest.supportSlaHours());
+        saveSetting("support.categories", settingsRequest.supportCategories());
+        saveSetting("dispute.reasons", settingsRequest.disputeReasons());
+        saveSetting("dispute.evidenceDeadlineHours", settingsRequest.evidenceDeadlineHours());
+        saveSetting("dispute.defaultRefundPolicy", settingsRequest.defaultRefundPolicy());
+        saveSetting("dispute.needEvidenceMessage", settingsRequest.needEvidenceMessage());
+        saveSetting("dispute.resolvedMessage", settingsRequest.disputeResolvedMessage());
+        return getSettings(request);
+    }
+
+    @PostMapping("/settings/assets")
+    public ResponseEntity<?> uploadSettingsAsset(
+            HttpServletRequest request,
+            @RequestParam("file") MultipartFile file
+    ) {
+        ResponseEntity<?> authError = validateAdminRequest(request);
+        if (authError != null) {
+            return authError;
+        }
+
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Vui lòng chọn file ảnh");
+        }
+
+        try {
+            Map uploadResult = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap("folder", "edumatch/settings")
+            );
+            return ResponseEntity.ok(uploadResult.get("secure_url").toString());
+        } catch (Exception exception) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Không thể upload ảnh: " + exception.getMessage());
+        }
     }
 
     @GetMapping("/dashboard")
@@ -640,6 +828,44 @@ public class AdminController {
             return null;
         }
         return value.trim();
+    }
+
+    private Map<String, Object> adminProfile(User admin) {
+        Map<String, Object> profile = new LinkedHashMap<>();
+        profile.put("id", admin.getId());
+        profile.put("fullName", admin.getFullName());
+        profile.put("email", admin.getEmail());
+        profile.put("phone", admin.getPhone());
+        profile.put("avatar", admin.getAvatar());
+        profile.put("role", admin.getRole() != null ? admin.getRole().name() : null);
+        return profile;
+    }
+
+    private String getSetting(String key, String defaultValue) {
+        return systemSettingRep.findById(key)
+                .map(SystemSetting::getValue)
+                .filter(value -> value != null && !value.isBlank())
+                .orElse(defaultValue);
+    }
+
+    private boolean getBooleanSetting(String key, boolean defaultValue) {
+        String value = getSetting(key, String.valueOf(defaultValue));
+        return Boolean.parseBoolean(value);
+    }
+
+    private int getIntSetting(String key, int defaultValue) {
+        try {
+            return Integer.parseInt(getSetting(key, String.valueOf(defaultValue)));
+        } catch (NumberFormatException exception) {
+            return defaultValue;
+        }
+    }
+
+    private void saveSetting(String key, Object value) {
+        SystemSetting setting = systemSettingRep.findById(key).orElseGet(SystemSetting::new);
+        setting.setKey(key);
+        setting.setValue(value == null ? "" : String.valueOf(value).trim());
+        systemSettingRep.save(setting);
     }
 
     private String buildDashboardReportCsv(LocalDate from, LocalDate to) {

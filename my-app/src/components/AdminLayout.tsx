@@ -106,7 +106,14 @@ export function AdminLayout({ children, activePath, adminName }: AdminLayoutProp
               </a>
             </div>
             <div className="space-y-1">
-              <a href="/admin/settings" className="flex h-9 w-full items-center gap-3 rounded px-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 [&_svg]:h-5 [&_svg]:w-5">
+              <a
+                href="/admin/settings"
+                className={`flex h-9 w-full items-center gap-3 rounded px-3 text-left text-sm font-medium [&_svg]:h-5 [&_svg]:w-5 ${
+                  activePath === '/admin/settings'
+                    ? 'bg-blue-100 text-slate-950'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
                 <SettingsIcon /> Cài đặt
               </a>
               <button
@@ -177,6 +184,8 @@ export function AdminLayout({ children, activePath, adminName }: AdminLayoutProp
                 >
                   <option value="DASHBOARD">Tổng quan hệ thống</option>
                   <option value="DISPUTES">Tranh chấp</option>
+                  <option value="USERS">Người dùng</option>
+                  <option value="TUTORS">Gia sư</option>
                 </select>
               </label>
 
