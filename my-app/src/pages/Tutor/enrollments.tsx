@@ -3,6 +3,7 @@ import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
 import { OrderDetailModal } from '../../components/OrderDetailModal'
 import { getMyClasses, getEnrollmentsOfClass, reviewEnrollment, confirmCashReceived, type ClassResponse, type EnrollmentResponse } from '../../api/classApi'
+import { supabase } from '../../api/supabase'
 
 export function TutorEnrollments() {
   const [classes, setClasses] = useState<ClassResponse[]>([])
@@ -39,14 +40,41 @@ export function TutorEnrollments() {
       .finally(() => setEnrollmentsLoading(false))
   }, [selectedClassId])
 
-  // Polling realtime: refresh every 3 seconds
+  // Realtime subscription qua Supabase
   useEffect(() => {
-    if (!selectedClassId) return
-    const interval = setInterval(() => {
-      void fetchEnrollments(selectedClassId)
-        .catch(() => {})
-    }, 3000)
-    return () => clearInterval(interval)
+    if (!supabase) {
+      console.log('[TutorEnrollments] supabase client is NULL')
+      return
+    }
+
+    const channel = supabase
+      .channel('tutor-enrollments-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'enrollments' },
+        () => {
+          console.log('[TutorEnrollments] Realtime: enrollments changed')
+          if (selectedClassId) {
+            void fetchEnrollments(selectedClassId)
+          }
+        }
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => {
+          console.log('[TutorEnrollments] Realtime: orders changed')
+          if (selectedClassId) {
+            void fetchEnrollments(selectedClassId)
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[TutorEnrollments] Subscription status:', status)
+      })
+
+    return () => {
+      console.log('[TutorEnrollments] Cleaning up realtime channel')
+      void supabase.removeChannel(channel)
+    }
   }, [selectedClassId])
 
   const handleReview = async (enrollmentId: number, approved: boolean) => {
@@ -54,7 +82,6 @@ export function TutorEnrollments() {
     try {
       await reviewEnrollment(enrollmentId, approved)
       toast.success(approved ? 'Đã chấp nhận đăng ký' : 'Đã từ chối đăng ký')
-      // Refresh
       if (selectedClassId) {
         const data = await getEnrollmentsOfClass(selectedClassId, 0, 50)
         setEnrollments(data.content)

@@ -15,8 +15,7 @@ public class Payment {
     }
     public enum PaymentProvider {
         VNPAY,
-        MOMO,
-        STRIPE
+        CASH
     }
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

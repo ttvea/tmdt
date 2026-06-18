@@ -241,9 +241,12 @@ export async function adminReviewClass(
   return res.data
 }
 
-export async function enroll(classId: number): Promise<EnrollmentResponse> {
+export async function enroll(classId: number, voucherId?: number): Promise<EnrollmentResponse> {
+  const params: Record<string, unknown> = {}
+  if (voucherId) params.voucherId = voucherId
   const res = await api.post(`/api/classes/${classId}/enroll`, null, {
     headers: getAuthHeader(),
+    params,
   })
   return res.data
 }

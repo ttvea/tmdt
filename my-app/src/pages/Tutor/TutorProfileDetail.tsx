@@ -8,6 +8,7 @@ import { getTutorRatings, getAverageRating, createRating, updateRating, deleteRa
 import { createOrGetConversation } from '../../api/conversations'
 import { getTutorClasses, type ClassResponse } from '../../api/classApi'
 import { ConsultationModal } from '../../components/ConsultationModal'
+import { getTutorVouchers, claimVoucher, type VoucherResponse } from '../../api/voucher'
 
 interface TutorProfile {
   id: number
@@ -162,6 +163,10 @@ export function TutorProfileDetail() {
   const [savingRating, setSavingRating] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showCertificateModal, setShowCertificateModal] = useState(false)
+  const [tutorVouchers, setTutorVouchers] = useState<VoucherResponse[]>([])
+  const [loadingVouchers, setLoadingVouchers] = useState(false)
+  const [claimedVoucherIds, setClaimedVoucherIds] = useState<Set<number>>(new Set())
+  const [claimingVoucherId, setClaimingVoucherId] = useState<number | null>(null)
 
   const handleNavigateBack = () => {
     window.history.back()
@@ -340,6 +345,17 @@ export function TutorProfileDetail() {
         } catch (ratingErr) {
           console.error('Không thể tải đánh giá:', ratingErr)
         }
+        // Fetch active vouchers for this tutor
+        setLoadingVouchers(true)
+        try {
+          const vouchers = await getTutorVouchers(Number(tutorId))
+          setTutorVouchers(vouchers)
+        } catch (err) {
+          console.error('Không thể tải voucher:', err)
+        } finally {
+          setLoadingVouchers(false)
+        }
+
         setLoading(false)
       } catch (err) {
         setError('Không thể tải thông tin gia sư')
@@ -408,6 +424,19 @@ export function TutorProfileDetail() {
     setEditingRatingId(null)
     setEditingStars(5)
     setEditingComment('')
+  }
+
+  const handleClaimVoucher = async (voucherId: number) => {
+    setClaimingVoucherId(voucherId)
+    try {
+      await claimVoucher(voucherId)
+      setClaimedVoucherIds((prev) => new Set(prev).add(voucherId))
+      toast.success('Nhận voucher thành công! Voucher đã được thêm vào tài khoản của bạn.')
+    } catch (err: any) {
+      toast.error(err.response?.data || 'Không thể nhận voucher')
+    } finally {
+      setClaimingVoucherId(null)
+    }
   }
 
   const handleSaveEditRating = async () => {
@@ -734,6 +763,76 @@ export function TutorProfileDetail() {
                 ) : (
                   <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
                     Gia sư chưa cập nhật chứng chỉ.
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
+                <h3 className="mb-4 font-bold text-slate-950">Mã giảm giá của gia sư</h3>
+                {loadingVouchers ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : tutorVouchers.length === 0 ? (
+                  <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
+                    Gia sư chưa có mã giảm giá nào.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {tutorVouchers.map((v) => {
+                      const isClaimed = claimedVoucherIds.has(v.id)
+                      const isClaiming = claimingVoucherId === v.id
+                      return (
+                        <div
+                          key={v.id}
+                          className={`rounded-lg border p-3 ${
+                            isClaimed
+                              ? 'border-slate-200 bg-slate-50'
+                              : 'border-green-200 bg-green-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`font-bold text-sm tracking-wide ${
+                              isClaimed ? 'text-slate-400' : 'text-green-700'
+                            }`}>
+                              {v.code}
+                            </span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                              isClaimed
+                                ? 'bg-slate-200 text-slate-500'
+                                : 'bg-green-200 text-green-800'
+                            }`}>
+                              {v.discountType === 'PERCENT'
+                                ? `${v.discountValue}%`
+                                : `${v.discountValue.toLocaleString('vi-VN')}₫`}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-500 space-y-0.5 mb-2">
+                            {v.minPrice && (
+                              <div>Đơn tối thiểu: <strong>{v.minPrice.toLocaleString('vi-VN')}₫</strong></div>
+                            )}
+                            {v.endDate && (
+                              <div>HSD: {new Date(v.endDate).toLocaleDateString('vi-VN')}</div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleClaimVoucher(v.id)}
+                            disabled={isClaimed || isClaiming}
+                            className={`w-full text-xs font-semibold py-1.5 rounded transition ${
+                              isClaimed
+                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                : 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60'
+                            }`}
+                          >
+                            {isClaiming
+                              ? 'Đang nhận...'
+                              : isClaimed
+                                ? 'Đã nhận'
+                                : 'Nhận voucher'}
+                          </button>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>

@@ -1,6 +1,10 @@
-import { useState } from 'react'
-import { enroll, confirmPayment } from '../api/classApi'
+
+import { useEffect, useState } from 'react'
+import { toast } from 'react-toastify'
+import { enroll } from '../api/classApi'
+
 import { createPayment } from '../api/payment'
+import { getAvailableVouchers, type VoucherResponse } from '../api/voucher'
 
 interface EnrollmentModalProps {
   isOpen: boolean
@@ -24,20 +28,34 @@ export function EnrollmentModal({
   const [step, setStep] = useState<Step>('choose')
   const [resultMessage, setResultMessage] = useState('')
   const [resultType, setResultType] = useState<'success' | 'error'>('success')
+  const [vouchers, setVouchers] = useState<VoucherResponse[]>([])
+  const [selectedVoucherId, setSelectedVoucherId] = useState<number | null>(null)
+  const [showVoucherPicker, setShowVoucherPicker] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      setStep('choose')
+      setSelectedVoucherId(null)
+      setShowVoucherPicker(false)
+      // Fetch available vouchers
+      getAvailableVouchers()
+        .then(setVouchers)
+        .catch(() => {})
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
   const handleEnroll = async (method: 'vnpay' | 'cash') => {
     setStep('processing')
     try {
-      // Step 1: Enroll into class — backend tự tạo Order luôn
-      const enrollment = await enroll(classId)
+      // Step 1: Enroll with optional voucher
+      const enrollment = await enroll(classId, selectedVoucherId ?? undefined)
       const enrollmentId = enrollment.id
       const orderId = enrollment.orderId
-      console.log('[Enrollment] Created enrollment:', enrollmentId, 'orderId:', orderId)
+      console.log('[Enrollment] Created enrollment:', enrollmentId, 'orderId:', orderId, 'voucherId:', selectedVoucherId)
 
       if (method === 'cash') {
-        // Cash: enrollment is PENDING, wait for tutor to approve
         setStep('result')
         setResultType('success')
         setResultMessage('Đăng ký thành công! Vui lòng chờ gia sư xác nhận. Chúng tôi sẽ thông báo khi có kết quả.')
@@ -52,20 +70,10 @@ export function EnrollmentModal({
         return
       }
 
-      // First confirm payment to set enrollment status to PAID
-      try {
-        await confirmPayment(enrollmentId)
-      } catch (confirmErr: any) {
-        // If confirmPayment fails, try to create VNPAY order directly
-        console.log('[Enrollment] confirmPayment failed, trying VNPAY order flow:', confirmErr)
-      }
-
-      // Create VNPAY payment URL — dùng orderId, không phải enrollmentId
       const paymentResult = await createPayment(orderId)
       const paymentUrl = paymentResult.paymentUrl
 
       if (paymentUrl) {
-        // Redirect to VNPAY
         window.location.href = paymentUrl
       } else {
         setStep('result')
@@ -86,10 +94,39 @@ export function EnrollmentModal({
     return `${price.toLocaleString('vi-VN')} đ`
   }
 
+  const getDiscountDisplay = () => {
+    if (!selectedVoucherId) return null
+    const v = vouchers.find((v) => v.id === selectedVoucherId)
+    if (!v) return null
+
+    let discountText = ''
+    if (v.discountType === 'PERCENT') {
+      discountText = `Giảm ${v.discountValue}%`
+    } else {
+      discountText = `Giảm ${v.discountValue.toLocaleString('vi-VN')}₫`
+    }
+
+    let estimatedDiscount = 0
+    if (budget) {
+      if (v.discountType === 'PERCENT') {
+        estimatedDiscount = Math.round(budget * v.discountValue / 100)
+      } else {
+        estimatedDiscount = v.discountValue
+      }
+      if (v.maxDiscount) {
+        estimatedDiscount = Math.min(estimatedDiscount, v.maxDiscount)
+      }
+    }
+
+    return { text: discountText, estimatedDiscount, voucher: v }
+  }
+
+  const discountInfo = getDiscountDisplay()
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -103,11 +140,25 @@ export function EnrollmentModal({
           {step === 'choose' && (
             <>
               {/* Class info summary */}
-              <div className="bg-slate-50 rounded-lg p-4 mb-6 space-y-2">
+              <div className="bg-slate-50 rounded-lg p-4 mb-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Học phí</span>
+                  <span className="text-slate-600">Học phí gốc</span>
                   <span className="font-bold text-blue-700">{formatPrice(budget)}</span>
                 </div>
+                {discountInfo && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-600">{discountInfo.text}</span>
+                    <span className="font-bold text-green-600">-{discountInfo.estimatedDiscount.toLocaleString('vi-VN')}₫</span>
+                  </div>
+                )}
+                {discountInfo && (
+                  <div className="flex justify-between text-sm border-t border-slate-200 pt-2">
+                    <span className="text-slate-600 font-semibold">Thành tiền</span>
+                    <span className="font-bold text-blue-700">
+                      {budget ? formatPrice(Math.max(0, budget - discountInfo.estimatedDiscount)) : formatPrice(budget)}
+                    </span>
+                  </div>
+                )}
                 {totalSessions && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-600">Số buổi</span>
@@ -115,6 +166,69 @@ export function EnrollmentModal({
                   </div>
                 )}
               </div>
+
+              {/* Voucher Selector */}
+              {vouchers.length > 0 && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowVoucherPicker(!showVoucherPicker)}
+                    className="w-full flex items-center justify-between p-3 rounded-xl border border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-50 transition-all"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🏷️</span>
+                      <span className="text-sm font-semibold text-slate-700">
+                        {selectedVoucherId ? 'Đã chọn mã giảm giá' : 'Chọn mã giảm giá'}
+                      </span>
+                    </div>
+                    <span className="text-xs text-blue-600 font-semibold">
+                      {showVoucherPicker ? '▲' : '▼'}
+                    </span>
+                  </button>
+
+                  {showVoucherPicker && (
+                    <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
+                      <button
+                        onClick={() => {
+                          setSelectedVoucherId(null)
+                          setShowVoucherPicker(false)
+                        }}
+                        className={`w-full text-left p-3 rounded-lg border text-sm transition-all ${
+                          selectedVoucherId === null
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <span className="font-medium text-slate-700">Không sử dụng mã giảm giá</span>
+                      </button>
+                      {vouchers.map((v) => (
+                        <button
+                          key={v.id}
+                          onClick={() => {
+                            setSelectedVoucherId(v.id)
+                            setShowVoucherPicker(false)
+                          }}
+                          className={`w-full text-left p-3 rounded-lg border text-sm transition-all ${
+                            selectedVoucherId === v.id
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-green-700">{v.code}</span>
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
+                              {v.discountType === 'PERCENT' ? `${v.discountValue}%` : `${v.discountValue.toLocaleString('vi-VN')}₫`}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {v.minPrice && <span>Đơn tối thiểu: {v.minPrice.toLocaleString('vi-VN')}₫</span>}
+                            {v.endDate && <span> • HSD: {new Date(v.endDate).toLocaleDateString('vi-VN')}</span>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <p className="text-sm text-slate-700 mb-4 text-center">
                 Vui lòng chọn phương thức thanh toán
