@@ -7,28 +7,21 @@ import com.tmdt.web.dto.request.TutorReviewEnrollmentRequest;
 import com.tmdt.web.dto.response.ClassResponse;
 import com.tmdt.web.dto.response.EnrollmentResponse;
 import com.tmdt.web.entity.ClassSchedule;
-import com.tmdt.web.entity.Enrollment;
-import com.tmdt.web.entity.TutorProfile;
-import com.tmdt.web.entity.Order;
-import com.tmdt.web.entity.TutorClass;
-import com.tmdt.web.enums.ApprovalStatus;
-import com.tmdt.web.enums.ClassStatus;
-import com.tmdt.web.enums.EnrollmentStatus;
-import com.tmdt.web.enums.TeachingMode;
+import com.tmdt.web.entity.*;
+import com.tmdt.web.enums.*;
 import com.tmdt.web.exception.AppException;
 import com.tmdt.web.mapper.ClassMapper;
-import com.tmdt.web.repository.ClassRep;
-import com.tmdt.web.repository.EnrollmentRep;
-import com.tmdt.web.repository.OrderRep;
-import com.tmdt.web.repository.TutorProfileRep;
+import com.tmdt.web.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -40,6 +33,9 @@ public class ClassService {
     private final ClassMapper classMapper;
     private final TutorProfileRep tutorProfileRepository;
     private final OrderRep orderRepository;
+    private final PaymentRep paymentRepository;
+    private final VoucherRep voucherRepository;
+    private final VoucherUsageRep voucherUsageRepository;
 
     @Transactional
     public ClassResponse createClass(ClassCreateRequest request, Long tutorId) {
@@ -220,7 +216,7 @@ public class ClassService {
     }
 
     @Transactional
-    public EnrollmentResponse enroll(Long classId, Long studentId) {
+    public EnrollmentResponse enroll(Long classId, Long studentId, Long voucherId) {
         TutorClass classEntity = classRepository.findById(classId)
                 .orElseThrow(() -> AppException.notFound("Không tìm thấy lớp học"));
 
@@ -255,11 +251,75 @@ public class ClassService {
 
         enrollmentRepository.save(enrollment);
 
-        // Tạo Order ngay khi enroll thành công
+        // Tính toán số tiền sau giảm giá
+        Double originalAmount = classEntity.getPricePerCourse().doubleValue();
+        Double finalAmount = originalAmount;
+        BigDecimal discountAmount = BigDecimal.ZERO;
+
+        if (voucherId != null) {
+            Voucher voucher = voucherRepository.findById(voucherId)
+                    .orElseThrow(() -> AppException.notFound("Voucher không tồn tại"));
+
+            // Kiểm tra voucher hợp lệ
+            if (!Boolean.TRUE.equals(voucher.getActive())) {
+                throw AppException.badRequest("Voucher đã bị vô hiệu hóa");
+            }
+            LocalDateTime now = LocalDateTime.now();
+            if (voucher.getEndDate() != null && voucher.getEndDate().isBefore(now)) {
+                throw AppException.badRequest("Voucher đã hết hạn");
+            }
+            if (voucher.getStartDate() != null && voucher.getStartDate().isAfter(now)) {
+                throw AppException.badRequest("Voucher chưa đến hạn sử dụng");
+            }
+            if (voucher.getUsageLimit() != null && voucher.getUsedCount() >= voucher.getUsageLimit()) {
+                throw AppException.badRequest("Voucher đã hết lượt sử dụng");
+            }
+            if (voucherUsageRepository.existsByVoucherIdAndStudentId(voucherId, studentId)) {
+                throw AppException.conflict("Bạn đã sử dụng voucher này rồi");
+            }
+
+            // Tính discount
+            BigDecimal originalBD = BigDecimal.valueOf(originalAmount);
+            if (voucher.getDiscountType() == DiscountType.PERCENT) {
+                discountAmount = originalBD.multiply(voucher.getDiscountValue())
+                        .divide(BigDecimal.valueOf(100));
+            } else {
+                discountAmount = voucher.getDiscountValue();
+            }
+
+            // Giới hạn max discount
+            if (voucher.getMaxDiscount() != null && discountAmount.compareTo(voucher.getMaxDiscount()) > 0) {
+                discountAmount = voucher.getMaxDiscount();
+            }
+
+            // Đảm bảo không giảm quá số tiền
+            if (discountAmount.compareTo(originalBD) > 0) {
+                discountAmount = originalBD;
+            }
+
+            finalAmount = originalBD.subtract(discountAmount).doubleValue();
+
+            // Tạo voucher usage
+            User student = new User();
+            student.setId(studentId.intValue());
+            VoucherUsage usage = VoucherUsage.builder()
+                    .voucher(voucher)
+                    .student(student)
+                    .enrollment(enrollment)
+                    .discountAmount(discountAmount)
+                    .build();
+            voucherUsageRepository.save(usage);
+
+            // Tăng used_count
+            voucher.setUsedCount(voucher.getUsedCount() == null ? 1 : voucher.getUsedCount() + 1);
+            voucherRepository.save(voucher);
+        }
+
+        // Tạo Order với số tiền sau giảm
         Order order = Order.builder()
                 .studentId(studentId.intValue())
                 .tutorClass(classEntity)
-                .amount(classEntity.getPricePerCourse().doubleValue())
+                .amount(finalAmount)
                 .status(Order.OrderStatus.PENDING)
                 .build();
         orderRepository.save(order);
@@ -283,6 +343,16 @@ public class ClassService {
 
         enrollment.setStatus(EnrollmentStatus.CANCELLED);
         enrollmentRepository.save(enrollment);
+
+        // Cancel associated Order
+        TutorClass classEntity = enrollment.getClassEntity();
+        orderRepository.findByStudentIdAndClassId(studentId.intValue(), classEntity.getId()).ifPresent(order -> {
+            if (order.getStatus() == Order.OrderStatus.PENDING) {
+                order.setStatus(Order.OrderStatus.CANCELLED);
+                orderRepository.save(order);
+            }
+        });
+
         return classMapper.toEnrollmentResponse(enrollment);
     }
 
@@ -313,8 +383,16 @@ public class ClassService {
         // Cập nhật Order status sang PAID
         orderRepository.findByStudentIdAndClassId(studentId.intValue(), classEntity.getId()).ifPresent(order -> {
             order.setStatus(Order.OrderStatus.PAID);
-            order.setPaidAt(new java.util.Date());
+            order.setPaidAt(new Date());
             orderRepository.save(order);
+
+            // Tạo Payment record VNPAY
+            Payment payment = new Payment();
+            payment.setOrder(order);
+            payment.setProvider(Payment.PaymentProvider.VNPAY);
+            payment.setStatus(Payment.PaymentStatus.SUCCESS);
+            payment.setPaidAt(new Date());
+            paymentRepository.save(payment);
         });
 
         return classMapper.toEnrollmentResponse(enrollment);
@@ -365,8 +443,17 @@ public class ClassService {
         // Cập nhật Order status sang PAID
         orderRepository.findByStudentIdAndClassId(enrollment.getStudentId().intValue(), classEntity.getId()).ifPresent(order -> {
             order.setStatus(Order.OrderStatus.PAID);
-            order.setPaidAt(new java.util.Date());
+            order.setPaidAt(new Date());
             orderRepository.save(order);
+
+            // Tạo Payment record CASH (provider=VNPAY do DB constraint, phân biệt qua transactionId)
+            Payment payment = new Payment();
+            payment.setOrder(order);
+            payment.setProvider(Payment.PaymentProvider.VNPAY);
+            payment.setStatus(Payment.PaymentStatus.SUCCESS);
+            payment.setTransactionId("CASH");
+            payment.setPaidAt(new Date());
+            paymentRepository.save(payment);
         });
 
         return classMapper.toEnrollmentResponse(enrollment);

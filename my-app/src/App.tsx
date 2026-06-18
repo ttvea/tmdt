@@ -42,6 +42,7 @@ import ContactPage from "./pages/ContactPage";
 import FaqPage from "./pages/FaqPage";
 import PostClassPage from "./pages/Student/PostClassPage";
 import StudentRequestsList from "./pages/Student/StudentRequestsList";
+import StudentVouchers from "./pages/Student/StudentVouchers";
 import { MySupport } from "./pages/Support/MySupport";
 import { MyDisputes } from "./pages/Disputes/MyDisputes";
 
@@ -70,6 +71,7 @@ const pageTitles: Record<string, string> = {
   "/student/profile": "Hồ sơ học viên - EduMatch Pro",
   "/student/schedule": "Lịch học - EduMatch Pro",
   "/student/messages": "Tin nhắn - EduMatch Pro",
+  "/student/vouchers": "Mã giảm giá - EduMatch Pro",
   "/student/support": "Hỗ trợ của tôi - EduMatch Pro",
   "/student/disputes": "Tranh chấp của tôi - EduMatch Pro",
   "/admin": "Quản trị - EduMatch Pro",
@@ -132,6 +134,7 @@ function App() {
   if (pathname === "/student/profile") return <StudentProfile />;
   if (pathname === "/student/schedule") return <StudentSchedule />;
   if (pathname === "/student/messages") return <StudentMessages />;
+  if (pathname === "/student/vouchers") return <StudentVouchers />;
   if (pathname === "/student/my-requests") return <MyStudentRequests />;
   if (pathname === "/student/support") return <MySupport />;
   if (pathname === "/student/disputes") return <MyDisputes />;

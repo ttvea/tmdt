@@ -64,6 +64,36 @@ public class VoucherController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Lấy danh sách voucher khả dụng cho học viên (chưa sử dụng, còn hạn, còn lượt)
+     */
+    @GetMapping("/available")
+    public ResponseEntity<List<VoucherResponse>> getAvailableVouchers(
+            @RequestHeader("Authorization") String authHeader) {
+        Long currentUserId = getUserId(authHeader);
+        return ResponseEntity.ok(voucherService.getAvailableVouchersForStudent(currentUserId));
+    }
+
+    /**
+     * Lấy danh sách voucher đang active của một gia sư (public - dùng cho trang hồ sơ gia sư)
+     */
+    @GetMapping("/tutor/{tutorUserId}")
+    public ResponseEntity<List<VoucherResponse>> getTutorActiveVouchers(
+            @PathVariable Integer tutorUserId) {
+        return ResponseEntity.ok(voucherService.getActiveVouchersByTutor(tutorUserId));
+    }
+
+    /**
+     * Nhận voucher - học viên nhận một voucher (cần đăng nhập)
+     */
+    @PostMapping("/{voucherId}/claim")
+    public ResponseEntity<VoucherResponse> claimVoucher(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long voucherId) {
+        Long currentUserId = getUserId(authHeader);
+        return ResponseEntity.ok(voucherService.claimVoucher(currentUserId, voucherId));
+    }
+
     private Long getUserId(String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         String email = jwtService.extractUsername(token);

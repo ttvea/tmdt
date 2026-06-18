@@ -21,6 +21,7 @@ public class VoucherResponse {
     private Integer usedCount;
     private VoucherScope applicableScope;
     private Long classId;
+    private String tutorName;
     private Boolean active;
     private LocalDateTime startDate;
     private LocalDateTime endDate;

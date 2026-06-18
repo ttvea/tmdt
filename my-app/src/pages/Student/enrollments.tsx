@@ -3,6 +3,7 @@ import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
 import { getMyEnrollments, requestCashPayment, type EnrollmentResponse } from '../../api/classApi'
 import { OrderDetailModal } from '../../components/OrderDetailModal'
+import { supabase } from '../../api/supabase'
 
 export function StudentEnrollments() {
   const [enrollments, setEnrollments] = useState<EnrollmentResponse[]>([])
@@ -21,21 +22,41 @@ export function StudentEnrollments() {
     fetchData()
   }, [])
 
-  // Polling realtime: refresh every 3 seconds
+  // Realtime subscription qua Supabase
   useEffect(() => {
-    const interval = setInterval(() => {
-      void getMyEnrollments(0, 50)
-        .then((data) => {
-          setEnrollments((prev) => {
-            if (JSON.stringify(data.content) !== JSON.stringify(prev)) {
-              return data.content
-            }
-            return prev
-          })
-        })
-        .catch(() => {})
-    }, 3000)
-    return () => clearInterval(interval)
+    if (!supabase) {
+      console.log('[StudentEnrollments] supabase client is NULL')
+      return
+    }
+
+    const channel = supabase
+      .channel('student-enrollments-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'enrollments' },
+        () => {
+          console.log('[StudentEnrollments] Realtime: enrollments changed')
+          void getMyEnrollments(0, 50)
+            .then((data) => setEnrollments(data.content))
+            .catch(() => {})
+        }
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => {
+          console.log('[StudentEnrollments] Realtime: orders changed')
+          void getMyEnrollments(0, 50)
+            .then((data) => setEnrollments(data.content))
+            .catch(() => {})
+        }
+      )
+      .subscribe((status) => {
+        console.log('[StudentEnrollments] Subscription status:', status)
+      })
+
+    return () => {
+      console.log('[StudentEnrollments] Cleaning up realtime channel')
+      void supabase.removeChannel(channel)
+    }
   }, [])
 
   const handleRequestCashPayment = async (enrollmentId: number) => {

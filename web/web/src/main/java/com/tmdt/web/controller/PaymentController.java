@@ -1,11 +1,23 @@
 package com.tmdt.web.controller;
 
 import com.tmdt.web.entity.Order;
+import com.tmdt.web.entity.Payment;
+import com.tmdt.web.entity.Enrollment;
+import com.tmdt.web.entity.TutorClass;
+import com.tmdt.web.enums.EnrollmentStatus;
+import com.tmdt.web.enums.ClassStatus;
+import com.tmdt.web.repository.ClassRep;
+import com.tmdt.web.repository.EnrollmentRep;
 import com.tmdt.web.repository.OrderRep;
+import com.tmdt.web.repository.PaymentRep;
 import com.tmdt.web.service.PaymentService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Map;
 
@@ -16,6 +28,12 @@ public class PaymentController {
 
     private final OrderRep orderRepository;
     private final PaymentService paymentService;
+    private final EnrollmentRep enrollmentRepository;
+    private final PaymentRep paymentRepository;
+    private final ClassRep classRepository;
+
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
 
     @PostMapping("/create")
     public Map<String, String> createPayment(
@@ -30,7 +48,6 @@ public class PaymentController {
                 order.getAmount()
         );
 
-        order.setStatus(Order.OrderStatus.PENDING);
         order.setVnpTxnRef(String.valueOf(order.getId()));
         order.setPaymentUrl(paymentUrl);
         orderRepository.save(order);
@@ -42,11 +59,13 @@ public class PaymentController {
     }
 
     @GetMapping("/vnpay-return")
-    public String paymentReturn(
+    @Transactional
+    public void paymentReturn(
             @RequestParam String vnp_ResponseCode,
             @RequestParam String vnp_TxnRef,
-            @RequestParam(required = false) String vnp_TransactionNo
-    ) {
+            @RequestParam(required = false) String vnp_TransactionNo,
+            HttpServletResponse response
+    ) throws Exception {
 
         Order order = orderRepository.findById(
                 Integer.parseInt(vnp_TxnRef)
@@ -57,18 +76,46 @@ public class PaymentController {
         order.setVnpTransactionNo(vnp_TransactionNo);
 
         if (vnp_ResponseCode.equals("00")) {
-
+            // Update Order
             order.setStatus(Order.OrderStatus.PAID);
             order.setPaidAt(new Date());
-
             orderRepository.save(order);
 
-            return "Thanh toán thành công";
+            // Update Enrollment -> PAID
+            enrollmentRepository.findByClassEntityIdAndStudentId(
+                    order.getTutorClass().getId(),
+                    order.getStudentId().longValue()
+            ).ifPresent(enrollment -> {
+                enrollment.setStatus(EnrollmentStatus.PAID);
+                enrollment.setPaidAt(LocalDateTime.now());
+                enrollmentRepository.save(enrollment);
+
+                // Update class currentStudents
+                TutorClass classEntity = enrollment.getClassEntity();
+                classEntity.setCurrentStudents(classEntity.getCurrentStudents() + 1);
+                long paidCount = enrollmentRepository.countByClassEntityIdAndStatusIn(
+                        classEntity.getId(), java.util.List.of(EnrollmentStatus.PAID));
+                if (paidCount >= classEntity.getMaxStudents()) {
+                    classEntity.setStatus(ClassStatus.CLOSED);
+                }
+                classRepository.save(classEntity);
+            });
+
+            // Create Payment record
+            Payment payment = new Payment();
+            payment.setOrder(order);
+            payment.setProvider(Payment.PaymentProvider.VNPAY);
+            payment.setStatus(Payment.PaymentStatus.SUCCESS);
+            payment.setTransactionId(vnp_TransactionNo);
+            payment.setPaidAt(new Date());
+            paymentRepository.save(payment);
+        } else {
+            // Payment failed
+            order.setStatus(Order.OrderStatus.CANCELLED);
+            orderRepository.save(order);
         }
 
-        order.setStatus(Order.OrderStatus.CANCELLED);
-        orderRepository.save(order);
-
-        return "Thanh toán thất bại";
+        // Redirect về frontend trang danh sách enrollment
+        response.sendRedirect(frontendUrl + "/student/enrollments");
     }
 }

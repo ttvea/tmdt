@@ -164,9 +164,10 @@ public class ClassController {
     @PostMapping("/{classId}/enroll")
     public ResponseEntity<EnrollmentResponse> enroll(
             @RequestHeader("Authorization") String authHeader,
-            @PathVariable Long classId) {
+            @PathVariable Long classId,
+            @RequestParam(required = false) Long voucherId) {
         Long studentId = getUserId(authHeader);
-        return ResponseEntity.ok(classService.enroll(classId, studentId));
+        return ResponseEntity.ok(classService.enroll(classId, studentId, voucherId));
     }
 
     @GetMapping("/my-enrollments")

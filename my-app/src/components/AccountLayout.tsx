@@ -177,6 +177,16 @@ const studentMenuItems: MenuItem[] = [
     ),
   },
   {
+    label: 'Mã giảm giá',
+    href: '/student/vouchers',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+          d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2.25a2.75 2.75 0 0 0 0 5.5V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2.25a2.75 2.75 0 0 0 0-5.5V7zM9 9h.01M15 15h.01M15 9l-6 6" />
+      </svg>
+    ),
+  },
+  {
     label: 'Hỗ trợ',
     href: '/student/support',
     icon: (
