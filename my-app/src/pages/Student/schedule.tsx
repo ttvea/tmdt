@@ -53,7 +53,7 @@ function isTeachingClass(cls: ClassResponse) {
 }
 
 async function loadStudentClasses(enrollments: EnrollmentResponse[]) {
-  const accepted = enrollments.filter((item) => item.status === 'APPROVED' || item.status === 'PAID')
+  const accepted = enrollments.filter((item) => item.status === 'PAID')
   const details: Array<ClassWithTeacher | null> = await Promise.all(
     accepted.map(async (enrollment) => {
       try {

@@ -2,11 +2,6 @@ import { useEffect, useState } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
 import { getAvailableVouchers, type VoucherResponse } from '../../api/voucher'
 
-const DISCOUNT_LABELS: Record<string, string> = {
-  PERCENT: '%',
-  FIXED: 'VNĐ',
-}
-
 const SCOPE_LABELS: Record<string, string> = {
   PLATFORM: 'Toàn hệ thống',
   ALL_CLASSES: 'Tất cả lớp học',
