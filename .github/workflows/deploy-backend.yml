@@ -17,7 +17,8 @@ env:
   REGISTRY: docker.io
   IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/thuegiasu-backend
   REMOTE_APP_DIR: ${{ vars.EC2_BACKEND_DEPLOY_DIR || '~/thuegiasu/backend' }}
-  HEALTHCHECK_URL: ${{ vars.BACKEND_HEALTHCHECK_URL || 'http://localhost:8080/actuator/health' }}
+  BACKEND_DOMAIN: ${{ vars.BACKEND_DOMAIN || 'edumatch.ooguy.com' }}
+  HEALTHCHECK_URL: ${{ vars.BACKEND_HEALTHCHECK_URL || 'https://edumatch.ooguy.com/actuator/health' }}
 
 jobs:
   deploy:
@@ -114,15 +115,42 @@ jobs:
               env_file:
                 - .env
               ports:
-                - "${BACKEND_PORT:-8080}:8080"
+                - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
               volumes:
                 - backend_uploads:/app/uploads
 
+            caddy:
+              image: caddy:2-alpine
+              container_name: thuegiasu-caddy
+              restart: unless-stopped
+              depends_on:
+                - backend
+              environment:
+                BACKEND_DOMAIN: ${BACKEND_DOMAIN}
+              ports:
+                - "80:80"
+                - "443:443"
+                - "443:443/udp"
+              volumes:
+                - ./Caddyfile:/etc/caddy/Caddyfile:ro
+                - caddy_data:/data
+                - caddy_config:/config
+
           volumes:
             backend_uploads:
+            caddy_data:
+            caddy_config:
           COMPOSE_FILE
 
+          cat > Caddyfile <<'CADDY_FILE'
+          {$BACKEND_DOMAIN} {
+            encode zstd gzip
+            reverse_proxy backend:8080
+          }
+          CADDY_FILE
+
           printf '%s\n' "$DEPLOY_IMAGE" > .backend-image
+          printf '%s\n' "$BACKEND_DOMAIN" > .backend-domain
 
       - name: Upload deployment files to EC2
         shell: bash
@@ -132,7 +160,7 @@ jobs:
         run: |
           set -euo pipefail
           scp -i ~/.ssh/ec2_backend_key \
-            docker-compose.backend.yml .env.deploy .backend-image \
+            docker-compose.backend.yml Caddyfile .env.deploy .backend-image .backend-domain \
             "${EC2_USER}@${EC2_HOST}:/tmp/"
 
       - name: Deploy on EC2
@@ -161,11 +189,14 @@ jobs:
           mv /tmp/docker-compose.backend.yml "$REMOTE_APP_DIR/docker-compose.backend.yml"
           mv /tmp/.env.deploy "$REMOTE_APP_DIR/.env"
           mv /tmp/.backend-image "$REMOTE_APP_DIR/.backend-image"
+          mv /tmp/.backend-domain "$REMOTE_APP_DIR/.backend-domain"
+          mv /tmp/Caddyfile "$REMOTE_APP_DIR/Caddyfile"
           chmod 600 "$REMOTE_APP_DIR/.env"
 
           cd "$REMOTE_APP_DIR"
-          export BACKEND_IMAGE
+          export BACKEND_IMAGE BACKEND_DOMAIN
           BACKEND_IMAGE="$(cat .backend-image)"
+          BACKEND_DOMAIN="$(cat .backend-domain)"
 
           if docker compose version >/dev/null 2>&1; then
             COMPOSE=(docker compose)
@@ -180,8 +211,8 @@ jobs:
           "${COMPOSE[@]}" version
 
           "${COMPOSE[@]}" -f docker-compose.backend.yml config >/dev/null
-          "${COMPOSE[@]}" -f docker-compose.backend.yml pull backend
-          "${COMPOSE[@]}" -f docker-compose.backend.yml up -d --remove-orphans backend
+          "${COMPOSE[@]}" -f docker-compose.backend.yml pull backend caddy
+          "${COMPOSE[@]}" -f docker-compose.backend.yml up -d --remove-orphans backend caddy
 
           echo "Waiting for backend to become healthy..."
           for attempt in $(seq 1 30); do
@@ -195,6 +226,7 @@ jobs:
 
           echo "Backend health check failed: $HEALTHCHECK_URL" >&2
           "${COMPOSE[@]}" -f docker-compose.backend.yml logs --tail=200 backend >&2
+          "${COMPOSE[@]}" -f docker-compose.backend.yml logs --tail=200 caddy >&2
           exit 1
           REMOTE_SCRIPT
 
