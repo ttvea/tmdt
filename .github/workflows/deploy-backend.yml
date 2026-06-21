@@ -167,9 +167,32 @@ jobs:
           export BACKEND_IMAGE
           BACKEND_IMAGE="$(cat .backend-image)"
 
-          docker compose --env-file .env -f docker-compose.backend.yml config --quiet
-          docker compose --env-file .env -f docker-compose.backend.yml pull backend
-          docker compose --env-file .env -f docker-compose.backend.yml up -d --remove-orphans backend
+          if ! docker compose version >/dev/null 2>&1 \
+            && ! docker-compose version >/dev/null 2>&1; then
+            echo "Docker Compose is missing; installing it on Ubuntu..."
+            sudo apt-get update
+
+            if ! sudo apt-get install -y docker-compose-plugin; then
+              if ! sudo apt-get install -y docker-compose-v2; then
+                sudo apt-get install -y docker-compose
+              fi
+            fi
+          fi
+
+          if docker compose version >/dev/null 2>&1; then
+            COMPOSE=(docker compose)
+          elif docker-compose version >/dev/null 2>&1; then
+            COMPOSE=(docker-compose)
+          else
+            echo "Docker Compose installation failed." >&2
+            exit 1
+          fi
+
+          "${COMPOSE[@]}" version
+
+          "${COMPOSE[@]}" -f docker-compose.backend.yml config >/dev/null
+          "${COMPOSE[@]}" -f docker-compose.backend.yml pull backend
+          "${COMPOSE[@]}" -f docker-compose.backend.yml up -d --remove-orphans backend
 
           echo "Waiting for backend to become healthy..."
           for attempt in $(seq 1 30); do
@@ -182,7 +205,7 @@ jobs:
           done
 
           echo "Backend health check failed: $HEALTHCHECK_URL" >&2
-          docker compose --env-file .env -f docker-compose.backend.yml logs --tail=200 backend >&2
+          "${COMPOSE[@]}" -f docker-compose.backend.yml logs --tail=200 backend >&2
           exit 1
           REMOTE_SCRIPT
 
