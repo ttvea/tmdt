@@ -167,24 +167,13 @@ jobs:
           export BACKEND_IMAGE
           BACKEND_IMAGE="$(cat .backend-image)"
 
-          if ! docker compose version >/dev/null 2>&1 \
-            && ! docker-compose version >/dev/null 2>&1; then
-            echo "Docker Compose is missing; installing it on Ubuntu..."
-            sudo apt-get update
-
-            if ! sudo apt-get install -y docker-compose-plugin; then
-              if ! sudo apt-get install -y docker-compose-v2; then
-                sudo apt-get install -y docker-compose
-              fi
-            fi
-          fi
-
           if docker compose version >/dev/null 2>&1; then
             COMPOSE=(docker compose)
           elif docker-compose version >/dev/null 2>&1; then
             COMPOSE=(docker-compose)
           else
-            echo "Docker Compose installation failed." >&2
+            echo "Docker Compose is not installed on EC2." >&2
+            echo "Install it on the server, then rerun this workflow." >&2
             exit 1
           fi
 
