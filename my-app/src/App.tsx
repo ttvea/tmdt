@@ -18,6 +18,7 @@ import { TutorMessages } from "./pages/Tutor/messages";
 import { TutorVouchers } from "./pages/Tutor/vouchers";
 import { TutorApplications } from "./pages/Tutor/applications";
 import { TutorEnrollments } from "./pages/Tutor/enrollments";
+import { TutorPayout } from "./pages/Tutor/payout";
 import { StudentEnrollments } from "./pages/Student/enrollments";
 import  StudentProfile  from "./pages/Student/StudentProfile";
 import { StudentSchedule } from "./pages/Student/schedule";
@@ -38,6 +39,7 @@ import { AdminSupport } from "./pages/Admin/AdminSupport";
 import { AdminDisputes } from "./pages/Admin/AdminDisputes";
 import { AdminReports } from "./pages/Admin/AdminReports";
 import { AdminSettings } from "./pages/Admin/AdminSettings";
+import { AdminPayouts } from "./pages/Admin/AdminPayouts";
 import PricingPage from "./pages/PricingPage";
 import ContactPage from "./pages/ContactPage";
 import FaqPage from "./pages/FaqPage";
@@ -69,6 +71,8 @@ const pageTitles: Record<string, string> = {
   "/tutor/support": "Hỗ trợ của tôi - EduMatch Pro",
   "/tutor/disputes": "Tranh chấp của tôi - EduMatch Pro",
   "/tutor/classes/new": "Tạo lớp học - EduMatch Pro",
+  "/tutor/enrollments": "Thanh toán - EduMatch Pro",
+  "/tutor/payout": "Rút tiền - EduMatch Pro",
   "/student/profile": "Hồ sơ học viên - EduMatch Pro",
   "/student/schedule": "Lịch học - EduMatch Pro",
   "/student/messages": "Tin nhắn - EduMatch Pro",
@@ -85,6 +89,7 @@ const pageTitles: Record<string, string> = {
   "/admin/disputes": "Giải quyết tranh chấp - EduMatch Pro",
   "/admin/reports": "Tạo báo cáo - EduMatch Pro",
   "/admin/settings": "Cài đặt hệ thống - EduMatch Pro",
+  "/admin/payouts": "Quản lý thanh toán - EduMatch Pro",
   "/post-class": "Đăng lớp - EduMatch Pro",
   "/discover/student-requests": "Bảng Tin - EduMatch Pro",
 };
@@ -124,6 +129,7 @@ function App() {
   if (pathname === "/tutor/vouchers") return <TutorVouchers />;
   if (pathname === "/tutor/applications") return <TutorApplications />;
   if (pathname === "/tutor/enrollments") return <TutorEnrollments />;
+  if (pathname === "/tutor/payout") return <TutorPayout />;
   if (pathname === "/student/enrollments") return <StudentEnrollments />;
   if (pathname === "/tutor/support") return <MySupport />;
   if (pathname === "/tutor/disputes") return <MyDisputes />;
@@ -150,6 +156,7 @@ function App() {
   if (pathname === "/admin/disputes") return <AdminDisputes />;
   if (pathname === "/admin/reports") return <AdminReports />;
   if (pathname === "/admin/settings") return <AdminSettings />;
+  if (pathname === "/admin/payouts") return <AdminPayouts />;
   if (pathname.startsWith("/admin/classes/")) return <AdminClassDetail />;
   if (pathname === "/post-class") return <PostClassPage />;
   if (pathname === "/discover/student-requests") return <StudentRequestsList />;
@@ -162,4 +169,3 @@ function App() {
 }
 
 export default App;
-

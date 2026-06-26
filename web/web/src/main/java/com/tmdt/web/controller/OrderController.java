@@ -15,7 +15,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Calendar;
 import java.util.stream.Collectors;
 
 @RestController
@@ -57,6 +59,11 @@ public class OrderController {
             map.put("classId", classEntity.getId());
             map.put("className", classEntity.getTitle());
             map.put("amount", order.getAmount());
+            map.put("commissionRate", order.getCommissionRate());
+            map.put("platformFee", order.getPlatformFee());
+            map.put("tutorEarning", order.getTutorEarning());
+            map.put("tutorPayoutStatus", order.getTutorPayoutStatus() != null ? order.getTutorPayoutStatus().name() : null);
+            map.put("tutorPayoutAt", order.getTutorPayoutAt());
             map.put("status", order.getStatus().name());
             map.put("vnpTxnRef", order.getVnpTxnRef());
             map.put("vnpTransactionNo", order.getVnpTransactionNo());
@@ -86,6 +93,11 @@ public class OrderController {
             map.put("classId", order.getTutorClass().getId());
             map.put("className", order.getTutorClass().getTitle());
             map.put("amount", order.getAmount());
+            map.put("commissionRate", order.getCommissionRate());
+            map.put("platformFee", order.getPlatformFee());
+            map.put("tutorEarning", order.getTutorEarning());
+            map.put("tutorPayoutStatus", order.getTutorPayoutStatus() != null ? order.getTutorPayoutStatus().name() : null);
+            map.put("tutorPayoutAt", order.getTutorPayoutAt());
             map.put("status", order.getStatus().name());
             map.put("vnpTxnRef", order.getVnpTxnRef());
             map.put("vnpTransactionNo", order.getVnpTransactionNo());
@@ -95,6 +107,147 @@ public class OrderController {
             map.put("paidAt", order.getPaidAt());
             return map;
         }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/api/tutor/{tutorId}/revenue")
+    public ResponseEntity<Map<String, Object>> getTutorRevenue(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long tutorId,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate) {
+        Long userId = getUserId(authHeader);
+        if (!userId.equals(tutorId)) {
+            throw AppException.forbidden("Bạn không có quyền xem doanh thu này");
+        }
+
+        List<Order> tutorOrders = orderRepository.findAll().stream()
+                .filter(o -> o.getTutorClass().getTutorId().equals(tutorId))
+                .filter(o -> o.getStatus() == Order.OrderStatus.PAID)
+                .collect(Collectors.toList());
+
+        // Date range filtering
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        Date from = null;
+        Date to = null;
+        try {
+            if (fromDate != null && !fromDate.isEmpty()) {
+                from = sdf.parse(fromDate);
+            }
+            if (toDate != null && !toDate.isEmpty()) {
+                to = sdf.parse(toDate);
+                // Set to end of day
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(to);
+                cal.set(Calendar.HOUR_OF_DAY, 23);
+                cal.set(Calendar.MINUTE, 59);
+                cal.set(Calendar.SECOND, 59);
+                to = cal.getTime();
+            }
+        } catch (Exception e) {
+            // ignore parse errors
+        }
+
+        Date finalFrom = from;
+        Date finalTo = to;
+        List<Order> filteredOrders = tutorOrders.stream()
+                .filter(o -> {
+                    Date paidDate = o.getPaidAt();
+                    if (paidDate == null) return false;
+                    if (finalFrom != null && paidDate.before(finalFrom)) return false;
+                    if (finalTo != null && paidDate.after(finalTo)) return false;
+                    return true;
+                })
+                .collect(Collectors.toList());
+
+        int totalOrders = filteredOrders.size();
+        double totalAmount = filteredOrders.stream().mapToDouble(Order::getAmount).sum();
+        double totalPlatformFee = filteredOrders.stream().mapToDouble(o -> o.getPlatformFee() != null ? o.getPlatformFee() : 0.0).sum();
+        double totalTutorEarning = filteredOrders.stream().mapToDouble(o -> o.getTutorEarning() != null ? o.getTutorEarning() : 0.0).sum();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("totalOrders", totalOrders);
+        result.put("totalAmount", totalAmount);
+        result.put("totalPlatformFee", totalPlatformFee);
+        result.put("totalTutorEarning", totalTutorEarning);
+        result.put("fromDate", fromDate);
+        result.put("toDate", toDate);
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * API mới: Trả về doanh thu theo từng tháng để vẽ biểu đồ cột
+     */
+    @GetMapping("/api/tutor/{tutorId}/revenue/monthly")
+    public ResponseEntity<List<Map<String, Object>>> getTutorRevenueMonthly(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long tutorId,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate) {
+        Long userId = getUserId(authHeader);
+        if (!userId.equals(tutorId)) {
+            throw AppException.forbidden("Bạn không có quyền xem doanh thu này");
+        }
+
+        List<Order> tutorOrders = orderRepository.findAll().stream()
+                .filter(o -> o.getTutorClass().getTutorId().equals(tutorId))
+                .filter(o -> o.getStatus() == Order.OrderStatus.PAID)
+                .collect(Collectors.toList());
+
+        // Date range filtering
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        Date from = null;
+        Date to = null;
+        try {
+            if (fromDate != null && !fromDate.isEmpty()) {
+                from = sdf.parse(fromDate);
+            }
+            if (toDate != null && !toDate.isEmpty()) {
+                to = sdf.parse(toDate);
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(to);
+                cal.set(Calendar.HOUR_OF_DAY, 23);
+                cal.set(Calendar.MINUTE, 59);
+                cal.set(Calendar.SECOND, 59);
+                to = cal.getTime();
+            }
+        } catch (Exception e) {
+            // ignore parse errors
+        }
+
+        Date finalFrom = from;
+        Date finalTo = to;
+
+        // Group by year-month
+        SimpleDateFormat monthFormat = new SimpleDateFormat("yyyy-MM");
+        Map<String, List<Order>> grouped = new TreeMap<>();
+        for (Order o : tutorOrders) {
+            Date paidDate = o.getPaidAt();
+            if (paidDate == null) continue;
+            if (finalFrom != null && paidDate.before(finalFrom)) continue;
+            if (finalTo != null && paidDate.after(finalTo)) continue;
+            String key = monthFormat.format(paidDate);
+            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(o);
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, List<Order>> entry : grouped.entrySet()) {
+            List<Order> orders = entry.getValue();
+            double amount = orders.stream().mapToDouble(Order::getAmount).sum();
+            double platformFee = orders.stream().mapToDouble(o -> o.getPlatformFee() != null ? o.getPlatformFee() : 0.0).sum();
+            double tutorEarning = orders.stream().mapToDouble(o -> o.getTutorEarning() != null ? o.getTutorEarning() : 0.0).sum();
+            int count = orders.size();
+
+            Map<String, Object> item = new HashMap<>();
+            item.put("month", entry.getKey());
+            item.put("totalAmount", amount);
+            item.put("platformFee", platformFee);
+            item.put("tutorEarning", tutorEarning);
+            item.put("orderCount", count);
+            result.add(item);
+        }
 
         return ResponseEntity.ok(result);
     }
@@ -153,6 +306,11 @@ public class OrderController {
         OrderDetailResponse response = OrderDetailResponse.builder()
                 .id(order.getId())
                 .amount(order.getAmount())
+                .commissionRate(order.getCommissionRate())
+                .platformFee(order.getPlatformFee())
+                .tutorEarning(order.getTutorEarning())
+                .tutorPayoutStatus(order.getTutorPayoutStatus() != null ? order.getTutorPayoutStatus().name() : null)
+                .tutorPayoutAt(order.getTutorPayoutAt())
                 .status(order.getStatus().name())
                 .dateCreate(order.getDateCreate())
                 .dateUpdate(order.getDateUpdate())

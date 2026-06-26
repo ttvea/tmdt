@@ -74,44 +74,55 @@ public class PaymentController {
         order.setVnpTxnRef(vnp_TxnRef);
         order.setVnpResponseCode(vnp_ResponseCode);
         order.setVnpTransactionNo(vnp_TransactionNo);
+        boolean alreadyPaid = order.getStatus() == Order.OrderStatus.PAID;
 
         if (vnp_ResponseCode.equals("00")) {
             // Update Order
+            paymentService.applyRevenueSplit(order);
             order.setStatus(Order.OrderStatus.PAID);
-            order.setPaidAt(new Date());
+            if (order.getPaidAt() == null) {
+                order.setPaidAt(new Date());
+            }
             orderRepository.save(order);
 
             // Update Enrollment -> PAID
-            enrollmentRepository.findByClassEntityIdAndStudentId(
-                    order.getTutorClass().getId(),
-                    order.getStudentId().longValue()
-            ).ifPresent(enrollment -> {
-                enrollment.setStatus(EnrollmentStatus.PAID);
-                enrollment.setPaidAt(LocalDateTime.now());
-                enrollmentRepository.save(enrollment);
+            if (!alreadyPaid) {
+                enrollmentRepository.findByClassEntityIdAndStudentId(
+                        order.getTutorClass().getId(),
+                        order.getStudentId().longValue()
+                ).ifPresent(enrollment -> {
+                    enrollment.setStatus(EnrollmentStatus.PAID);
+                    if (enrollment.getPaidAt() == null) {
+                        enrollment.setPaidAt(LocalDateTime.now());
+                    }
+                    enrollmentRepository.save(enrollment);
 
-                // Update class currentStudents
-                TutorClass classEntity = enrollment.getClassEntity();
-                classEntity.setCurrentStudents(classEntity.getCurrentStudents() + 1);
-                long paidCount = enrollmentRepository.countByClassEntityIdAndStatusIn(
-                        classEntity.getId(), java.util.List.of(EnrollmentStatus.PAID));
-                if (paidCount >= classEntity.getMaxStudents()) {
-                    classEntity.setStatus(ClassStatus.CLOSED);
-                }
-                classRepository.save(classEntity);
-            });
+                    // Update class currentStudents
+                    TutorClass classEntity = enrollment.getClassEntity();
+                    classEntity.setCurrentStudents(classEntity.getCurrentStudents() + 1);
+                    long paidCount = enrollmentRepository.countByClassEntityIdAndStatusIn(
+                            classEntity.getId(), java.util.List.of(EnrollmentStatus.PAID));
+                    if (paidCount >= classEntity.getMaxStudents()) {
+                        classEntity.setStatus(ClassStatus.CLOSED);
+                    }
+                    classRepository.save(classEntity);
+                });
 
-            // Create Payment record
-            Payment payment = new Payment();
-            payment.setOrder(order);
-            payment.setProvider(Payment.PaymentProvider.VNPAY);
-            payment.setStatus(Payment.PaymentStatus.SUCCESS);
-            payment.setTransactionId(vnp_TransactionNo);
-            payment.setPaidAt(new Date());
-            paymentRepository.save(payment);
+                // Create Payment record
+                Payment payment = new Payment();
+                payment.setOrder(order);
+                payment.setProvider(Payment.PaymentProvider.VNPAY);
+                payment.setStatus(Payment.PaymentStatus.SUCCESS);
+                payment.setTransactionId(vnp_TransactionNo);
+                payment.setPaidAt(new Date());
+                paymentRepository.save(payment);
+            }
         } else {
             // Payment failed
-            order.setStatus(Order.OrderStatus.CANCELLED);
+            if (!alreadyPaid) {
+                order.setStatus(Order.OrderStatus.CANCELLED);
+                order.setTutorPayoutStatus(Order.TutorPayoutStatus.CANCELLED);
+            }
             orderRepository.save(order);
         }
 

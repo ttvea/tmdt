@@ -1,6 +1,7 @@
 package com.tmdt.web.service;
 
 import com.tmdt.web.config.VNPayConfig;
+import com.tmdt.web.entity.Order;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -18,6 +21,7 @@ import java.util.*;
 public class PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+    private static final BigDecimal PLATFORM_COMMISSION_RATE = BigDecimal.valueOf(0.10);
     private final VNPayConfig vnPayConfig;
 
     public String createVNPayUrl(Integer orderId, Double amount) throws Exception {
@@ -28,6 +32,7 @@ public class PaymentService {
         // Sắp xếp params theo thứ tự alphabet (TreeMap)
         Map<String, String> params = new TreeMap<>();
         params.put("vnp_Amount", vnp_Amount);
+        params.put("vnp_BankCode", "NCB");
         params.put("vnp_Command", "pay");
         params.put("vnp_CreateDate", vnp_CreateDate);
         params.put("vnp_CurrCode", "VND");
@@ -43,24 +48,27 @@ public class PaymentService {
         List<String> keys = new ArrayList<>(params.keySet());
         Collections.sort(keys);
 
-        // Xây dựng hashData với URL-encoded values
+        // Xây dựng hashData với URL-encoded values (theo chuẩn VNPay Java SDK)
         StringBuilder hashData = new StringBuilder();
         boolean first = true;
         for (String key : keys) {
             String value = params.get(key);
             if (!first) hashData.append("&");
-            hashData.append(key).append("=")
+            hashData.append(URLEncoder.encode(key, StandardCharsets.US_ASCII.toString()))
+                    .append("=")
                     .append(URLEncoder.encode(value, StandardCharsets.US_ASCII.toString()));
             first = false;
         }
 
-        // Xây dựng query với URL-encoded values
+        // Xây dựng query với URL-encoded values (cho URL)
         StringBuilder query = new StringBuilder();
         first = true;
-        for (Map.Entry<String, String> entry : params.entrySet()) {
+        for (String key : keys) {
+            String value = params.get(key);
             if (!first) query.append("&");
-            query.append(entry.getKey()).append("=")
-                 .append(URLEncoder.encode(entry.getValue(), StandardCharsets.US_ASCII.toString()));
+            query.append(URLEncoder.encode(key, StandardCharsets.US_ASCII.toString()))
+                 .append("=")
+                 .append(URLEncoder.encode(value, StandardCharsets.US_ASCII.toString()));
             first = false;
         }
 
@@ -78,6 +86,25 @@ public class PaymentService {
         log.info("Full URL: {}", fullUrl);
 
         return fullUrl;
+    }
+
+    public void applyRevenueSplit(Order order) {
+        if (order == null || order.getAmount() == null) {
+            return;
+        }
+
+        BigDecimal totalAmount = BigDecimal.valueOf(order.getAmount());
+        BigDecimal platformFee = totalAmount
+                .multiply(PLATFORM_COMMISSION_RATE)
+                .setScale(0, RoundingMode.HALF_UP);
+        BigDecimal tutorEarning = totalAmount.subtract(platformFee);
+
+        order.setCommissionRate(PLATFORM_COMMISSION_RATE.doubleValue());
+        order.setPlatformFee(platformFee.doubleValue());
+        order.setTutorEarning(tutorEarning.doubleValue());
+        if (order.getTutorPayoutStatus() == null) {
+            order.setTutorPayoutStatus(Order.TutorPayoutStatus.PENDING);
+        }
     }
 
     private String hmacSHA512(String key, String data) throws Exception {

@@ -84,3 +84,53 @@ export async function getOrderDetail(orderId: number): Promise<OrderDetailRespon
   })
   return res.data
 }
+
+export interface TutorRevenueResponse {
+  totalOrders: number
+  totalAmount: number
+  totalPlatformFee: number
+  totalTutorEarning: number
+  fromDate: string | null
+  toDate: string | null
+}
+
+export interface MonthlyRevenueItem {
+  month: string
+  totalAmount: number
+  platformFee: number
+  tutorEarning: number
+  orderCount: number
+}
+
+export async function getTutorRevenue(
+  tutorId: number,
+  fromDate?: string,
+  toDate?: string
+): Promise<TutorRevenueResponse> {
+  const params: Record<string, string> = {}
+  if (fromDate) params.fromDate = fromDate
+  if (toDate) params.toDate = toDate
+  const res = await api.get(`/api/tutor/${tutorId}/revenue`, {
+    headers: getAuthHeader(),
+    params,
+  })
+  return res.data
+}
+
+/**
+ * API mới: Lấy doanh thu theo từng tháng để vẽ biểu đồ cột
+ */
+export async function getTutorRevenueMonthly(
+  tutorId: number,
+  fromDate?: string,
+  toDate?: string
+): Promise<MonthlyRevenueItem[]> {
+  const params: Record<string, string> = {}
+  if (fromDate) params.fromDate = fromDate
+  if (toDate) params.toDate = toDate
+  const res = await api.get(`/api/tutor/${tutorId}/revenue/monthly`, {
+    headers: getAuthHeader(),
+    params,
+  })
+  return res.data
+}
