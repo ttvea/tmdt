@@ -23,6 +23,12 @@ public class Order {
         EXPIRED
     }
 
+    public enum TutorPayoutStatus {
+        PENDING,
+        PAID,
+        CANCELLED
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -38,6 +44,22 @@ public class Order {
 
     @Column(nullable = false)
     private Double amount;
+
+    @Column(name = "commission_rate")
+    private Double commissionRate;
+
+    @Column(name = "platform_fee")
+    private Double platformFee;
+
+    @Column(name = "tutor_earning")
+    private Double tutorEarning;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tutor_payout_status")
+    private TutorPayoutStatus tutorPayoutStatus;
+
+    @Column(name = "tutor_payout_at")
+    private Date tutorPayoutAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

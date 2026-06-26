@@ -9,6 +9,7 @@ import { createOrGetConversation } from '../../api/conversations'
 import { getTutorClasses, type ClassResponse } from '../../api/classApi'
 import { ConsultationModal } from '../../components/ConsultationModal'
 import { getTutorVouchers, claimVoucher, type VoucherResponse } from '../../api/voucher'
+import { getTutorRevenue, type TutorRevenueResponse } from '../../api/order'
 
 interface TutorProfile {
   id: number
@@ -167,6 +168,11 @@ export function TutorProfileDetail() {
   const [loadingVouchers, setLoadingVouchers] = useState(false)
   const [claimedVoucherIds, setClaimedVoucherIds] = useState<Set<number>>(new Set())
   const [claimingVoucherId, setClaimingVoucherId] = useState<number | null>(null)
+  // Revenue state
+  const [loadingRevenue, setLoadingRevenue] = useState(false)
+  const [revenueData, setRevenueData] = useState<TutorRevenueResponse | null>(null)
+  const [revenueFromDate, setRevenueFromDate] = useState('')
+  const [revenueToDate, setRevenueToDate] = useState('')
 
   const handleNavigateBack = () => {
     window.history.back()
@@ -436,6 +442,23 @@ export function TutorProfileDetail() {
       toast.error(err.response?.data || 'Không thể nhận voucher')
     } finally {
       setClaimingVoucherId(null)
+    }
+  }
+
+  const handleFetchRevenue = async () => {
+    setLoadingRevenue(true)
+    try {
+      const data = await getTutorRevenue(
+        Number(tutorId),
+        revenueFromDate || undefined,
+        revenueToDate || undefined
+      )
+      setRevenueData(data)
+    } catch (err) {
+      toast.error('Không thể tải doanh thu')
+      console.error('Revenue fetch error:', err)
+    } finally {
+      setLoadingRevenue(false)
     }
   }
 
@@ -835,6 +858,66 @@ export function TutorProfileDetail() {
                     })}
                   </div>
                 )}
+              </div>
+
+              <div className="mb-6 rounded-lg border border-slate-200 bg-white p-6">
+                <h3 className="mb-4 font-bold text-slate-950">Thống kê doanh thu</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Từ ngày</label>
+                    <input
+                      type="date"
+                      value={revenueFromDate}
+                      onChange={(e) => setRevenueFromDate(e.target.value)}
+                      className="w-full rounded border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Đến ngày</label>
+                    <input
+                      type="date"
+                      value={revenueToDate}
+                      onChange={(e) => setRevenueToDate(e.target.value)}
+                      className="w-full rounded border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    onClick={handleFetchRevenue}
+                    disabled={loadingRevenue}
+                    className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {loadingRevenue ? 'Đang tải...' : 'Xem doanh thu'}
+                  </button>
+
+                  {revenueData && (
+                    <div className="mt-3 space-y-2 rounded-lg bg-green-50 p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-600">Tổng số đơn</span>
+                        <span className="font-bold text-slate-900">{revenueData.totalOrders}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-600">Tổng doanh thu</span>
+                        <span className="font-bold text-green-700">
+                          {revenueData.totalAmount.toLocaleString('vi-VN')}₫
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-600">Phí nền tảng</span>
+                        <span className="font-bold text-red-600">
+                          -{revenueData.totalPlatformFee.toLocaleString('vi-VN')}₫
+                        </span>
+                      </div>
+                      <div className="border-t border-green-200 pt-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-700">Thực nhận</span>
+                          <span className="font-bold text-blue-700">
+                            {revenueData.totalTutorEarning.toLocaleString('vi-VN')}₫
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="bg-white p-6 rounded-lg border border-slate-200">
