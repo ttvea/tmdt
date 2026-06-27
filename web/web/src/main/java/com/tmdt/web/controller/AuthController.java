@@ -159,6 +159,56 @@ public class AuthController {
         return ResponseEntity.ok("Đổi mật khẩu thành công");
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<?> getMe(@RequestHeader("Authorization") String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Missing or invalid token");
+        }
+        String token = authHeader.replace("Bearer ", "");
+        if (!jwtService.validateToken(token)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token không hợp lệ hoặc đã hết hạn");
+        }
+        String email = jwtService.extractUsername(token);
+        User user = userRep.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Không tìm thấy người dùng");
+        }
+        return ResponseEntity.ok(toAuthUser(user));
+    }
+
+    @PatchMapping("/me/role")
+    public ResponseEntity<?> updateMyRole(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> body
+    ) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Missing or invalid token");
+        }
+        String token = authHeader.replace("Bearer ", "");
+        if (!jwtService.validateToken(token)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token không hợp lệ hoặc đã hết hạn");
+        }
+        String email = jwtService.extractUsername(token);
+        User user = userRep.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Không tìm thấy người dùng");
+        }
+
+        String roleStr = body.get("role");
+        if (roleStr == null || roleStr.isBlank()) {
+            return ResponseEntity.badRequest().body("Vui lòng cung cấp role (STUDENT hoặc TUTOR)");
+        }
+
+        try {
+            User.RoleAcc newRole = User.RoleAcc.valueOf(roleStr.trim().toUpperCase());
+            user.setRole(newRole);
+            userRep.save(user);
+            return ResponseEntity.ok(toAuthUser(user));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Role không hợp lệ. Chỉ chấp nhận STUDENT hoặc TUTOR");
+        }
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         return ResponseEntity.ok("Đăng xuất thành công");

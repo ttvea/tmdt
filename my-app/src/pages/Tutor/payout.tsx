@@ -99,7 +99,6 @@ export function TutorPayout() {
       const tutorId = user.id
       if (!tutorId) return
 
-      // Gọi aggregate (luôn available)
       try {
         const aggregate = await getTutorRevenue(tutorId, fromDate || undefined, toDate || undefined)
         setRevenue(aggregate)
@@ -107,7 +106,6 @@ export function TutorPayout() {
         console.error('Failed to load aggregate revenue:', err)
       }
 
-      // Gọi monthly (có thể fail nếu backend chưa update)
       try {
         const monthly = await getTutorRevenueMonthly(tutorId, fromDate || undefined, toDate || undefined)
         setMonthlyRevenue(monthly)
@@ -124,7 +122,6 @@ export function TutorPayout() {
     loadData()
   }, [])
 
-  // Load revenue when component mounts AND when user changes date
   useEffect(() => {
     loadRevenue()
   }, [fromDate, toDate])
@@ -169,8 +166,6 @@ export function TutorPayout() {
     }
   }
 
-  // Tính toán cho biểu đồ cột
-  // Nếu có monthly data: vẽ theo tháng. Nếu không: vẽ 2 cột tổng
   const hasMonthly = monthlyRevenue.length > 0
   const monthlyMax = hasMonthly
     ? Math.max(...monthlyRevenue.flatMap(m => [m.platformFee, m.tutorEarning]), 1)
@@ -216,134 +211,134 @@ export function TutorPayout() {
           </div>
         </div>
 
-        {/* Revenue Chart Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
-          <div className="px-5 py-4 border-b border-slate-100">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-800">Thống kê doanh thu</h2>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-500">Từ</label>
-                  <input
-                    type="date"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                    className="h-8 px-2 border border-slate-300 rounded-lg text-xs text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-500">Đến</label>
-                  <input
-                    type="date"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                    className="h-8 px-2 border border-slate-300 rounded-lg text-xs text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
+        {/* Revenue Chart Section - admin reports style */}
+        <section className="rounded-xl border border-slate-300 bg-white p-6 shadow-sm mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-slate-950">Thống kê doanh thu</h2>
+            <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-800">
+              <span className="h-3 w-3 rounded-full bg-blue-700" /> Doanh thu ròng
+            </span>
+          </div>
+
+          <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
+              <p className="text-sm font-semibold text-slate-800">Tổng số đơn</p>
+              <p className="mt-2 text-3xl font-bold text-slate-950">{revenue?.totalOrders ?? 0}</p>
+              <p className="mt-2 text-sm font-bold text-slate-600">Đã hoàn thành</p>
+            </div>
+            <div className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
+              <p className="text-sm font-semibold text-slate-800">Doanh thu</p>
+              <p className="mt-2 text-3xl font-bold text-emerald-700">{revenue ? formatCurrency(revenue.totalAmount) : '—'}</p>
+              <p className="mt-2 text-sm font-bold text-emerald-700">Tổng học phí</p>
+            </div>
+            <div className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
+              <p className="text-sm font-semibold text-slate-800">Phí nền tảng (10%)</p>
+              <p className="mt-2 text-3xl font-bold text-orange-600">{revenue ? formatCurrency(revenue.totalPlatformFee) : '—'}</p>
+              <p className="mt-2 text-sm font-bold text-orange-600">Trích từ doanh thu</p>
+            </div>
+            <div className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
+              <p className="text-sm font-semibold text-slate-800">Gia sư nhận (90%)</p>
+              <p className="mt-2 text-3xl font-bold text-blue-700">{revenue ? formatCurrency(revenue.totalTutorEarning) : '—'}</p>
+              <p className="mt-2 text-sm font-bold text-blue-700">Thực nhận</p>
             </div>
           </div>
 
+          <div className="flex items-center gap-4 mb-6">
+            <label className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Từ</span>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Đến</span>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </label>
+          </div>
+
           {revenueLoading ? (
-            <div className="px-5 py-8 text-center text-sm text-slate-400">Đang tải...</div>
+            <div className="rounded-lg border border-blue-100 bg-white/80 px-4 py-3 text-sm font-semibold text-blue-700">Đang tải dữ liệu...</div>
           ) : revenue && revenue.totalOrders > 0 ? (
-            <div className="p-5">
-              {/* Summary numbers */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                  <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">Tổng số đơn</p>
-                  <p className="text-2xl font-bold text-blue-800 mt-1">{revenue.totalOrders}</p>
-                </div>
-                <div className="bg-green-50 rounded-lg p-4 border border-green-100">
-                  <p className="text-xs text-green-600 font-medium uppercase tracking-wide">Doanh thu</p>
-                  <p className="text-2xl font-bold text-green-800 mt-1">{formatCurrency(revenue.totalAmount)}</p>
-                </div>
-                <div className="bg-orange-50 rounded-lg p-4 border border-orange-100">
-                  <p className="text-xs text-orange-600 font-medium uppercase tracking-wide">Phí nền tảng (10%)</p>
-                  <p className="text-2xl font-bold text-orange-800 mt-1">{formatCurrency(revenue.totalPlatformFee)}</p>
-                </div>
-                <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
-                  <p className="text-xs text-purple-600 font-medium uppercase tracking-wide">Gia sư nhận (90%)</p>
-                  <p className="text-2xl font-bold text-purple-800 mt-1">{formatCurrency(revenue.totalTutorEarning)}</p>
+            <div className="rounded-xl border border-slate-300 bg-gradient-to-br from-slate-50 to-blue-50/70 p-5">
+              <div className="overflow-x-auto pb-2">
+                <div className="flex items-end gap-4 min-w-[400px] h-52 px-2">
+                  {hasMonthly ? (
+                    monthlyRevenue.map((item) => {
+                      const pfPct = (item.platformFee / monthlyMax) * 100
+                      const tePct = (item.tutorEarning / monthlyMax) * 100
+                      return (
+                        <div key={item.month} className="flex-1 flex flex-col items-center gap-1 min-w-[50px]">
+                          <span className="text-[10px] font-bold text-orange-500 whitespace-nowrap">
+                            {formatCurrency(item.platformFee)}
+                          </span>
+                          <div className="flex items-end gap-[3px] w-full justify-center">
+                            <div
+                              className="w-[18px] rounded-t bg-orange-400 transition-all duration-500"
+                              style={{ height: `${Math.max(pfPct, 3)}%` }}
+                              title={`Phí nền tảng: ${formatCurrency(item.platformFee)}`}
+                            />
+                            <div
+                              className="w-[18px] rounded-t bg-blue-500 transition-all duration-500"
+                              style={{ height: `${Math.max(tePct, 3)}%` }}
+                              title={`Gia sư nhận: ${formatCurrency(item.tutorEarning)}`}
+                            />
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-500 mt-1">
+                            {formatMonthLabel(item.month)}
+                          </span>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <>
+                      <div className="flex-1 flex flex-col items-center gap-2">
+                        <span className="text-xs font-bold text-orange-600">
+                          {formatCurrency(revenue.totalPlatformFee)}
+                        </span>
+                        <div
+                          className="w-full max-w-[120px] rounded-t bg-orange-400 transition-all duration-500"
+                          style={{ height: `${Math.max((revenue.totalPlatformFee / Math.max(revenue.totalTutorEarning, 1)) * 100, 4)}%` }}
+                        />
+                        <span className="text-xs font-bold text-slate-600">Phí nền tảng</span>
+                      </div>
+                      <div className="flex-1 flex flex-col items-center gap-2">
+                        <span className="text-xs font-bold text-blue-600">
+                          {formatCurrency(revenue.totalTutorEarning)}
+                        </span>
+                        <div
+                          className="w-full max-w-[120px] rounded-t bg-blue-500 transition-all duration-500"
+                          style={{ height: '100%' }}
+                        />
+                        <span className="text-xs font-bold text-slate-600">Gia sư nhận</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
-
-              {/* Bar chart - monthly (nếu có) hoặc tổng hợp (nếu monthly chưa available) */}
-              <div className="mt-2">
-                <h3 className="text-sm font-semibold text-slate-700 mb-4">
-                  {hasMonthly ? 'Biểu đồ doanh thu theo tháng' : 'So sánh doanh thu'}
-                </h3>
-                <div className="overflow-x-auto pb-2">
-                  <div className="flex items-end gap-4 min-w-[400px] h-52 border-b border-slate-200 px-2">
-                    {hasMonthly ? (
-                      monthlyRevenue.map((item) => {
-                        const pfPct = (item.platformFee / monthlyMax) * 100
-                        const tePct = (item.tutorEarning / monthlyMax) * 100
-                        return (
-                          <div key={item.month} className="flex-1 flex flex-col items-center gap-1 min-w-[50px]">
-                            <span className="text-[10px] font-medium text-orange-500 whitespace-nowrap">
-                              {formatCurrency(item.platformFee)}
-                            </span>
-                            <div className="flex items-end gap-[3px] w-full justify-center">
-                              <div
-                                className="w-[18px] rounded-t bg-orange-400 transition-all duration-500"
-                                style={{ height: `${Math.max(pfPct, 3)}%` }}
-                                title={`Phí nền tảng: ${formatCurrency(item.platformFee)}`}
-                              />
-                              <div
-                                className="w-[18px] rounded-t bg-purple-500 transition-all duration-500"
-                                style={{ height: `${Math.max(tePct, 3)}%` }}
-                                title={`Gia sư nhận: ${formatCurrency(item.tutorEarning)}`}
-                              />
-                            </div>
-                            <span className="text-[10px] font-semibold text-slate-500 mt-1">
-                              {formatMonthLabel(item.month)}
-                            </span>
-                          </div>
-                        )
-                      })
-                    ) : revenue && revenue.totalOrders > 0 ? (
-                      <>
-                        <div className="flex-1 flex flex-col items-center gap-2">
-                          <span className="text-xs font-medium text-orange-600">
-                            {formatCurrency(revenue.totalPlatformFee)}
-                          </span>
-                          <div
-                            className="w-full max-w-[120px] rounded-t bg-orange-400 transition-all duration-500"
-                            style={{ height: `${Math.max((revenue.totalPlatformFee / Math.max(revenue.totalTutorEarning, 1)) * 100, 4)}%` }}
-                          />
-                          <span className="text-xs font-semibold text-slate-600">Phí nền tảng</span>
-                        </div>
-                        <div className="flex-1 flex flex-col items-center gap-2">
-                          <span className="text-xs font-medium text-purple-600">
-                            {formatCurrency(revenue.totalTutorEarning)}
-                          </span>
-                          <div
-                            className="w-full max-w-[120px] rounded-t bg-purple-500 transition-all duration-500"
-                            style={{ height: '100%' }}
-                          />
-                          <span className="text-xs font-semibold text-slate-600">Gia sư nhận</span>
-                        </div>
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="flex items-center justify-center gap-6 mt-3 text-xs text-slate-400">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded bg-orange-400" /> Phí nền tảng (10%)
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded bg-purple-500" /> Gia sư nhận (90%)
-                  </span>
-                </div>
+              <div className="flex items-center justify-center gap-6 mt-4 text-xs text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded bg-orange-400" /> Phí nền tảng (10%)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded bg-blue-500" /> Gia sư nhận (90%)
+                </span>
               </div>
             </div>
           ) : (
-            <div className="px-5 py-8 text-center text-sm text-slate-400">
-              Chưa có dữ liệu doanh thu trong khoảng thời gian này
+            <div className="rounded-xl border border-dashed border-slate-300 px-5 py-12 text-center">
+              <p className="text-sm font-bold text-slate-950">Chưa có dữ liệu</p>
+              <p className="mt-2 text-sm text-slate-500">Chưa có dữ liệu doanh thu trong khoảng thời gian này</p>
             </div>
           )}
-        </div>
+        </section>
 
         {/* Request Form Modal */}
         {showRequestForm && (
