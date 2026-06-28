@@ -20,6 +20,7 @@ import { TutorApplications } from "./pages/Tutor/applications";
 import { TutorEnrollments } from "./pages/Tutor/enrollments";
 import { TutorPayout } from "./pages/Tutor/payout";
 import { StudentEnrollments } from "./pages/Student/enrollments";
+import { StudentClasses } from "./pages/Student/classes";
 import  StudentProfile  from "./pages/Student/StudentProfile";
 import { StudentSchedule } from "./pages/Student/schedule";
 import { StudentMessages } from "./pages/Student/messages";
@@ -74,6 +75,7 @@ const pageTitles: Record<string, string> = {
   "/tutor/enrollments": "Thanh toán - EduMatch Pro",
   "/tutor/payout": "Rút tiền - EduMatch Pro",
   "/student/profile": "Hồ sơ học viên - EduMatch Pro",
+  "/student/classes": "Lớp học của tôi - EduMatch Pro",
   "/student/schedule": "Lịch học - EduMatch Pro",
   "/student/messages": "Tin nhắn - EduMatch Pro",
   "/student/vouchers": "Mã giảm giá - EduMatch Pro",
@@ -140,6 +142,7 @@ function App() {
     if (tutorId && !isNaN(Number(tutorId))) return <TutorProfileDetail />;
   }
   if (pathname === "/student/profile") return <StudentProfile />;
+  if (pathname === "/student/classes") return <StudentClasses />;
   if (pathname === "/student/schedule") return <StudentSchedule />;
   if (pathname === "/student/messages") return <StudentMessages />;
   if (pathname === "/student/vouchers") return <StudentVouchers />;

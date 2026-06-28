@@ -230,7 +230,7 @@ export function ClassDetail() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="relative rounded-xl border border-slate-200 bg-white">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-bold text-slate-900">Danh sách học viên</h2>
               <button className="flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">
@@ -265,6 +265,7 @@ export function ClassDetail() {
                   {enrollments.map((enroll, idx) => {
                     const statusCfg = STATUS_CONFIG[enroll.status]
                     const colorClass = AVATAR_COLORS[enroll.studentId % AVATAR_COLORS.length]
+                    const shouldOpenMenuUp = idx >= enrollments.length - 2
                     const name = enroll.studentName || `Học viên ${enroll.studentId}`
                     return (
                       <tr key={enroll.id}
@@ -302,7 +303,11 @@ export function ClassDetail() {
                             </svg>
                           </button>
                           {actionMenuId === enroll.id && (
-                            <div className="absolute right-4 top-10 z-20 bg-white border border-slate-200 rounded-xl shadow-lg py-1 w-40">
+                            <div
+                              className={`absolute right-4 z-30 w-40 rounded-xl border border-slate-200 bg-white py-1 shadow-lg ${
+                                shouldOpenMenuUp ? 'bottom-10' : 'top-10'
+                              }`}
+                            >
                               {enroll.status === 'PENDING' && (
                                 <>
                                   <button onClick={() => handleReview(enroll.id, true)}
