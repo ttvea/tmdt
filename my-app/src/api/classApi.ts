@@ -79,6 +79,11 @@ export async function createClass(request: ClassCreateRequest): Promise<ClassRes
   return res.data
 }
 
+export async function updateClass(classId: number, request: ClassCreateRequest): Promise<ClassResponse> {
+  const res = await api.put(`/api/classes/my/${classId}`, request, { headers: getAuthHeader() })
+  return res.data
+}
+
 export async function getMyClasses(page = 0, size = 10): Promise<PageResponse<ClassResponse>> {
   const res = await api.get('/api/classes/my', {
     headers: getAuthHeader(),

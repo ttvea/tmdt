@@ -136,6 +136,7 @@ function App() {
   if (pathname === "/tutor/support") return <MySupport />;
   if (pathname === "/tutor/disputes") return <MyDisputes />;
   if (pathname === "/tutor/classes/new") return <FormAddClass />;
+  if (pathname.startsWith("/tutor/classes/edit/")) return <FormAddClass />;
   if (pathname.startsWith("/tutor/classes/") && !pathname.includes("/edit/")) return <ClassDetail />;
   if (pathname.startsWith("/tutor/") && !pathname.includes("/classes")) {
     const tutorId = pathname.split("/")[2];

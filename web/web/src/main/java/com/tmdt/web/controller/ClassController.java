@@ -64,6 +64,15 @@ public class ClassController {
         return ResponseEntity.ok(classService.getTutorClassDetail(classId, tutorId));
     }
 
+    @PutMapping("/my/{classId}")
+    public ResponseEntity<ClassResponse> updateMyClass(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long classId,
+            @Valid @RequestBody ClassCreateRequest request) {
+        Long tutorId = getUserId(authHeader);
+        return ResponseEntity.ok(classService.updateClass(classId, tutorId, request));
+    }
+
     @GetMapping("/my/{classId}/enrollments")
     public ResponseEntity<Page<EnrollmentResponse>> getEnrollments(
             @RequestHeader("Authorization") String authHeader,
