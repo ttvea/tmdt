@@ -4,7 +4,7 @@ import { login } from "../api/auth";
 import heroImage from "../assets/hero.png";
 import Footer from "../layouts/Footer";
 import Navbar from "../layouts/Navbar";
-import { isAdminRole } from "../utils/userRole";
+import { isAdminRole, isTutorRole } from "../utils/userRole";
 import { API_BASE_URL } from "../api/axios";
 
 function GoogleIcon() {
@@ -67,13 +67,18 @@ function EyeIcon({ isVisible }: { isVisible: boolean }) {
   );
 }
 
+function getPostLoginPath(role: unknown): string {
+  if (isAdminRole(role)) return "/admin";
+  if (isTutorRole(role)) return "/tutor/profile";
+  return "/student/classes";
+}
+
 export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [oauthRole, setOauthRole] = useState<'STUDENT' | 'TUTOR'>('STUDENT');
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -95,7 +100,7 @@ export function Login() {
         localStorage.setItem("user", JSON.stringify(data.user));
       }
 
-      window.location.href = isAdminRole(data.user?.role) ? "/admin" : "/";
+      window.location.href = getPostLoginPath(data.user?.role);
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Đăng nhập thất bại.");
     } finally {
@@ -104,12 +109,10 @@ export function Login() {
   };
 
   const loginGoogle = () => {
-    sessionStorage.setItem('oauth_pending_role', oauthRole);
     window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
   };
 
   const loginFacebook = () => {
-    sessionStorage.setItem('oauth_pending_role', oauthRole);
     window.location.href = `${API_BASE_URL}/oauth2/authorization/facebook`;
   };
 
@@ -233,6 +236,7 @@ export function Login() {
                 </button>
               </form>
 
+              {/*
               <div className="my-6">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Bạn muốn đăng nhập với tư cách</p>
                 <div className="flex gap-3">
@@ -266,6 +270,7 @@ export function Login() {
                   </button>
                 </div>
               </div>
+              */}
 
               <div className="my-6 flex items-center gap-4">
                 <div className="h-px flex-1 bg-slate-200" />

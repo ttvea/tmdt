@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
 import { getAuthMe, updateMyRole, type AuthUser } from '../api/auth'
+import { isAdminRole, isTutorRole } from '../utils/userRole'
+
+function getPostLoginPath(role: unknown): string {
+  if (isAdminRole(role)) return '/admin'
+  if (isTutorRole(role)) return '/tutor/profile'
+  return '/student/classes'
+}
 
 export function OAuth2Redirect() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
@@ -40,12 +47,7 @@ export function OAuth2Redirect() {
 
         // Chuyển hướng về trang chủ sau 1 giây
         setTimeout(() => {
-          const role = finalUser.role
-          if (role === 'ADMIN') {
-            window.location.href = '/admin'
-          } else {
-            window.location.href = '/'
-          }
+          window.location.href = getPostLoginPath(finalUser.role)
         }, 1000)
       })
       .catch((err: any) => {
