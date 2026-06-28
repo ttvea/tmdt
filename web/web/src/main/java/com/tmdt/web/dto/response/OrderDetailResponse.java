@@ -11,6 +11,11 @@ import java.util.List;
 public class OrderDetailResponse {
     private Integer id;
     private Double amount;
+    private Double commissionRate;
+    private Double platformFee;
+    private Double tutorEarning;
+    private String tutorPayoutStatus;
+    private Date tutorPayoutAt;
     private String status;
     private Date dateCreate;
     private Date dateUpdate;

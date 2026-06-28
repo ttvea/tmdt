@@ -73,6 +73,7 @@ export function Login() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [oauthRole, setOauthRole] = useState<'STUDENT' | 'TUTOR'>('STUDENT');
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -103,11 +104,21 @@ export function Login() {
   };
 
   const loginGoogle = () => {
+
+    sessionStorage.setItem('oauth_pending_role', oauthRole);
+    window.location.href = "http://localhost:8080/oauth2/authorization/google";
+  };
+
+  const loginFacebook = () => {
+    sessionStorage.setItem('oauth_pending_role', oauthRole);
+    window.location.href = "http://localhost:8080/oauth2/authorization/facebook";
+
     window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
   };
 
   const loginFacebook = () => {
     window.location.href = `${API_BASE_URL}/oauth2/authorization/facebook`;
+
   };
 
   return (
@@ -230,7 +241,41 @@ export function Login() {
                 </button>
               </form>
 
-              <div className="my-12 flex items-center gap-4">
+              <div className="my-6">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Bạn muốn đăng nhập với tư cách</p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setOauthRole('STUDENT')}
+                    className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-semibold transition ${
+                      oauthRole === 'STUDENT'
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    <svg className="mx-auto mb-1 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0" />
+                    </svg>
+                    Học viên
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOauthRole('TUTOR')}
+                    className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-semibold transition ${
+                      oauthRole === 'TUTOR'
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    <svg className="mx-auto mb-1 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m3 9 9-5 9 5-9 5-9-5Zm3 3.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-3.5" />
+                    </svg>
+                    Gia sư
+                  </button>
+                </div>
+              </div>
+
+              <div className="my-6 flex items-center gap-4">
                 <div className="h-px flex-1 bg-slate-200" />
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Hoặc đăng nhập bằng</span>
                 <div className="h-px flex-1 bg-slate-200" />

@@ -6,6 +6,20 @@ type RegisterPayload = { username: string; email: string; password: string; role
 type RequestResetPasswordPayload = { email: string }
 type ResetPasswordPayload = { token: string; password: string }
 
+export interface AuthUser {
+  id: number
+  email: string
+  fullName: string
+  phone: string | null
+  avatar: string | null
+  birthday: string | null
+  gender: string | null
+  role: string | null
+  provider: string | null
+  enabled: boolean | null
+  verified: boolean | null
+}
+
 export async function login(payload: LoginPayload) {
   const params = new URLSearchParams({
     email: payload.email,
@@ -67,3 +81,12 @@ export async function resetPassword(payload: ResetPasswordPayload) {
   return res.data
 }
 
+export async function getAuthMe(): Promise<AuthUser> {
+  const res = await api.get('/api/auth/me')
+  return res.data
+}
+
+export async function updateMyRole(role: 'STUDENT' | 'TUTOR'): Promise<AuthUser> {
+  const res = await api.patch('/api/auth/me/role', { role })
+  return res.data
+}

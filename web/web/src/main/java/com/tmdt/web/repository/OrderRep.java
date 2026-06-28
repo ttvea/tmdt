@@ -13,6 +13,13 @@ public interface OrderRep extends JpaRepository<Order, Integer> {
     @Query(value = "SELECT COALESCE(SUM(amount), 0) FROM orders WHERE status = :status", nativeQuery = true)
     Double sumAmountByStatus(@Param("status") String status);
 
+    @Query(value = """
+            SELECT COALESCE(SUM(COALESCE(platform_fee, amount * 0.1)), 0)
+            FROM orders
+            WHERE status = :status
+            """, nativeQuery = true)
+    Double sumPlatformFeeByStatus(@Param("status") String status);
+
     List<Order> findByStatusAndDateCreateBetweenOrderByDateCreateDesc(
             Order.OrderStatus status,
             Date from,

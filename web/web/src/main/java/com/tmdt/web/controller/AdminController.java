@@ -319,7 +319,7 @@ public class AdminController {
         long pendingEnrollments = enrollmentRep.countByStatus(EnrollmentStatus.PENDING);
         long paidEnrollments = enrollmentRep.countByStatus(EnrollmentStatus.PAID);
 
-        Double revenue = orderRep.sumAmountByStatus(Order.OrderStatus.PAID.name());
+        Double revenue = orderRep.sumPlatformFeeByStatus(Order.OrderStatus.PAID.name());
 
         return ResponseEntity.ok(new AdminDashboardResponse(
                 revenue != null ? revenue : 0,
@@ -869,7 +869,7 @@ public class AdminController {
     }
 
     private String buildDashboardReportCsv(LocalDate from, LocalDate to) {
-        Double revenue = orderRep.sumAmountByStatus(Order.OrderStatus.PAID.name());
+        Double revenue = orderRep.sumPlatformFeeByStatus(Order.OrderStatus.PAID.name());
 
         StringBuilder csv = new StringBuilder();
         csv.append("Chỉ số,Giá trị,Từ ngày,Đến ngày\n");
@@ -965,8 +965,9 @@ public class AdminController {
         Date start = Date.from(from.atZone(ZoneId.systemDefault()).toInstant());
         Date end = Date.from(to.atZone(ZoneId.systemDefault()).toInstant());
         List<Order> paidOrders = orderRep.findByStatusAndDateCreateBetweenOrderByDateCreateDesc(Order.OrderStatus.PAID, start, end);
-        double revenue = paidOrders.stream().mapToDouble(order -> order.getAmount() != null ? order.getAmount() : 0).sum();
-        double averageFee = paidOrders.isEmpty() ? 0 : revenue / paidOrders.size();
+        double revenue = paidOrders.stream().mapToDouble(this::platformRevenue).sum();
+        double grossRevenue = paidOrders.stream().mapToDouble(order -> order.getAmount() != null ? order.getAmount() : 0).sum();
+        double averageFee = paidOrders.isEmpty() ? 0 : grossRevenue / paidOrders.size();
 
         List<com.tmdt.web.entity.Dispute> disputes = disputeRep.findByCreatedAtBetweenOrderByCreatedAtDesc(from, to);
         long refundedDisputes = disputes.stream().filter(dispute -> dispute.getStatus() == DisputeStatus.REFUNDED).count();
@@ -986,6 +987,8 @@ public class AdminController {
             row.put("tutorName", "-");
             row.put("studentName", order.getStudentId() > 0 ? "ID " + order.getStudentId() : "-");
             row.put("amount", order.getAmount() != null ? order.getAmount() : 0);
+            row.put("platformFee", platformRevenue(order));
+            row.put("tutorEarning", tutorEarning(order));
             return row;
         }).toList());
         return response;
@@ -1116,10 +1119,31 @@ public class AdminController {
             if (order.getDateCreate() == null) continue;
             LocalDate orderDate = order.getDateCreate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
             LocalDate bucket = closestBucket(orderDate, grouped);
-            grouped.put(bucket, grouped.getOrDefault(bucket, 0.0) + (order.getAmount() != null ? order.getAmount() : 0));
+            grouped.put(bucket, grouped.getOrDefault(bucket, 0.0) + platformRevenue(order));
         }
 
         return grouped.entrySet().stream().map(entry -> chartPoint(entry.getKey(), entry.getValue())).toList();
+    }
+
+    private double platformRevenue(Order order) {
+        if (order == null) {
+            return 0;
+        }
+        if (order.getPlatformFee() != null) {
+            return order.getPlatformFee();
+        }
+        return order.getAmount() != null ? Math.round(order.getAmount() * 0.1) : 0;
+    }
+
+    private double tutorEarning(Order order) {
+        if (order == null) {
+            return 0;
+        }
+        if (order.getTutorEarning() != null) {
+            return order.getTutorEarning();
+        }
+        double amount = order.getAmount() != null ? order.getAmount() : 0;
+        return amount - platformRevenue(order);
     }
 
     private List<Map<String, Object>> buildDisputeChart(List<com.tmdt.web.entity.Dispute> disputes, LocalDate from, LocalDate to) {

@@ -1,119 +1,103 @@
-type JwtPayload = {
-  sub?: string
-  email?: string
-  name?: string
-  fullName?: string
-  provider?: string
-  exp?: number
-  iat?: number
-}
-
-function decodeBase64Url(input: string) {
-  const normalized = input.replace(/-/g, '+').replace(/_/g, '/')
-  const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4)
-
-  return decodeURIComponent(
-    atob(padded)
-      .split('')
-      .map((character) => `%${character.charCodeAt(0).toString(16).padStart(2, '0')}`)
-      .join(''),
-  )
-}
-
-function decodeJwt(token: string): JwtPayload | null {
-  const parts = token.split('.')
-
-  if (parts.length !== 3) {
-    return null
-  }
-
-  try {
-    return JSON.parse(decodeBase64Url(parts[1])) as JwtPayload
-  } catch {
-    return null
-  }
-}
-
-function formatDateTime(timestamp?: number) {
-  if (!timestamp) {
-    return 'Không có'
-  }
-
-  return new Date(timestamp * 1000).toLocaleString('vi-VN')
-}
+import { useEffect, useState } from 'react'
+import { getAuthMe, updateMyRole, type AuthUser } from '../api/auth'
 
 export function OAuth2Redirect() {
-  const token = new URLSearchParams(window.location.search).get('token')
-  const payload = token ? decodeJwt(token) : null
-  const displayName = payload?.name ?? payload?.fullName ?? payload?.sub ?? payload?.email ?? 'Người dùng'
-  const displayEmail = payload?.email ?? payload?.sub ?? 'Không xác định'
-  const displayProvider = payload?.provider ?? 'oauth2'
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [errorMsg, setErrorMsg] = useState('')
 
-  if (token) {
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('token')
+
+    if (!token) {
+      setStatus('error')
+      setErrorMsg('Không nhận được token từ hệ thống')
+      return
+    }
+
+    // Lưu token
     localStorage.setItem('access_token', token)
-  }
+
+    // Lấy role đã chọn từ sessionStorage (nếu có)
+    const pendingRole = sessionStorage.getItem('oauth_pending_role') as 'STUDENT' | 'TUTOR' | null
+    // Xóa luôn để không dùng lại cho lần sau
+    sessionStorage.removeItem('oauth_pending_role')
+
+    // Gọi API /api/auth/me để lấy thông tin user
+    getAuthMe()
+      .then(async (user: AuthUser) => {
+        // Nếu có pending role và user là provider (social login), cập nhật role
+        let finalUser = user
+        if (pendingRole && user.provider && user.provider !== 'LOCAL') {
+          try {
+            finalUser = await updateMyRole(pendingRole)
+          } catch (err) {
+            console.error('Failed to update role:', err)
+          }
+        }
+
+        localStorage.setItem('user', JSON.stringify(finalUser))
+        setStatus('success')
+
+        // Chuyển hướng về trang chủ sau 1 giây
+        setTimeout(() => {
+          const role = finalUser.role
+          if (role === 'ADMIN') {
+            window.location.href = '/admin'
+          } else {
+            window.location.href = '/'
+          }
+        }, 1000)
+      })
+      .catch((err: any) => {
+        console.error('Failed to fetch user info:', err)
+        setStatus('error')
+        setErrorMsg('Không thể lấy thông tin người dùng. Vui lòng thử lại.')
+      })
+  }, [])
 
   return (
     <div className="min-h-screen bg-slate-100 px-4 py-10 flex items-center justify-center">
-      <div className="w-full max-w-2xl rounded-3xl bg-white p-8 shadow-xl">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-sm font-medium text-emerald-700">
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          Đăng nhập thành công
-        </div>
+      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl text-center">
+        {status === 'loading' && (
+          <>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-blue-100 px-4 py-2 text-sm font-medium text-blue-700">
+              <span className="h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" />
+              Đang đăng nhập...
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Vui lòng chờ</h1>
+            <p className="mt-2 text-slate-500">Hệ thống đang xác thực tài khoản của bạn...</p>
+          </>
+        )}
 
-        <h1 className="text-3xl font-bold text-slate-900">Xin chào, {displayName}</h1>
-        <p className="mt-2 text-slate-600">
-          Backend đã redirect về trang này sau khi tạo JWT. Bạn có thể dùng token để gọi API và lấy thông tin người dùng.
-        </p>
+        {status === 'success' && (
+          <>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-sm font-medium text-emerald-700">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              Đăng nhập thành công
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Đăng nhập thành công!</h1>
+            <p className="mt-2 text-slate-500">Bạn sẽ được chuyển hướng về trang chủ...</p>
+          </>
+        )}
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-sm text-slate-500">Email / Subject</p>
-            <p className="mt-2 break-words text-lg font-semibold text-slate-900">{displayEmail}</p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-sm text-slate-500">Provider</p>
-            <p className="mt-2 text-lg font-semibold text-slate-900">{displayProvider}</p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-sm text-slate-500">Issued at</p>
-            <p className="mt-2 text-lg font-semibold text-slate-900">{formatDateTime(payload?.iat)}</p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-sm text-slate-500">Expiry</p>
-            <p className="mt-2 text-lg font-semibold text-slate-900">{formatDateTime(payload?.exp)}</p>
-          </div>
-        </div>
-
-        <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
-          <p className="text-sm text-slate-500">Access Token</p>
-          <p className="mt-2 break-all font-mono text-sm text-slate-700">
-            {token ?? 'Không nhận được token từ backend'}
-          </p>
-        </div>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Quay về trang đăng nhập
-          </a>
-
-          <button
-            type="button"
-            onClick={() => {
-              localStorage.removeItem('access_token')
-              window.location.href = '/'
-            }}
-            className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            Xóa token và đăng nhập lại
-          </button>
-        </div>
+        {status === 'error' && (
+          <>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-sm font-medium text-red-700">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+              Đăng nhập thất bại
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Có lỗi xảy ra</h1>
+            <p className="mt-2 text-slate-500">{errorMsg}</p>
+            <div className="mt-6">
+              <a
+                href="/login"
+                className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Quay về trang đăng nhập
+              </a>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
