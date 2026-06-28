@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 
 export interface ScheduleEvent {
   id: string
+  classId?: number
   className: string
   subjectName: string
   categoryName?: string | null
@@ -12,6 +13,9 @@ export interface ScheduleEvent {
   dayOfWeek: number
   startTime: string
   endTime: string
+  classStartDate?: string | null
+  totalSessions?: number | null
+  scheduleDays?: number[]
 }
 
 interface WeeklyScheduleProps {
@@ -41,6 +45,12 @@ function startOfWeek(date: Date) {
 function addDays(date: Date, days: number) {
   const copy = new Date(date)
   copy.setDate(copy.getDate() + days)
+  return copy
+}
+
+function startOfDay(date: Date) {
+  const copy = new Date(date)
+  copy.setHours(0, 0, 0, 0)
   return copy
 }
 
@@ -113,6 +123,49 @@ function eventColorClass(categoryName?: string | null) {
   return 'bg-blue-700'
 }
 
+function toDateDayOfWeek(date: Date) {
+  const day = date.getDay()
+  return day === 0 ? 8 : day + 1
+}
+
+function countScheduledSessionsUntil(startDate: Date, targetDate: Date, scheduleDays: number[]) {
+  let count = 0
+  const cursor = startOfDay(startDate)
+  const target = startOfDay(targetDate)
+
+  while (cursor.getTime() <= target.getTime()) {
+    if (scheduleDays.includes(toDateDayOfWeek(cursor))) {
+      count += 1
+    }
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  return count
+}
+
+function isEventActiveOnDate(event: ScheduleEvent, date: Date) {
+  if (!event.totalSessions || event.totalSessions <= 0 || !event.classStartDate) {
+    return true
+  }
+
+  const classStart = new Date(event.classStartDate)
+  if (Number.isNaN(classStart.getTime())) {
+    return true
+  }
+
+  const target = startOfDay(date)
+  const start = startOfDay(classStart)
+
+  if (target.getTime() < start.getTime()) {
+    return false
+  }
+
+  const scheduleDays = event.scheduleDays?.length ? event.scheduleDays : [event.dayOfWeek]
+  const sessionNumber = countScheduledSessionsUntil(start, target, scheduleDays)
+
+  return sessionNumber > 0 && sessionNumber <= event.totalSessions
+}
+
 export function WeeklySchedule({
   title,
   events,
@@ -133,11 +186,16 @@ export function WeeklySchedule({
   const eventsByDay = useMemo(() => {
     return days.reduce<Record<number, ScheduleEvent[]>>((acc, day) => {
       acc[day.dayOfWeek] = events
-        .filter((event) => event.dayOfWeek === day.dayOfWeek)
+        .filter((event) => event.dayOfWeek === day.dayOfWeek && isEventActiveOnDate(event, day.date))
         .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
       return acc
     }, {})
   }, [days, events])
+
+  const visibleEventsCount = useMemo(
+    () => Object.values(eventsByDay).reduce((total, dayEvents) => total + dayEvents.length, 0),
+    [eventsByDay]
+  )
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6 text-left sm:px-6 lg:px-8">
@@ -210,6 +268,12 @@ export function WeeklySchedule({
           </div>
         </div>
 
+        {!loading && events.length > 0 && visibleEventsCount === 0 ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800">
+            Tuần này không có lịch học.
+          </div>
+        ) : null}
+
         <div id="weekly-schedule-print-area" className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <div className="min-w-[980px]">
@@ -246,63 +310,66 @@ export function WeeklySchedule({
                   ))}
                 </div>
 
-                {days.map((day) => (
-                  <div
-                    key={day.dayOfWeek}
-                    className="relative border-r border-slate-200 last:border-r-0"
-                    style={{ height: `${hours.length * hourHeight}px` }}
-                  >
-                    {hours.map((hour) => (
-                      <div key={hour} className="border-b border-slate-100" style={{ height: `${hourHeight}px` }} />
-                    ))}
+                <div className="relative col-span-7 grid grid-cols-7">
+                  {days.map((day) => (
+                    <div
+                      key={day.dayOfWeek}
+                      className="relative border-r border-slate-200 last:border-r-0"
+                      style={{ height: `${hours.length * hourHeight}px` }}
+                    >
+                      {hours.map((hour) => (
+                        <div key={hour} className="border-b border-slate-100" style={{ height: `${hourHeight}px` }} />
+                      ))}
 
-                    {loading ? null : eventsByDay[day.dayOfWeek]?.map((event, index) => {
-                      const compact = eventDurationMinutes(event) <= 90
+                      {loading ? null : eventsByDay[day.dayOfWeek]?.map((event, index) => {
+                        const compact = eventDurationMinutes(event) <= 90
 
-                      return (
-                        <div
-                          key={`${event.id}-${index}`}
-                          onMouseEnter={(e) => {
-                            setHoveredEvent(event)
-                            setTooltipPosition({ x: e.clientX, y: e.clientY })
-                          }}
-                          onMouseMove={(e) => setTooltipPosition({ x: e.clientX, y: e.clientY })}
-                          onMouseLeave={() => setHoveredEvent(null)}
-                          className={`absolute left-2 right-2 overflow-hidden rounded-lg text-white shadow-lg ${compact ? 'p-2.5' : 'p-3'} ${eventColorClass(event.categoryName)}`}
-                          style={eventStyle(event)}
-                        >
-                          <div className={`flex h-full min-h-0 flex-col overflow-hidden ${compact ? 'gap-0.5' : 'gap-1'}`}>
-                            <p
-                              className={`${compact ? 'line-clamp-1 text-xs' : 'truncate text-sm'} font-bold leading-tight`}
-                              title={event.className}
-                            >
-                              {event.className}
-                            </p>
-                            {!compact ? (
-                              <p className="truncate text-xs font-semibold leading-tight text-white/85" title={event.subjectName}>
-                                Môn học: {event.subjectName || 'Chưa cập nhật'}
+                        return (
+                          <div
+                            key={`${event.id}-${index}`}
+                            onMouseEnter={(e) => {
+                              setHoveredEvent(event)
+                              setTooltipPosition({ x: e.clientX, y: e.clientY })
+                            }}
+                            onMouseMove={(e) => setTooltipPosition({ x: e.clientX, y: e.clientY })}
+                            onMouseLeave={() => setHoveredEvent(null)}
+                            className={`absolute left-2 right-2 overflow-hidden rounded-lg text-white shadow-lg ${compact ? 'p-2.5' : 'p-3'} ${eventColorClass(event.categoryName)}`}
+                            style={eventStyle(event)}
+                          >
+                            <div className={`flex h-full min-h-0 flex-col overflow-hidden ${compact ? 'gap-0.5' : 'gap-1'}`}>
+                              <p
+                                className={`${compact ? 'line-clamp-1 text-xs' : 'truncate text-sm'} font-bold leading-tight`}
+                                title={event.className}
+                              >
+                                {event.className}
                               </p>
-                            ) : null}
-                            <p className="flex items-center gap-1 text-xs font-semibold leading-tight text-white/90">
-                              <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
-                              </svg>
-                              <span className="truncate">{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
-                            </p>
-                            {showTeacher && event.teacherName ? (
-                              <p className="truncate text-xs font-semibold italic leading-tight text-white/90">
-                                GV: {event.teacherName}
+                              {!compact ? (
+                                <p className="truncate text-xs font-semibold leading-tight text-white/85" title={event.subjectName}>
+                                  Môn học: {event.subjectName || 'Chưa cập nhật'}
+                                </p>
+                              ) : null}
+                              <p className="flex items-center gap-1 text-xs font-semibold leading-tight text-white/90">
+                                <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+                                </svg>
+                                <span className="truncate">{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
                               </p>
-                            ) : null}
-                            <span className={`${compact ? 'mt-1' : 'mt-auto'} w-fit rounded bg-white px-2 py-0.5 text-[10px] font-black leading-tight tracking-wide text-slate-900`}>
-                              {modeLabel(event.mode)}
-                            </span>
+                              {showTeacher && event.teacherName ? (
+                                <p className="truncate text-xs font-semibold italic leading-tight text-white/90">
+                                  GV: {event.teacherName}
+                                </p>
+                              ) : null}
+                              <span className={`${compact ? 'mt-1' : 'mt-auto'} w-fit rounded bg-white px-2 py-0.5 text-[10px] font-black leading-tight tracking-wide text-slate-900`}>
+                                {modeLabel(event.mode)}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
+                        )
+                      })}
+                    </div>
+                  ))}
+
+                </div>
               </div>
             </div>
           </div>

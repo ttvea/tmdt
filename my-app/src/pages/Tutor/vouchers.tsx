@@ -185,7 +185,7 @@ function VoucherPreviewCard({
   )
 }
 
-async function getRecruitingClasses() {
+async function getAllTutorClasses() {
   const firstPage = await getMyClasses(0, 100)
   const pages = [firstPage]
 
@@ -198,9 +198,7 @@ async function getRecruitingClasses() {
     pages.push(...restPages)
   }
 
-  return pages
-    .flatMap((page) => page.content)
-    .filter((cls) => cls.approvalStatus === 'APPROVED' && cls.status === 'OPEN')
+  return pages.flatMap((page) => page.content)
 }
 
 function VoucherCreatePanel({
@@ -436,6 +434,7 @@ function VoucherStatCard({
 export function TutorVouchers() {
   const [vouchers, setVouchers] = useState<VoucherResponse[]>([])
   const [classes, setClasses] = useState<ClassResponse[]>([])
+  const [allClasses, setAllClasses] = useState<ClassResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -446,8 +445,8 @@ export function TutorVouchers() {
   const [success, setSuccess] = useState('')
 
   const classMap = useMemo(() => {
-    return new Map(classes.map((cls) => [cls.id, cls.title]))
-  }, [classes])
+    return new Map(allClasses.map((cls) => [cls.id, cls.title]))
+  }, [allClasses])
 
   const visibleVouchers = useMemo(() => {
     return [...vouchers].sort((a, b) => b.id - a.id)
@@ -479,9 +478,14 @@ export function TutorVouchers() {
     }
 
     try {
-      const recruitingClasses = await getRecruitingClasses()
+      const allTutorClasses = await getAllTutorClasses()
+      const recruitingClasses = allTutorClasses.filter(
+        (cls) => cls.approvalStatus === 'APPROVED' && cls.status === 'OPEN'
+      )
+      setAllClasses(allTutorClasses)
       setClasses(recruitingClasses)
     } catch {
+      setAllClasses([])
       setClasses([])
     } finally {
       setLoading(false)
