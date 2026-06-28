@@ -152,6 +152,34 @@ jobs:
           printf '%s\n' "$DEPLOY_IMAGE" > .backend-image
           printf '%s\n' "$BACKEND_DOMAIN" > .backend-domain
 
+      - name: Validate environment variables against .env.example
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REQUIRED_KEYS=$(grep -oP '^[A-Z_]+(?==)' web/web/.env.example || true)
+
+          if [ -z "$REQUIRED_KEYS" ]; then
+            echo "Could not parse .env.example; skipping validation."
+            exit 0
+          fi
+
+          MISSING=()
+          while IFS= read -r key; do
+            if ! grep -q "^${key}=" .env.deploy; then
+              MISSING+=("$key")
+            fi
+          done <<< "$REQUIRED_KEYS"
+
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "The following required environment variables are missing from BACKEND_ENV_FILE:" >&2
+            printf '  - %s\n' "${MISSING[@]}" >&2
+            echo "Please add them to the GitHub secret BACKEND_ENV_FILE or update web/web/.env.example." >&2
+            exit 1
+          fi
+
+          echo "All required environment variables from .env.example are present."
+
       - name: Upload deployment files to EC2
         shell: bash
         env:
