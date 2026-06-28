@@ -104,21 +104,13 @@ export function Login() {
   };
 
   const loginGoogle = () => {
-
     sessionStorage.setItem('oauth_pending_role', oauthRole);
-    window.location.href = "http://localhost:8080/oauth2/authorization/google";
-  };
-
-  const loginFacebook = () => {
-    sessionStorage.setItem('oauth_pending_role', oauthRole);
-    window.location.href = "http://localhost:8080/oauth2/authorization/facebook";
-
     window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
   };
 
   const loginFacebook = () => {
+    sessionStorage.setItem('oauth_pending_role', oauthRole);
     window.location.href = `${API_BASE_URL}/oauth2/authorization/facebook`;
-
   };
 
   return (

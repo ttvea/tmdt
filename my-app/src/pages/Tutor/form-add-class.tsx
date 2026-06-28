@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
 import { getAllSubjects, type SubjectOption } from '../../api/tutorProfile'
 import {
-  createClass, getAllGradeLevels, getAllCategories,
+  createClass, updateClass, getMyClassDetail, getAllGradeLevels, getAllCategories,
   type GradeLevelOption, type CategoryOption, type ScheduleRequest,
 } from '../../api/classApi'
 
@@ -20,6 +20,24 @@ function to24h(hour: string, min: string, period: Period): string {
   if (period === 'AM' && h === 12) h = 0
   if (period === 'PM' && h !== 12) h += 12
   return `${String(h).padStart(2, '0')}:${min}`
+}
+
+function from24h(time: string): { hour: string; min: string; period: Period } {
+  const [hourPart = '0', minPart = '00'] = time.split(':')
+  const hour24 = Number(hourPart)
+  const period: Period = hour24 >= 12 ? 'PM' : 'AM'
+  const hour12 = hour24 % 12 || 12
+
+  return {
+    hour: String(hour12).padStart(2, '0'),
+    min: minPart.padStart(2, '0'),
+    period,
+  }
+}
+
+function getEditClassIdFromUrl(): number | null {
+  const match = window.location.pathname.match(/\/tutor\/classes\/edit\/(\d+)/)
+  return match ? Number(match[1]) : null
 }
 
 function TimePicker({ hour, min, period, onHour, onMin, onPeriod }: {
@@ -47,6 +65,8 @@ function TimePicker({ hour, min, period, onHour, onMin, onPeriod }: {
 }
 
 export function FormAddClass() {
+  const editClassId = getEditClassIdFromUrl()
+  const isEditMode = editClassId !== null
   const [className, setClassName] = useState('')
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null)
@@ -66,6 +86,7 @@ export function FormAddClass() {
   const [fee, setFee] = useState('200.000')
   const [totalSessions, setTotalSessions] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingClass, setIsLoadingClass] = useState(isEditMode)
   const [error, setError] = useState('')
   const [categories, setCategories] = useState<CategoryOption[]>([])
   const [allSubjects, setAllSubjects] = useState<SubjectOption[]>([])
@@ -76,6 +97,46 @@ export function FormAddClass() {
     getAllSubjects().then(setAllSubjects).catch(() => {})
     getAllGradeLevels().then(setAllGrades).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!editClassId) return
+
+    setIsLoadingClass(true)
+    getMyClassDetail(editClassId)
+      .then((cls) => {
+        if (cls.approvalStatus !== 'PENDING') {
+          setError('Chỉ có thể chỉnh sửa lớp đang chờ duyệt.')
+          return
+        }
+
+        setClassName(cls.title ?? '')
+        setSelectedCategoryId(cls.categoryId ?? null)
+        setSelectedSubjectId(cls.subjectId ?? null)
+        setSelectedGradeId(cls.gradeLevelId ?? null)
+        setMaxStudents(cls.maxStudents ? String(cls.maxStudents) : '')
+        setDescription(cls.description ?? '')
+        setMode(cls.teachingMode)
+        setAddress(cls.address ?? '')
+        setCity(cls.city ?? '')
+        setFee(cls.pricePerCourse ? Number(cls.pricePerCourse).toLocaleString('de-DE') : '')
+        setTotalSessions(cls.totalSessions ? String(cls.totalSessions) : '')
+        setSelectedDays(cls.schedules.map((schedule) => schedule.dayOfWeek))
+
+        const firstSchedule = cls.schedules[0]
+        if (firstSchedule) {
+          const start = from24h(firstSchedule.startTime)
+          const end = from24h(firstSchedule.endTime)
+          setStartHour(start.hour)
+          setStartMin(start.min)
+          setStartPeriod(start.period)
+          setEndHour(end.hour)
+          setEndMin(end.min)
+          setEndPeriod(end.period)
+        }
+      })
+      .catch(() => setError('Không thể tải thông tin lớp học để chỉnh sửa.'))
+      .finally(() => setIsLoadingClass(false))
+  }, [editClassId])
 
   const filteredSubjects = selectedCategoryId
     ? allSubjects.filter(s => s.category?.id === selectedCategoryId)
@@ -124,7 +185,7 @@ export function FormAddClass() {
 
     setIsSubmitting(true)
     try {
-      await createClass({
+      const payload = {
         title: className,
         description,
         categoryId: selectedCategoryId,
@@ -138,14 +199,37 @@ export function FormAddClass() {
         city: mode === 'OFFLINE' ? city.trim() : null,
         thumbnailUrl: null,
         schedules,
-      })
+      }
+
+      if (editClassId) {
+        await updateClass(editClassId, payload)
+      } else {
+        await createClass(payload)
+      }
+
       window.location.href = '/tutor/classes'
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setError(msg ?? 'Đăng lớp thất bại. Vui lòng thử lại.')
+      setError(msg ?? (isEditMode ? 'Cập nhật lớp thất bại. Vui lòng thử lại.' : 'Đăng lớp thất bại. Vui lòng thử lại.'))
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (isLoadingClass) {
+    return (
+      <AccountLayout activePath="/tutor/classes">
+        <div className="min-h-screen bg-slate-50 px-8 py-8 text-left">
+          <div className="max-w-5xl mx-auto flex items-center justify-center py-16 text-slate-400">
+            <svg className="w-6 h-6 animate-spin mr-2" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+            Đang tải thông tin lớp...
+          </div>
+        </div>
+      </AccountLayout>
+    )
   }
 
   return (
@@ -153,8 +237,14 @@ export function FormAddClass() {
       <div className="min-h-screen bg-slate-50 px-8 py-8 text-left">
         <div className="max-w-5xl mx-auto">
           <div className="mb-6">
-            <p className="text-3xl font-bold text-slate-900">Đăng tin lớp học mới</p>
-            <p className="text-sm text-slate-500 mt-1">Điền thông tin chi tiết để kết nối với học viên phù hợp nhất.</p>
+            <p className="text-3xl font-bold text-slate-900">
+              {isEditMode ? 'Chỉnh sửa lớp học' : 'Đăng tin lớp học mới'}
+            </p>
+            <p className="text-sm text-slate-500 mt-1">
+              {isEditMode
+                ? 'Cập nhật thông tin lớp học trước khi admin duyệt.'
+                : 'Điền thông tin chi tiết để kết nối với học viên phù hợp nhất.'}
+            </p>
           </div>
 
           {error && (
@@ -371,14 +461,14 @@ export function FormAddClass() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                         </svg>
-                        Đang đăng...
+                        {isEditMode ? 'Đang lưu...' : 'Đang đăng...'}
                       </>
                     ) : (
                       <>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                         </svg>
-                        Đăng lớp học ngay
+                        {isEditMode ? 'Lưu thay đổi' : 'Đăng lớp học ngay'}
                       </>
                     )}
                   </button>

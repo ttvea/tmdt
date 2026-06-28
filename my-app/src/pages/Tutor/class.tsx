@@ -265,12 +265,14 @@ export function TutorClasses() {
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
-                            <button onClick={() => window.location.href = `/tutor/classes/edit/${cls.id}`}
-                              className="text-slate-400 hover:text-blue-600 transition-colors" title="Chỉnh sửa">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
+                            {cls.approvalStatus === 'PENDING' && (
+                              <button onClick={() => window.location.href = `/tutor/classes/edit/${cls.id}`}
+                                className="text-slate-400 hover:text-blue-600 transition-colors" title="Chỉnh sửa">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                            )}
                             <button onClick={() => window.location.href = `/tutor/classes/${cls.id}`}
                               className="text-slate-400 hover:text-blue-600 transition-colors" title="Xem chi tiết">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

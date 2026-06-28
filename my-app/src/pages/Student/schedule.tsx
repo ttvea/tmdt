@@ -12,8 +12,11 @@ import { getTutorProfile } from '../../api/tutorProfile'
 type ClassWithTeacher = ClassResponse & { teacherName: string }
 
 function classToEvents(cls: ClassWithTeacher): ScheduleEvent[] {
+  const scheduleDays = cls.schedules.map((schedule) => schedule.dayOfWeek)
+
   return cls.schedules.map((schedule) => ({
     id: `${cls.id}-${schedule.id}`,
+    classId: cls.id,
     className: cls.title,
     subjectName: cls.subjectName,
     categoryName: cls.categoryName,
@@ -24,6 +27,9 @@ function classToEvents(cls: ClassWithTeacher): ScheduleEvent[] {
     dayOfWeek: schedule.dayOfWeek,
     startTime: schedule.startTime,
     endTime: schedule.endTime,
+    classStartDate: cls.updatedAt || cls.createdAt,
+    totalSessions: cls.totalSessions,
+    scheduleDays,
   }))
 }
 
