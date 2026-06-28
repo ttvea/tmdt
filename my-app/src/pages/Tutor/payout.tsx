@@ -181,6 +181,11 @@ export function TutorPayout() {
     <AccountLayout activePath="/tutor/payout">
       <div className="max-w-5xl mx-auto p-6">
         <h1 className="text-2xl font-bold text-slate-800 mb-6">Rút tiền</h1>
+        {loading ? (
+          <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">
+            Đang tải dữ liệu rút tiền...
+          </div>
+        ) : null}
 
         {/* Balance Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
