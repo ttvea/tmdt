@@ -4,6 +4,7 @@ import Footer from "../../layouts/Footer";
 import { ApplicationModal } from "../../components/ApplicationModal";
 import { isTutorRole } from "../../utils/userRole";
 import { toast } from "react-toastify";
+import { API_BASE_URL } from "../../api/axios";
 
 type StudentRequest = {
   id: number;
@@ -46,7 +47,7 @@ const StudentRequestsList = () => {
         
         const queryString = queryParams.toString();
         // Gọi thẳng vào API /search đã viết ở Backend
-        const url = `http://localhost:8080/api/student-requests/search${queryString ? `?${queryString}` : ''}`;
+        const url = `${API_BASE_URL}/api/student-requests/search${queryString ? `?${queryString}` : ''}`;
 
         const response = await fetch(url);
         const data = await response.json();

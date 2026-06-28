@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Navbar from "../../layouts/Navbar";
 import Footer from "../../layouts/Footer";
+import { API_BASE_URL } from "../../api/axios";
 
 const PostClassPage = () => {
   const [formData, setFormData] = useState({
@@ -88,7 +89,7 @@ const PostClassPage = () => {
       const token = localStorage.getItem("access_token");
 
       // 4. Gọi API
-      const response = await fetch("http://localhost:8080/api/student-requests/post", {
+      const response = await fetch(`${API_BASE_URL}/api/student-requests/post`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

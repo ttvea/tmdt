@@ -5,6 +5,7 @@ import heroImage from "../assets/hero.png";
 import Footer from "../layouts/Footer";
 import Navbar from "../layouts/Navbar";
 import { isAdminRole } from "../utils/userRole";
+import { API_BASE_URL } from "../api/axios";
 
 function GoogleIcon() {
   return (
@@ -103,6 +104,7 @@ export function Login() {
   };
 
   const loginGoogle = () => {
+
     sessionStorage.setItem('oauth_pending_role', oauthRole);
     window.location.href = "http://localhost:8080/oauth2/authorization/google";
   };
@@ -110,6 +112,13 @@ export function Login() {
   const loginFacebook = () => {
     sessionStorage.setItem('oauth_pending_role', oauthRole);
     window.location.href = "http://localhost:8080/oauth2/authorization/facebook";
+
+    window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
+  };
+
+  const loginFacebook = () => {
+    window.location.href = `${API_BASE_URL}/oauth2/authorization/facebook`;
+
   };
 
   return (
