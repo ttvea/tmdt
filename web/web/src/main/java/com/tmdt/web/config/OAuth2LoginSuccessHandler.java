@@ -43,10 +43,12 @@ public class OAuth2LoginSuccessHandler
         String email = null;
         String name = null;
 
-        if (provider.equals("google")) {
+        if ("google".equals(provider)) {
             email = oAuth2User.getAttribute("email");
             name = oAuth2User.getAttribute("name");
-        } else if (provider.equals("facebook")) {
+
+        } else if ("facebook".equals(provider)) {
+
             email = oAuth2User.getAttribute("email");
             name = oAuth2User.getAttribute("name");
 
@@ -55,9 +57,12 @@ public class OAuth2LoginSuccessHandler
             }
         }
 
-        User user = userRepository.findByEmail(email).orElse(null);
+        User user =
+                userRepository.findByEmail(email)
+                        .orElse(null);
 
         if (user == null) {
+
             user = new User();
             user.setEmail(email);
             user.setFullName(
@@ -67,28 +72,52 @@ public class OAuth2LoginSuccessHandler
             );
             user.setRole(User.RoleAcc.STUDENT);
             user.setProvider(
-                    User.Provider.valueOf(provider.toUpperCase())
+                    User.Provider.valueOf(
+                            provider.toUpperCase()
+                    )
             );
 
             userRepository.save(user);
         }
 
+        // Xác định frontend cần redirect
+        String redirectFrontend = frontendUrl;
+
+        String host = request.getServerName();
+
+        System.out.println("Host: " + host);
+
+        if ("localhost".equals(host)
+                || "127.0.0.1".equals(host)) {
+
+            redirectFrontend = "http://localhost:5173";
+        }
+
+        // Tài khoản bị khóa
         if (Boolean.FALSE.equals(user.getEnabled())) {
+
             getRedirectStrategy().sendRedirect(
                     request,
                     response,
-                    frontendUrl + "/login?error=account_locked"
+                    redirectFrontend +
+                            "/login?error=account_locked"
             );
             return;
         }
 
-        String token = jwtService.generateToken(user.getEmail());
+        // Sinh JWT
+        String token =
+                jwtService.generateToken(
+                        user.getEmail()
+                );
 
+        // Redirect về frontend
         getRedirectStrategy().sendRedirect(
                 request,
                 response,
-                frontendUrl + "/oauth2/redirect?token=" + token
+                redirectFrontend +
+                        "/oauth2/redirect?token=" +
+                        token
         );
     }
-
 }
