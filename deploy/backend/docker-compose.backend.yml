@@ -1,0 +1,33 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    container_name: thuegiasu-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - backend_uploads:/app/uploads
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: thuegiasu-caddy
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      BACKEND_DOMAIN: ${BACKEND_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  backend_uploads:
+  caddy_data:
+  caddy_config:

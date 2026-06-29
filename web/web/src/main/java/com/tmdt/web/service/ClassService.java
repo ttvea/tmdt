@@ -69,6 +69,43 @@ public class ClassService {
         return classMapper.toResponse(classEntity);
     }
 
+    @Transactional
+    public ClassResponse updateClass(Long classId, Long tutorId, ClassCreateRequest request) {
+        TutorClass classEntity = classRepository.findByIdAndTutorId(classId, tutorId)
+                .orElseThrow(() -> AppException.notFound("Không tìm thấy lớp học"));
+
+        if (classEntity.getApprovalStatus() != ApprovalStatus.PENDING) {
+            throw AppException.badRequest("Chỉ có thể chỉnh sửa lớp đang chờ duyệt");
+        }
+
+        validateSchedule(request);
+        validateTutorScheduleConflict(request, tutorId, classId);
+        validateOfflineAddress(request);
+
+        classEntity.setTitle(request.getTitle());
+        classEntity.setDescription(request.getDescription());
+        classEntity.setCategoryId(request.getCategoryId());
+        classEntity.setSubjectId(request.getSubjectId());
+        classEntity.setGradeLevelId(request.getGradeLevelId());
+        classEntity.setTeachingMode(request.getTeachingMode());
+        classEntity.setPricePerCourse(request.getPricePerCourse());
+        classEntity.setTotalSessions(request.getTotalSessions());
+        classEntity.setMaxStudents(request.getMaxStudents() != null ? request.getMaxStudents() : 1);
+        classEntity.setAddress(request.getAddress());
+        classEntity.setCity(request.getCity());
+        classEntity.setThumbnailUrl(request.getThumbnailUrl());
+
+        classEntity.getSchedules().clear();
+        if (request.getSchedules() != null) {
+            request.getSchedules().forEach(schedule ->
+                    classEntity.getSchedules().add(classMapper.toScheduleEntity(schedule, classEntity))
+            );
+        }
+
+        classRepository.save(classEntity);
+        return classMapper.toResponse(classEntity);
+    }
+
     public Page<EnrollmentResponse> getEnrollmentsOfClass(Long classId, Long tutorId,
                                                           EnrollmentStatus statusFilter,
                                                           Pageable pageable) {
@@ -126,6 +163,16 @@ public class ClassService {
     public ClassResponse updateClassStatus(Long classId, Long tutorId, ClassStatus newStatus) {
         TutorClass classEntity = classRepository.findByIdAndTutorId(classId, tutorId)
                 .orElseThrow(() -> AppException.notFound("Không tìm thấy lớp học"));
+
+        if (newStatus == ClassStatus.CLOSED && classEntity.getStatus() == ClassStatus.OPEN) {
+            long activeStudents = enrollmentRepository.countByClassEntityIdAndStatusIn(
+                    classEntity.getId(), List.of(EnrollmentStatus.APPROVED, EnrollmentStatus.PAID));
+            int requiredStudents = Math.max(1, (int) Math.ceil(classEntity.getMaxStudents() / 2.0));
+
+            if (activeStudents < requiredStudents) {
+                throw AppException.badRequest("Cần ít nhất " + requiredStudents + " học viên để bắt đầu lớp");
+            }
+        }
 
         classEntity.setStatus(newStatus);
         classRepository.save(classEntity);
@@ -482,11 +529,19 @@ public class ClassService {
     }
 
     private void validateTutorScheduleConflict(ClassCreateRequest request, Long tutorId) {
+        validateTutorScheduleConflict(request, tutorId, null);
+    }
+
+    private void validateTutorScheduleConflict(ClassCreateRequest request, Long tutorId, Long ignoredClassId) {
         if (request.getSchedules() == null || request.getSchedules().isEmpty()) return;
 
         List<TutorClass> existingClasses = classRepository.findByTutorId(tutorId);
         for (ScheduleRequest schedule : request.getSchedules()) {
             for (TutorClass existingClass : existingClasses) {
+                if (ignoredClassId != null && existingClass.getId().equals(ignoredClassId)) {
+                    continue;
+                }
+
                 if (existingClass.getApprovalStatus() == ApprovalStatus.REJECTED
                         || existingClass.getStatus() == ClassStatus.COMPLETED) {
                     continue;

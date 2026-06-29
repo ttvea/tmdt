@@ -3,6 +3,7 @@ import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
 import {
   getMyClassDetail, getEnrollmentsOfClass, reviewEnrollment,
+  updateClassStatus,
   type ClassResponse, type EnrollmentResponse, type EnrollmentStatus,
 } from '../../api/classApi'
 import { getAllSubjects, type SubjectOption } from '../../api/tutorProfile'
@@ -51,6 +52,10 @@ const AVATAR_COLORS = [
   'bg-orange-500', 'bg-pink-500', 'bg-teal-500',
 ]
 
+function isActiveEnrollment(status: EnrollmentStatus) {
+  return status === 'APPROVED' || status === 'PAID'
+}
+
 export function ClassDetail() {
   const classId = getClassIdFromUrl()
 
@@ -61,6 +66,7 @@ export function ClassDetail() {
   const [actionMenuId, setActionMenuId] = useState<number | null>(null)
   const [subjectMap, setSubjectMap] = useState<Record<number, string>>({})
   const [gradeMap, setGradeMap] = useState<Record<number, string>>({})
+  const [isStartingClass, setIsStartingClass] = useState(false)
 
   useEffect(() => {
     getAllSubjects().then(data => {
@@ -91,11 +97,51 @@ export function ClassDetail() {
   const handleReview = async (enrollmentId: number, approved: boolean) => {
     try {
       const updated = await reviewEnrollment(enrollmentId, approved)
-      setEnrollments(prev => prev.map(e => e.id === enrollmentId ? updated : e))
+      setEnrollments(prev => {
+        const nextEnrollments = prev.map(e => e.id === enrollmentId ? updated : e)
+        const activeCount = nextEnrollments.filter(e => isActiveEnrollment(e.status)).length
+
+        if (cls) {
+          setCls({
+            ...cls,
+            status: approved && cls.approvalStatus === 'APPROVED' && cls.status === 'OPEN' && activeCount >= cls.maxStudents
+              ? 'CLOSED'
+              : cls.status,
+            currentStudents: activeCount,
+          })
+        }
+
+        if (cls && approved && cls.approvalStatus === 'APPROVED' && cls.status === 'OPEN' && activeCount >= cls.maxStudents) {
+          toast.success('Lớp đã đủ học viên và chuyển sang đang dạy.')
+        }
+
+        return nextEnrollments
+      })
     } catch {
       toast.error('Thao tác thất bại. Vui lòng thử lại.')
     }
     setActionMenuId(null)
+  }
+
+  const handleStartClass = async () => {
+    if (!cls || isStartingClass) return
+    const minimumStudents = Math.max(1, Math.ceil(cls.maxStudents / 2))
+
+    if (cls.currentStudents < minimumStudents) {
+      toast.error(`Cần ít nhất ${minimumStudents} học viên để bắt đầu lớp.`)
+      return
+    }
+
+    setIsStartingClass(true)
+    try {
+      const updated = await updateClassStatus(cls.id, 'CLOSED')
+      setCls(updated)
+      toast.success('Lớp học đã bắt đầu.')
+    } catch {
+      toast.error('Không thể bắt đầu lớp học. Vui lòng thử lại.')
+    } finally {
+      setIsStartingClass(false)
+    }
   }
 
   if (loading) return (
@@ -130,6 +176,11 @@ export function ClassDetail() {
   const subjectName = cls.subjectName || subjectMap[cls.subjectId] || '—'
   const gradeName = cls.gradeLevelName || gradeMap[cls.gradeLevelId] || '—'
 
+  const minimumStudentsToStart = Math.max(1, Math.ceil(cls.maxStudents / 2))
+  const canStartClass = cls.approvalStatus === 'APPROVED'
+    && cls.status === 'OPEN'
+    && cls.currentStudents >= minimumStudentsToStart
+
   return (
     <AccountLayout activePath="/tutor/classes">
       <div className="min-h-screen bg-slate-50 px-8 py-8 text-left">
@@ -152,15 +203,23 @@ export function ClassDetail() {
               </div>
             </div>
             <div className="flex items-center gap-3 shrink-0">
-              <button
-                onClick={() => window.location.href = `/tutor/classes/edit/${cls.id}`}
-                className="px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                Chỉnh sửa
-              </button>
-              <button className="px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold transition-colors shadow-sm">
-                Điểm danh ngay
-              </button>
+              {cls.approvalStatus === 'PENDING' && (
+                <button
+                  onClick={() => window.location.href = `/tutor/classes/edit/${cls.id}`}
+                  className="px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Chỉnh sửa
+                </button>
+              )}
+              {canStartClass && (
+                <button
+                  onClick={handleStartClass}
+                  disabled={isStartingClass}
+                  className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors shadow-sm"
+                >
+                  {isStartingClass ? 'Đang bắt đầu...' : 'Bắt đầu lớp học'}
+                </button>
+              )}
             </div>
           </div>
 
