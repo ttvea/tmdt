@@ -112,6 +112,18 @@ const tutorMenuItems: MenuItem[] = [
     ),
   },
   {
+    label: 'Hoàn tiền',
+    href: '/tutor/refunds',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+          d="M19 7v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7m5-4 4 4-4 4" />
+      </svg>
+    ),
+  },
+  {
     label: 'Cài đặt',
     href: '/tutor/settings',
     icon: (
@@ -213,6 +225,18 @@ const studentMenuItems: MenuItem[] = [
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
           d="m14 4 6 6M4 14l6 6M11 7l6 6M7 11l6 6M3 21h8" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Hoàn tiền',
+    href: '/student/refunds',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+          d="M19 7v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7m5-4 4 4-4 4" />
       </svg>
     ),
   },

@@ -16,6 +16,7 @@ const navItems: NavItem[] = [
   { label: 'Thanh toán',  href: '/admin/payouts',  icon: <PayoutIcon /> },
   { label: 'Hỗ trợ',      href: '/admin/support',  icon: <SupportIcon /> },
   { label: 'Tranh chấp',  href: '/admin/disputes', icon: <DisputeIcon /> },
+  { label: 'Hoàn tiền',   href: '/admin/refunds',  icon: <RefundIcon /> },
 ]
 
 interface AdminLayoutProps {
@@ -263,6 +264,7 @@ function ClassIcon() { return <Svg><rect x="3" y="4" width="18" height="16" rx="
 function TicketIcon() { return <Svg><path d="M3 9a3 3 0 0 0 0 6v3h18v-3a3 3 0 0 0 0-6V6H3v3Z" /><path d="M9 9h.01M15 15h.01M16 8l-8 8" /></Svg> }
 function SupportIcon() { return <Svg><path d="M4 14v-2a8 8 0 0 1 16 0v2" /><path d="M4 14h3v5H4zM17 14h3v5h-3z" /><path d="M13 19h2a5 5 0 0 0 5-5" /></Svg> }
 function DisputeIcon() { return <Svg><path d="m4 19 5-5M14 4l6 6M5 5l14 14" /><path d="m12 6 6 6" /></Svg> }
+function RefundIcon() { return <Svg><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2" /><path d="M19 7v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7m5-4 4 4-4 4" /></Svg> }
 function PayoutIcon() { return <Svg><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" /></Svg> }
 function SettingsIcon() { return <Svg><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06A2 2 0 1 1 7.03 3.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.4.25.74.6 1 1h.6a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z" /></Svg> }
 function LogoutIcon() { return <Svg><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5M21 12H9" /></Svg> }
