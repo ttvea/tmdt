@@ -20,13 +20,15 @@ public class Order {
         PENDING,
         PAID,
         CANCELLED,
-        EXPIRED
+        EXPIRED,
+        REFUNDED
     }
 
     public enum TutorPayoutStatus {
         PENDING,
         PAID,
-        CANCELLED
+        CANCELLED,
+        REFUNDED
     }
 
     @Id

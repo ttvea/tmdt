@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { getConversationsList, type ConversationResponse } from '../api/conversations'
-import { supabase } from '../api/supabase'
 
 export function ConversationsList() {
   const [conversations, setConversations] = useState<ConversationResponse[]>([])
@@ -23,48 +22,23 @@ export function ConversationsList() {
     fetchConversations()
   }, [])
 
+  // Polling every 3 seconds for realtime updates
   useEffect(() => {
-    if (!supabase) {
-      console.log('[ConversationsList] supabase client is NULL - check env vars')
-      return
-    }
-
-    console.log('[ConversationsList] Setting up realtime subscription...')
-
-    // Subscribe to cả messages và conversations table
-    const channel = supabase
-      .channel('msg-changes-conversations')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload: any) => {
-        console.log('[ConversationsList] ===== REALTIME MESSAGES PAYLOAD =====')
-        console.log('[ConversationsList] Full payload:', JSON.stringify(payload, null, 2))
-        console.log('[ConversationsList] payload.eventType:', payload?.eventType)
-        void getConversationsList()
-          .then((data) => {
-            console.log('[ConversationsList] Conversations refreshed, count:', data.length)
-            setConversations(data)
+    const interval = setInterval(() => {
+      void getConversationsList()
+        .then((data) => {
+          setConversations((prev) => {
+            if (JSON.stringify(data) !== JSON.stringify(prev)) {
+              return data
+            }
+            return prev
           })
-          .catch((err) => console.error('Realtime conversations refresh failed:', err))
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, (payload: any) => {
-        console.log('[ConversationsList] ===== REALTIME CONVERSATIONS PAYLOAD =====')
-        console.log('[ConversationsList] Payload:', JSON.stringify(payload, null, 2))
-        void getConversationsList()
-          .then((data) => {
-            console.log('[ConversationsList] Conversations refreshed, count:', data.length)
-            setConversations(data)
-          })
-          .catch((err) => console.error('Realtime conversations refresh failed:', err))
-      })
-      .subscribe((status: any) => {
-        console.log('[ConversationsList] 📡 Subscription status:', status)
-        console.log('[ConversationsList] 📡 Is SUBSCRIBED?', status === 'SUBSCRIBED')
-      })
-
-    console.log('[ConversationsList] Channel created:', channel)
+        })
+        .catch((err) => console.error('Polling conversations refresh failed:', err))
+    }, 3000)
 
     return () => {
-      console.log('[ConversationsList] Cleaning up realtime channel')
-      void supabase.removeChannel(channel)
+      clearInterval(interval)
     }
   }, [])
 

@@ -40,41 +40,16 @@ export function TutorEnrollments() {
       .finally(() => setEnrollmentsLoading(false))
   }, [selectedClassId])
 
-  // Realtime subscription qua Supabase
+  // Polling every 3 seconds for realtime updates
   useEffect(() => {
-    if (!supabase) {
-      console.log('[TutorEnrollments] supabase client is NULL')
-      return
-    }
+    if (!selectedClassId) return
 
-    const channel = supabase
-      .channel('tutor-enrollments-changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'enrollments' },
-        () => {
-          console.log('[TutorEnrollments] Realtime: enrollments changed')
-          if (selectedClassId) {
-            void fetchEnrollments(selectedClassId)
-          }
-        }
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
-        () => {
-          console.log('[TutorEnrollments] Realtime: orders changed')
-          if (selectedClassId) {
-            void fetchEnrollments(selectedClassId)
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('[TutorEnrollments] Subscription status:', status)
-      })
+    const interval = setInterval(() => {
+      void fetchEnrollments(selectedClassId)
+        .catch(() => {})
+    }, 3000)
 
-    return () => {
-      console.log('[TutorEnrollments] Cleaning up realtime channel')
-      void supabase.removeChannel(channel)
-    }
+    return () => clearInterval(interval)
   }, [selectedClassId])
 
   const handleReview = async (enrollmentId: number, approved: boolean) => {

@@ -59,48 +59,30 @@ export function StudentMessages() {
     fetchConversations()
   }, [])
 
+  // Polling every 3 seconds for messages and conversations
   useEffect(() => {
-    if (!supabase) return
+    const interval = setInterval(() => {
+      void (async () => {
+        try {
+          const updatedConversations = await getConversationsList()
+          setConversations(updatedConversations)
 
-    const channel = supabase
-      .channel('msg-changes-student')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload: any) => {
-        console.log('Realtime message payload:', payload)
-
-        const changedConversationId = Number(
-          payload?.new?.conversation_id ?? payload?.new?.conversationId ?? payload?.old?.conversation_id ?? payload?.old?.conversationId
-        )
-
-        void (async () => {
-          try {
-            const updatedConversations = await getConversationsList()
-            setConversations(updatedConversations)
-
-            if (selectedConvId && (!changedConversationId || changedConversationId === selectedConvId)) {
-              const updatedMessages = await getConversationMessages(selectedConvId)
-              setMessages(updatedMessages)
-            }
-          } catch (err) {
-            console.error('Realtime student update failed:', err)
+          if (selectedConvId) {
+            const updatedMessages = await getConversationMessages(selectedConvId)
+            setMessages((prev) => {
+              if (JSON.stringify(updatedMessages) !== JSON.stringify(prev)) {
+                return updatedMessages
+              }
+              return prev
+            })
           }
-        })()
-      })
+        } catch (err) {
+          // Silent fail for polling
+        }
+      })()
+    }, 3000)
 
-    try {
-      void channel.subscribe((status: any) => {
-        // eslint-disable-next-line no-console
-        console.log('[supabase] channel status (student):', status)
-      })
-      // eslint-disable-next-line no-console
-      console.log('[supabase] channel object (student):', channel)
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[supabase] subscribe error (student):', err)
-    }
-
-    return () => {
-      void supabase.removeChannel(channel)
-    }
+    return () => clearInterval(interval)
   }, [selectedConvId])
 
   // Fetch messages when conversation is selected

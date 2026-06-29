@@ -22,41 +22,22 @@ export function StudentEnrollments() {
     fetchData()
   }, [])
 
-  // Realtime subscription qua Supabase
+  // Polling every 3 seconds for realtime updates
   useEffect(() => {
-    if (!supabase) {
-      console.log('[StudentEnrollments] supabase client is NULL')
-      return
-    }
+    const interval = setInterval(() => {
+      void getMyEnrollments(0, 50)
+        .then((data) => {
+          setEnrollments((prev) => {
+            if (JSON.stringify(data.content) !== JSON.stringify(prev)) {
+              return data.content
+            }
+            return prev
+          })
+        })
+        .catch(() => {})
+    }, 3000)
 
-    const channel = supabase
-      .channel('student-enrollments-changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'enrollments' },
-        () => {
-          console.log('[StudentEnrollments] Realtime: enrollments changed')
-          void getMyEnrollments(0, 50)
-            .then((data) => setEnrollments(data.content))
-            .catch(() => {})
-        }
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
-        () => {
-          console.log('[StudentEnrollments] Realtime: orders changed')
-          void getMyEnrollments(0, 50)
-            .then((data) => setEnrollments(data.content))
-            .catch(() => {})
-        }
-      )
-      .subscribe((status) => {
-        console.log('[StudentEnrollments] Subscription status:', status)
-      })
-
-    return () => {
-      console.log('[StudentEnrollments] Cleaning up realtime channel')
-      void supabase.removeChannel(channel)
-    }
+    return () => clearInterval(interval)
   }, [])
 
   const handleRequestCashPayment = async (enrollmentId: number) => {
