@@ -19,6 +19,7 @@ import { TutorVouchers } from "./pages/Tutor/vouchers";
 import { TutorApplications } from "./pages/Tutor/applications";
 import { TutorEnrollments } from "./pages/Tutor/enrollments";
 import { TutorPayout } from "./pages/Tutor/payout";
+import { TutorRefunds } from "./pages/Tutor/TutorRefunds";
 import { StudentEnrollments } from "./pages/Student/enrollments";
 import { StudentClasses } from "./pages/Student/classes";
 import  StudentProfile  from "./pages/Student/StudentProfile";
@@ -41,12 +42,14 @@ import { AdminDisputes } from "./pages/Admin/AdminDisputes";
 import { AdminReports } from "./pages/Admin/AdminReports";
 import { AdminSettings } from "./pages/Admin/AdminSettings";
 import { AdminPayouts } from "./pages/Admin/AdminPayouts";
+import { AdminRefunds } from "./pages/Admin/AdminRefunds";
 import PricingPage from "./pages/PricingPage";
 import ContactPage from "./pages/ContactPage";
 import FaqPage from "./pages/FaqPage";
 import PostClassPage from "./pages/Student/PostClassPage";
 import StudentRequestsList from "./pages/Student/StudentRequestsList";
 import StudentVouchers from "./pages/Student/StudentVouchers";
+import { StudentRefunds } from "./pages/Student/StudentRefunds";
 import { MySupport } from "./pages/Support/MySupport";
 import { MyDisputes } from "./pages/Disputes/MyDisputes";
 
@@ -74,11 +77,13 @@ const pageTitles: Record<string, string> = {
   "/tutor/classes/new": "Tạo lớp học - EduMatch Pro",
   "/tutor/enrollments": "Thanh toán - EduMatch Pro",
   "/tutor/payout": "Rút tiền - EduMatch Pro",
+  "/tutor/refunds": "Hoàn tiền - EduMatch Pro",
   "/student/profile": "Hồ sơ học viên - EduMatch Pro",
   "/student/classes": "Lớp học của tôi - EduMatch Pro",
   "/student/schedule": "Lịch học - EduMatch Pro",
   "/student/messages": "Tin nhắn - EduMatch Pro",
   "/student/vouchers": "Mã giảm giá - EduMatch Pro",
+  "/student/refunds": "Hoàn tiền - EduMatch Pro",
   "/student/support": "Hỗ trợ của tôi - EduMatch Pro",
   "/student/disputes": "Tranh chấp của tôi - EduMatch Pro",
   "/admin": "Quản trị - EduMatch Pro",
@@ -92,6 +97,7 @@ const pageTitles: Record<string, string> = {
   "/admin/reports": "Tạo báo cáo - EduMatch Pro",
   "/admin/settings": "Cài đặt hệ thống - EduMatch Pro",
   "/admin/payouts": "Quản lý thanh toán - EduMatch Pro",
+  "/admin/refunds": "Hoàn tiền - EduMatch Pro",
   "/post-class": "Đăng lớp - EduMatch Pro",
   "/discover/student-requests": "Bảng Tin - EduMatch Pro",
 };
@@ -132,10 +138,12 @@ function App() {
   if (pathname === "/tutor/applications") return <TutorApplications />;
   if (pathname === "/tutor/enrollments") return <TutorEnrollments />;
   if (pathname === "/tutor/payout") return <TutorPayout />;
+  if (pathname === "/tutor/refunds") return <TutorRefunds />;
   if (pathname === "/student/enrollments") return <StudentEnrollments />;
   if (pathname === "/tutor/support") return <MySupport />;
   if (pathname === "/tutor/disputes") return <MyDisputes />;
   if (pathname === "/tutor/classes/new") return <FormAddClass />;
+  if (pathname.startsWith("/tutor/classes/edit/")) return <FormAddClass />;
   if (pathname.startsWith("/tutor/classes/") && !pathname.includes("/edit/")) return <ClassDetail />;
   if (pathname.startsWith("/tutor/") && !pathname.includes("/classes")) {
     const tutorId = pathname.split("/")[2];
@@ -146,6 +154,7 @@ function App() {
   if (pathname === "/student/schedule") return <StudentSchedule />;
   if (pathname === "/student/messages") return <StudentMessages />;
   if (pathname === "/student/vouchers") return <StudentVouchers />;
+  if (pathname === "/student/refunds") return <StudentRefunds />;
   if (pathname === "/student/my-requests") return <MyStudentRequests />;
   if (pathname === "/student/support") return <MySupport />;
   if (pathname === "/student/disputes") return <MyDisputes />;
@@ -160,6 +169,7 @@ function App() {
   if (pathname === "/admin/reports") return <AdminReports />;
   if (pathname === "/admin/settings") return <AdminSettings />;
   if (pathname === "/admin/payouts") return <AdminPayouts />;
+  if (pathname === "/admin/refunds") return <AdminRefunds />;
   if (pathname.startsWith("/admin/classes/")) return <AdminClassDetail />;
   if (pathname === "/post-class") return <PostClassPage />;
   if (pathname === "/discover/student-requests") return <StudentRequestsList />;

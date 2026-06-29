@@ -4,8 +4,11 @@ import { WeeklySchedule, type ScheduleEvent } from '../../components/WeeklySched
 import { getMyClasses, type ClassResponse } from '../../api/classApi'
 
 function classToEvents(cls: ClassResponse): ScheduleEvent[] {
+  const scheduleDays = cls.schedules.map((schedule) => schedule.dayOfWeek)
+
   return cls.schedules.map((schedule) => ({
     id: `${cls.id}-${schedule.id}`,
+    classId: cls.id,
     className: cls.title,
     subjectName: cls.subjectName,
     categoryName: cls.categoryName,
@@ -15,6 +18,9 @@ function classToEvents(cls: ClassResponse): ScheduleEvent[] {
     dayOfWeek: schedule.dayOfWeek,
     startTime: schedule.startTime,
     endTime: schedule.endTime,
+    classStartDate: cls.updatedAt || cls.createdAt,
+    totalSessions: cls.totalSessions,
+    scheduleDays,
   }))
 }
 

@@ -9,7 +9,7 @@ import {
 import { getMediaUrl } from '../../api/axios'
 import { getTutorProfile } from '../../api/tutorProfile'
 
-type ClassTab = 'all' | 'learning' | 'pending' | 'completed' | 'inactive'
+type ClassTab = 'all' | 'learning' | 'waiting-start' | 'pending' | 'completed' | 'inactive'
 
 type StudentClassItem = {
   enrollment: EnrollmentResponse
@@ -23,6 +23,7 @@ const ENROLLMENT_PAGE_SIZE = 100
 const TABS: Array<{ key: ClassTab; label: string }> = [
   { key: 'all', label: 'Tất cả' },
   { key: 'learning', label: 'Đang học' },
+  { key: 'waiting-start', label: 'Chờ bắt đầu' },
   { key: 'pending', label: 'Chờ xử lý' },
   { key: 'completed', label: 'Hoàn thành' },
   { key: 'inactive', label: 'Không hoạt động' },
@@ -79,7 +80,31 @@ function getItemTab(item: StudentClassItem): Exclude<ClassTab, 'all'> {
   }
   if (item.enrollment.status !== 'PAID') return 'pending'
   if (item.classDetail?.status === 'COMPLETED') return 'completed'
+  if (item.classDetail?.status === 'OPEN') return 'waiting-start'
   return 'learning'
+}
+
+function isWaitingClassStart(item: StudentClassItem) {
+  return item.enrollment.status === 'PAID' && item.classDetail?.status === 'OPEN'
+}
+
+function getStudentClassStatus(item: StudentClassItem) {
+  const status = ENROLLMENT_STATUS[item.enrollment.status]
+  const itemTab = getItemTab(item)
+
+  if (itemTab === 'completed') {
+    return { label: 'Đã hoàn thành', className: 'bg-slate-100 text-slate-700' }
+  }
+
+  if (isWaitingClassStart(item)) {
+    return { label: 'Chờ lớp bắt đầu', className: 'bg-amber-50 text-amber-700' }
+  }
+
+  if (itemTab === 'learning') {
+    return { label: 'Đang học', className: 'bg-emerald-100 text-emerald-700' }
+  }
+
+  return status
 }
 
 function formatMoney(value: number | null | undefined) {
@@ -121,16 +146,9 @@ function groupSchedules(classDetail: ClassResponse | null) {
 
 export function StudentClassCard({ item }: { item: StudentClassItem }) {
   const { enrollment, classDetail, teacherName } = item
-  const status = ENROLLMENT_STATUS[enrollment.status]
   const thumbnail = getMediaUrl(classDetail?.thumbnailUrl)
   const itemTab = getItemTab(item)
-
-  const classStatus =
-    itemTab === 'completed'
-      ? { label: 'Đã hoàn thành', className: 'bg-slate-100 text-slate-700' }
-      : itemTab === 'learning'
-        ? { label: 'Đang học', className: 'bg-emerald-100 text-emerald-700' }
-        : status
+  const classStatus = getStudentClassStatus(item)
 
   return (
     <article className="flex min-h-[310px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-blue-200 hover:shadow-md">
@@ -198,6 +216,10 @@ export function StudentClassCard({ item }: { item: StudentClassItem }) {
             <a href="/student/schedule" className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800">
               Xem lịch học
             </a>
+          ) : isWaitingClassStart(item) ? (
+            <span className="rounded-lg bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
+              Chờ bắt đầu
+            </span>
           ) : itemTab === 'pending' ? (
             <a href="/student/enrollments" className="rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
               Xem thanh toán
@@ -223,13 +245,7 @@ function StudentClassRow({
   const { enrollment, classDetail, teacherName } = item
   const itemTab = getItemTab(item)
   const thumbnail = getMediaUrl(classDetail?.thumbnailUrl)
-  const enrollmentStatus = ENROLLMENT_STATUS[enrollment.status]
-  const classStatus =
-    itemTab === 'completed'
-      ? { label: 'Đã hoàn thành', className: 'bg-slate-100 text-slate-700' }
-      : itemTab === 'learning'
-        ? { label: 'Đang học', className: 'bg-emerald-100 text-emerald-700' }
-        : enrollmentStatus
+  const classStatus = getStudentClassStatus(item)
 
   return (
     <tr className="border-t border-slate-100 transition hover:bg-slate-50">
@@ -303,6 +319,10 @@ function StudentClassRow({
             >
               Xem lịch
             </a>
+          ) : isWaitingClassStart(item) ? (
+            <span className="inline-flex w-[92px] items-center justify-center rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-semibold text-amber-700">
+              Chờ bắt đầu
+            </span>
           ) : itemTab === 'pending' ? (
             <a
               href="/student/enrollments"
@@ -328,7 +348,7 @@ function StudentClassDetailModal({
 }) {
   const { enrollment, classDetail, teacherName } = item
   const thumbnail = getMediaUrl(classDetail?.thumbnailUrl)
-  const status = ENROLLMENT_STATUS[enrollment.status]
+  const status = getStudentClassStatus(item)
   const scheduleGroups = groupSchedules(classDetail)
 
   return (

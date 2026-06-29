@@ -18,6 +18,16 @@ function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
+function formatCompactCurrency(amount: number): string {
+  if (amount >= 1_000_000) {
+    return `${(amount / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}tr`
+  }
+  if (amount >= 1_000) {
+    return `${Math.round(amount / 1_000).toLocaleString('vi-VN')}k`
+  }
+  return amount.toLocaleString('vi-VN')
+}
+
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
   const d = new Date(dateStr)
@@ -45,6 +55,141 @@ function getStatusBadge(status: string) {
     <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
       {labels[status] || status}
     </span>
+  )
+}
+
+function RevenueTrendChart({
+  monthlyRevenue,
+  revenue,
+  formatMonthLabel,
+}: {
+  monthlyRevenue: MonthlyRevenueItem[]
+  revenue: TutorRevenueResponse
+  formatMonthLabel: (month: string) => string
+}) {
+  const chartData = (monthlyRevenue.length > 0
+    ? monthlyRevenue
+    : [{
+        month: 'TOTAL',
+        totalAmount: revenue.totalAmount,
+        platformFee: revenue.totalPlatformFee,
+        tutorEarning: revenue.totalTutorEarning,
+        orderCount: revenue.totalOrders,
+      }]).map((item) => ({
+        ...item,
+        totalAmount: Number(item.totalAmount) || 0,
+        platformFee: Number(item.platformFee) || 0,
+        tutorEarning: Number(item.tutorEarning) || 0,
+        orderCount: Number(item.orderCount) || 0,
+      }))
+  const maxValue = Math.max(...chartData.flatMap((item) => [item.totalAmount, item.tutorEarning, item.platformFee]), 1)
+  const tickStep = Math.max(Math.ceil(maxValue / 4 / 50_000) * 50_000, 50_000)
+  const chartMax = tickStep * 4
+  const yTicks = Array.from({ length: 5 }, (_, index) => chartMax - tickStep * index)
+  const bounds = { left: 76, right: 676, top: 34, bottom: 238 }
+  const chartWidth = bounds.right - bounds.left
+  const chartHeight = bounds.bottom - bounds.top
+  const xForIndex = (index: number) => chartData.length > 1 ? bounds.left + (index * chartWidth) / (chartData.length - 1) : 366
+  const yForValue = (value: number) => bounds.bottom - (value / chartMax) * chartHeight
+  const toPoints = (key: 'totalAmount' | 'platformFee' | 'tutorEarning') =>
+    chartData.map((item, index) => ({ x: xForIndex(index), y: yForValue(item[key]), item }))
+  const tutorPoints = toPoints('tutorEarning')
+  const platformPoints = toPoints('platformFee')
+  const totalPoints = toPoints('totalAmount')
+  const linePath = (points: typeof tutorPoints) => {
+    if (points.length === 1) {
+      const point = points[0]
+      return `M ${point.x - 54} ${point.y} L ${point.x + 54} ${point.y}`
+    }
+    return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+  }
+  const areaPath = (points: typeof tutorPoints) => {
+    if (points.length === 1) {
+      const point = points[0]
+      return `M ${point.x - 54} ${bounds.bottom} L ${point.x - 54} ${point.y} L ${point.x + 54} ${point.y} L ${point.x + 54} ${bounds.bottom} Z`
+    }
+    return `M ${points[0].x} ${bounds.bottom} ${points.map((point) => `L ${point.x} ${point.y}`).join(' ')} L ${points[points.length - 1].x} ${bounds.bottom} Z`
+  }
+
+  return (
+    <div className="mb-6 rounded-2xl border border-blue-100 bg-gradient-to-br from-slate-50 via-white to-blue-50 p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-bold text-slate-950">Biểu đồ doanh thu theo thời gian</h3>
+          <p className="mt-1 text-sm text-slate-500">Theo dõi tổng học phí, phí nền tảng và số tiền gia sư thực nhận.</p>
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
+          <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-emerald-400" /> Tổng học phí</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-orange-400" /> Phí nền tảng</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-blue-600" /> Gia sư nhận</span>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 shadow-inner">
+        <svg className="h-[340px] min-w-[720px] w-full" viewBox="0 0 720 340" role="img" aria-label="Biểu đồ doanh thu theo thời gian">
+          <defs>
+            <linearGradient id="tutorRevenueArea" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="#2563eb" stopOpacity="0.26" />
+              <stop offset="100%" stopColor="#2563eb" stopOpacity="0.03" />
+            </linearGradient>
+          </defs>
+
+          {yTicks.map((value) => {
+            const y = yForValue(value)
+            return (
+              <g key={value}>
+                <line x1={bounds.left} x2={bounds.right} y1={y} y2={y} stroke="#dbe3ef" strokeWidth="1" />
+                <text x={bounds.left - 14} y={y + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="700">
+                  {formatCompactCurrency(value)}
+                </text>
+              </g>
+            )
+          })}
+          <line x1={bounds.left} x2={bounds.left} y1={bounds.top} y2={bounds.bottom} stroke="#cbd5e1" strokeWidth="1" />
+          <line x1={bounds.left} x2={bounds.right} y1={bounds.bottom} y2={bounds.bottom} stroke="#94a3b8" strokeWidth="1.5" />
+
+          <path d={areaPath(tutorPoints)} fill="url(#tutorRevenueArea)" />
+          <path d={linePath(totalPoints)} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="8 8" opacity="0.8" />
+          <path d={linePath(platformPoints)} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={linePath(tutorPoints)} fill="none" stroke="#2563eb" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+
+          {chartData.map((item, index) => {
+            const x = xForIndex(index)
+            const tutorY = yForValue(item.tutorEarning)
+            const platformY = yForValue(item.platformFee)
+            const totalY = yForValue(item.totalAmount)
+            const label = item.month === 'TOTAL' ? 'Tổng' : formatMonthLabel(item.month)
+            return (
+              <g key={item.month} className="group">
+                <line x1={x} x2={x} y1={bounds.top} y2={bounds.bottom} stroke="#cbd5e1" strokeWidth="1" opacity="0.28" />
+                <circle cx={x} cy={totalY} r="4" fill="#fff" stroke="#10b981" strokeWidth="2.5" />
+                <circle cx={x} cy={platformY} r="4.5" fill="#fff" stroke="#f97316" strokeWidth="3" />
+                <circle cx={x} cy={tutorY} r="6" fill="#fff" stroke="#2563eb" strokeWidth="4" />
+                <text x={x} y={totalY - 12} textAnchor="middle" fill="#059669" fontSize="11" fontWeight="800" stroke="#fff" strokeWidth="4" paintOrder="stroke">
+                  {formatCompactCurrency(item.totalAmount)}
+                </text>
+                <text x={x} y={tutorY + 24} textAnchor="middle" fill="#1d4ed8" fontSize="11" fontWeight="800" stroke="#fff" strokeWidth="4" paintOrder="stroke">
+                  {formatCompactCurrency(item.tutorEarning)}
+                </text>
+                <text x={x} y={platformY - 12} textAnchor="middle" fill="#ea580c" fontSize="11" fontWeight="800" stroke="#fff" strokeWidth="4" paintOrder="stroke">
+                  {formatCompactCurrency(item.platformFee)}
+                </text>
+                <text x={x} y="278" textAnchor="middle" fill="#475569" fontSize="12" fontWeight="700">{label}</text>
+                <text x={x} y="296" textAnchor="middle" fill="#94a3b8" fontSize="11">{item.orderCount} đơn</text>
+
+                <g className="opacity-0 transition group-hover:opacity-100">
+                  <rect x={Math.min(Math.max(x - 92, 10), 526)} y="12" width="184" height="90" rx="12" fill="#0f172a" />
+                  <text x={Math.min(Math.max(x - 78, 24), 540)} y="36" fill="#fff" fontSize="12" fontWeight="700">{label} • {item.orderCount} đơn</text>
+                  <text x={Math.min(Math.max(x - 78, 24), 540)} y="58" fill="#bbf7d0" fontSize="11">Tổng: {formatCurrency(item.totalAmount)}</text>
+                  <text x={Math.min(Math.max(x - 78, 24), 540)} y="76" fill="#bfdbfe" fontSize="11">Gia sư nhận: {formatCurrency(item.tutorEarning)}</text>
+                  <text x={Math.min(Math.max(x - 78, 24), 540)} y="94" fill="#fed7aa" fontSize="11">Phí nền tảng: {formatCurrency(item.platformFee)}</text>
+                </g>
+              </g>
+            )
+          })}
+        </svg>
+      </div>
+    </div>
   )
 }
 
@@ -166,11 +311,6 @@ export function TutorPayout() {
     }
   }
 
-  const hasMonthly = monthlyRevenue.length > 0
-  const monthlyMax = hasMonthly
-    ? Math.max(...monthlyRevenue.flatMap(m => [m.platformFee, m.tutorEarning]), 1)
-    : 1
-
   function formatMonthLabel(month: string) {
     const [y, m] = month.split('-')
     const months = ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12']
@@ -181,6 +321,11 @@ export function TutorPayout() {
     <AccountLayout activePath="/tutor/payout">
       <div className="max-w-5xl mx-auto p-6">
         <h1 className="text-2xl font-bold text-slate-800 mb-6">Rút tiền</h1>
+        {loading ? (
+          <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">
+            Đang tải dữ liệu rút tiền...
+          </div>
+        ) : null}
 
         {/* Balance Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -268,61 +413,11 @@ export function TutorPayout() {
             <div className="rounded-lg border border-blue-100 bg-white/80 px-4 py-3 text-sm font-semibold text-blue-700">Đang tải dữ liệu...</div>
           ) : revenue && revenue.totalOrders > 0 ? (
             <div className="rounded-xl border border-slate-300 bg-gradient-to-br from-slate-50 to-blue-50/70 p-5">
-              <div className="overflow-x-auto pb-2">
-                <div className="flex items-end gap-4 min-w-[400px] h-52 px-2">
-                  {hasMonthly ? (
-                    monthlyRevenue.map((item) => {
-                      const pfPct = (item.platformFee / monthlyMax) * 100
-                      const tePct = (item.tutorEarning / monthlyMax) * 100
-                      return (
-                        <div key={item.month} className="flex-1 flex flex-col items-center gap-1 min-w-[50px]">
-                          <span className="text-[10px] font-bold text-orange-500 whitespace-nowrap">
-                            {formatCurrency(item.platformFee)}
-                          </span>
-                          <div className="flex items-end gap-[3px] w-full justify-center">
-                            <div
-                              className="w-[18px] rounded-t bg-orange-400 transition-all duration-500"
-                              style={{ height: `${Math.max(pfPct, 3)}%` }}
-                              title={`Phí nền tảng: ${formatCurrency(item.platformFee)}`}
-                            />
-                            <div
-                              className="w-[18px] rounded-t bg-blue-500 transition-all duration-500"
-                              style={{ height: `${Math.max(tePct, 3)}%` }}
-                              title={`Gia sư nhận: ${formatCurrency(item.tutorEarning)}`}
-                            />
-                          </div>
-                          <span className="text-[10px] font-bold text-slate-500 mt-1">
-                            {formatMonthLabel(item.month)}
-                          </span>
-                        </div>
-                      )
-                    })
-                  ) : (
-                    <>
-                      <div className="flex-1 flex flex-col items-center gap-2">
-                        <span className="text-xs font-bold text-orange-600">
-                          {formatCurrency(revenue.totalPlatformFee)}
-                        </span>
-                        <div
-                          className="w-full max-w-[120px] rounded-t bg-orange-400 transition-all duration-500"
-                          style={{ height: `${Math.max((revenue.totalPlatformFee / Math.max(revenue.totalTutorEarning, 1)) * 100, 4)}%` }}
-                        />
-                        <span className="text-xs font-bold text-slate-600">Phí nền tảng</span>
-                      </div>
-                      <div className="flex-1 flex flex-col items-center gap-2">
-                        <span className="text-xs font-bold text-blue-600">
-                          {formatCurrency(revenue.totalTutorEarning)}
-                        </span>
-                        <div
-                          className="w-full max-w-[120px] rounded-t bg-blue-500 transition-all duration-500"
-                          style={{ height: '100%' }}
-                        />
-                        <span className="text-xs font-bold text-slate-600">Gia sư nhận</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
+              <RevenueTrendChart
+                monthlyRevenue={monthlyRevenue}
+                revenue={revenue}
+                formatMonthLabel={formatMonthLabel}
+              />
               <div className="flex items-center justify-center gap-6 mt-4 text-xs text-slate-500">
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded bg-orange-400" /> Phí nền tảng (10%)

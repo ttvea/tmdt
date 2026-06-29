@@ -4,7 +4,7 @@ import { login } from "../api/auth";
 import heroImage from "../assets/hero.png";
 import Footer from "../layouts/Footer";
 import Navbar from "../layouts/Navbar";
-import { isAdminRole } from "../utils/userRole";
+import { isAdminRole, isTutorRole } from "../utils/userRole";
 import { API_BASE_URL } from "../api/axios";
 
 function GoogleIcon() {
@@ -67,13 +67,18 @@ function EyeIcon({ isVisible }: { isVisible: boolean }) {
   );
 }
 
+function getPostLoginPath(role: unknown): string {
+  if (isAdminRole(role)) return "/admin";
+  if (isTutorRole(role)) return "/tutor/profile";
+  return "/student/classes";
+}
+
 export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [oauthRole, setOauthRole] = useState<'STUDENT' | 'TUTOR'>('STUDENT');
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -95,7 +100,7 @@ export function Login() {
         localStorage.setItem("user", JSON.stringify(data.user));
       }
 
-      window.location.href = isAdminRole(data.user?.role) ? "/admin" : "/";
+      window.location.href = getPostLoginPath(data.user?.role);
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Đăng nhập thất bại.");
     } finally {
@@ -104,13 +109,10 @@ export function Login() {
   };
 
   const loginGoogle = () => {
-
-    sessionStorage.setItem('oauth_pending_role', oauthRole);
-    window.location.href = "http://localhost:8080/oauth2/authorization/google";
+    window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
   };
 
   const loginFacebook = () => {
-    sessionStorage.setItem('oauth_pending_role', oauthRole);
     window.location.href = `${API_BASE_URL}/oauth2/authorization/facebook`;
   };
 
@@ -233,40 +235,6 @@ export function Login() {
                   {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
                 </button>
               </form>
-
-              <div className="my-6">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Bạn muốn đăng nhập với tư cách</p>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setOauthRole('STUDENT')}
-                    className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-semibold transition ${
-                      oauthRole === 'STUDENT'
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                    }`}
-                  >
-                    <svg className="mx-auto mb-1 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0" />
-                    </svg>
-                    Học viên
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setOauthRole('TUTOR')}
-                    className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-semibold transition ${
-                      oauthRole === 'TUTOR'
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                    }`}
-                  >
-                    <svg className="mx-auto mb-1 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m3 9 9-5 9 5-9 5-9-5Zm3 3.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-3.5" />
-                    </svg>
-                    Gia sư
-                  </button>
-                </div>
-              </div>
 
               <div className="my-6 flex items-center gap-4">
                 <div className="h-px flex-1 bg-slate-200" />
