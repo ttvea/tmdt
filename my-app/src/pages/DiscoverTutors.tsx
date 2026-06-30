@@ -233,15 +233,14 @@ function DiscoverTutors() {
     }
   };
 
+  // Auto-search when any filter changes
   useEffect(() => {
-    loadResults();
+    const timer = setTimeout(() => {
+      loadResults(0);
+    }, 400);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    await loadResults(0);
-  };
+  }, [keyword, selectedSubjectId, selectedSubjectName, occupationType, experienceFilter]);
 
   const resetFilters = async () => {
     setKeyword("");
@@ -249,14 +248,7 @@ function DiscoverTutors() {
     setOccupationType("");
     setExperienceFilter("");
     setVerifiedOnly(false);
-    await loadResults(0, {
-      keyword: "",
-      occupationType: "",
-      experienceFilter: "",
-      subjectName: getSubjectName(""),
-    });
   };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 via-slate-50 to-white text-slate-900">
       <Navbar />
@@ -286,10 +278,7 @@ function DiscoverTutors() {
         </section>
 
         <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-10 pt-4 sm:px-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:px-8">
-          <form
-            onSubmit={handleSubmit}
-            className="h-fit rounded-lg border border-blue-100 bg-white p-5 shadow-sm"
-          >
+          <div className="h-fit rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
             <div className="mb-5 flex items-center justify-between gap-3">
               <h2 className="text-lg font-bold text-slate-950">Bộ lọc</h2>
               <button
@@ -373,15 +362,8 @@ function DiscoverTutors() {
                 Chỉ hiển thị hồ sơ đã xác thực
               </label>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="h-11 w-full rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {isLoading ? "Đang tìm..." : "Áp dụng bộ lọc"}
-              </button>
             </div>
-          </form>
+          </div>
 
           <div>
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
