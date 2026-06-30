@@ -31,29 +31,39 @@ const StudentRequestsList = () => {
   const user = userRaw ? JSON.parse(userRaw) : null;
   const isTutor = user ? isTutorRole(user.role) : false;
   
-  const [requests, setRequests] = useState<StudentRequest[]>([]);
+  const [allRequests, setAllRequests] = useState<StudentRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Gọi API mỗi khi filter thay đổi
+  // Filtered requests computed from allRequests based on filters
+  const requests = allRequests.filter((req) => {
+    if (keyword) {
+      const kw = keyword.toLowerCase();
+      const matchSubject = req.subjectTags?.toLowerCase().includes(kw);
+      const matchAddress = req.address?.toLowerCase().includes(kw);
+      const matchGrade = req.gradeLevel?.toLowerCase().includes(kw);
+      const matchRequirements = req.requirements?.toLowerCase().includes(kw);
+      if (!(matchSubject || matchAddress || matchGrade || matchRequirements)) return false;
+    }
+    if (subject) {
+      if (!req.subjectTags?.toLowerCase().includes(subject.toLowerCase())) return false;
+    }
+    if (mode) {
+      if (req.teachingMode !== mode) return false;
+    }
+    return true;
+  });
+
+  // Fetch all requests once on mount
   useEffect(() => {
     const fetchRequests = async () => {
       setIsLoading(true);
       try {
-        // Xây dựng query string từ các state hiện tại
-        const queryParams = new URLSearchParams();
-        if (keyword) queryParams.append("keyword", keyword);
-        if (subject) queryParams.append("subject", subject);
-        if (mode) queryParams.append("mode", mode);
-        
-        const queryString = queryParams.toString();
-        // Gọi thẳng vào API /search đã viết ở Backend
-        const url = `${API_BASE_URL}/api/student-requests/search${queryString ? `?${queryString}` : ''}`;
-
+        const url = `${API_BASE_URL}/api/student-requests/all`;
         const response = await fetch(url);
         const data = await response.json();
         
         if (response.ok && data.success) {
-          setRequests(data.data);
+          setAllRequests(data.data);
         }
       } catch (error) {
         console.error("Lỗi tải dữ liệu", error);
@@ -62,14 +72,8 @@ const StudentRequestsList = () => {
       }
     };
 
-    // Áp dụng Debounce: Đợi 500ms sau khi ngừng thao tác mới gọi API
-    const delayDebounceFn = setTimeout(() => {
-      fetchRequests();
-    }, 500);
-
-    // Dọn dẹp timeout cũ nếu user thao tác liên tục
-    return () => clearTimeout(delayDebounceFn);
-  }, [keyword, subject, mode]);
+    fetchRequests();
+  }, []);
 
   const handleApplyClick = (requestId: number) => {
     if (!user) {

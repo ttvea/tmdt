@@ -38,8 +38,7 @@ export function TutorRefunds() {
       })
       const paymentUrl = res.data?.paymentUrl
       if (paymentUrl) {
-        window.open(paymentUrl, '_blank')
-        toast.success('Đã tạo link thanh toán VNPAY!')
+        window.location.href = paymentUrl
       }
       loadRefunds()
     } catch (err: any) {
