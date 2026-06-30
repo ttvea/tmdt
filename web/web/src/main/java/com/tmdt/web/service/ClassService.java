@@ -142,11 +142,6 @@ public class ClassService {
             }
             enrollment.setStatus(EnrollmentStatus.APPROVED);
             enrollment.setApprovedAt(LocalDateTime.now());
-
-            if (approvedCount + 1 >= classEntity.getMaxStudents()) {
-                classEntity.setStatus(ClassStatus.CLOSED);
-                classRepository.save(classEntity);
-            }
         } else {
             if (request.getNote() == null || request.getNote().isBlank()) {
                 throw AppException.badRequest("Vui lòng cung cấp lý do từ chối");
@@ -167,10 +162,9 @@ public class ClassService {
         if (newStatus == ClassStatus.CLOSED && classEntity.getStatus() == ClassStatus.OPEN) {
             long activeStudents = enrollmentRepository.countByClassEntityIdAndStatusIn(
                     classEntity.getId(), List.of(EnrollmentStatus.APPROVED, EnrollmentStatus.PAID));
-            int requiredStudents = Math.max(1, (int) Math.ceil(classEntity.getMaxStudents() / 2.0));
 
-            if (activeStudents < requiredStudents) {
-                throw AppException.badRequest("Cần ít nhất " + requiredStudents + " học viên để bắt đầu lớp");
+            if (activeStudents < 1) {
+                throw AppException.badRequest("Cần ít nhất 1 học viên để bắt đầu lớp");
             }
         }
 
@@ -418,12 +412,6 @@ public class ClassService {
         TutorClass classEntity = enrollment.getClassEntity();
         classEntity.setCurrentStudents(classEntity.getCurrentStudents() + 1);
 
-        long paidCount = enrollmentRepository.countByClassEntityIdAndStatusIn(
-                classEntity.getId(), List.of(EnrollmentStatus.PAID));
-        if (paidCount + 1 >= classEntity.getMaxStudents()) {
-            classEntity.setStatus(ClassStatus.CLOSED);
-        }
-
         classRepository.save(classEntity);
         enrollmentRepository.save(enrollment);
 
@@ -477,12 +465,6 @@ public class ClassService {
         enrollment.setPaidAt(LocalDateTime.now());
 
         classEntity.setCurrentStudents(classEntity.getCurrentStudents() + 1);
-
-        long paidCount = enrollmentRepository.countByClassEntityIdAndStatusIn(
-                classEntity.getId(), List.of(EnrollmentStatus.PAID));
-        if (paidCount + 1 >= classEntity.getMaxStudents()) {
-            classEntity.setStatus(ClassStatus.CLOSED);
-        }
 
         classRepository.save(classEntity);
         enrollmentRepository.save(enrollment);
