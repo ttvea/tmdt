@@ -104,15 +104,8 @@ export function ClassDetail() {
         if (cls) {
           setCls({
             ...cls,
-            status: approved && cls.approvalStatus === 'APPROVED' && cls.status === 'OPEN' && activeCount >= cls.maxStudents
-              ? 'CLOSED'
-              : cls.status,
             currentStudents: activeCount,
           })
-        }
-
-        if (cls && approved && cls.approvalStatus === 'APPROVED' && cls.status === 'OPEN' && activeCount >= cls.maxStudents) {
-          toast.success('Lớp đã đủ học viên và chuyển sang đang dạy.')
         }
 
         return nextEnrollments
@@ -125,10 +118,9 @@ export function ClassDetail() {
 
   const handleStartClass = async () => {
     if (!cls || isStartingClass) return
-    const minimumStudents = Math.max(1, Math.ceil(cls.maxStudents / 2))
 
-    if (cls.currentStudents < minimumStudents) {
-      toast.error(`Cần ít nhất ${minimumStudents} học viên để bắt đầu lớp.`)
+    if (cls.currentStudents < 1) {
+      toast.error('Cần ít nhất 1 học viên để bắt đầu lớp.')
       return
     }
 
@@ -176,10 +168,9 @@ export function ClassDetail() {
   const subjectName = cls.subjectName || subjectMap[cls.subjectId] || '—'
   const gradeName = cls.gradeLevelName || gradeMap[cls.gradeLevelId] || '—'
 
-  const minimumStudentsToStart = Math.max(1, Math.ceil(cls.maxStudents / 2))
   const canStartClass = cls.approvalStatus === 'APPROVED'
     && cls.status === 'OPEN'
-    && cls.currentStudents >= minimumStudentsToStart
+    && cls.currentStudents >= 1
 
   return (
     <AccountLayout activePath="/tutor/classes">

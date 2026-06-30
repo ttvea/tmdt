@@ -5,7 +5,6 @@ import com.tmdt.web.entity.Payment;
 import com.tmdt.web.entity.Enrollment;
 import com.tmdt.web.entity.TutorClass;
 import com.tmdt.web.enums.EnrollmentStatus;
-import com.tmdt.web.enums.ClassStatus;
 import com.tmdt.web.repository.ClassRep;
 import com.tmdt.web.repository.EnrollmentRep;
 import com.tmdt.web.repository.OrderRep;
@@ -100,11 +99,6 @@ public class PaymentController {
                     // Update class currentStudents
                     TutorClass classEntity = enrollment.getClassEntity();
                     classEntity.setCurrentStudents(classEntity.getCurrentStudents() + 1);
-                    long paidCount = enrollmentRepository.countByClassEntityIdAndStatusIn(
-                            classEntity.getId(), java.util.List.of(EnrollmentStatus.PAID));
-                    if (paidCount >= classEntity.getMaxStudents()) {
-                        classEntity.setStatus(ClassStatus.CLOSED);
-                    }
                     classRepository.save(classEntity);
                 });
 
