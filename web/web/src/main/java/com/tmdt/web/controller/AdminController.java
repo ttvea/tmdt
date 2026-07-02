@@ -21,6 +21,16 @@ import com.tmdt.web.dto.response.AdminUsersStatsResponse;
 import com.tmdt.web.dto.response.VoucherResponse;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.lowagie.text.Document;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
+import com.lowagie.text.pdf.BaseFont;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
 import com.tmdt.web.entity.User;
 import com.tmdt.web.entity.Order;
 import com.tmdt.web.entity.SystemSetting;
@@ -71,6 +81,8 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.math.BigDecimal;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 
 @RestController
@@ -652,7 +664,8 @@ public class AdminController {
             HttpServletRequest request,
             @RequestParam ReportType type,
             @RequestParam(required = false) LocalDate from,
-            @RequestParam(required = false) LocalDate to
+            @RequestParam(required = false) LocalDate to,
+            @RequestParam(defaultValue = "CSV") String format
     ) {
         ResponseEntity<?> authError = validateAdminRequest(request);
         if (authError != null) {
@@ -670,6 +683,16 @@ public class AdminController {
             case USERS -> buildUsersReportCsv(start, end);
             case TUTORS -> buildTutorsReportCsv(start, end);
         };
+
+        if ("PDF".equalsIgnoreCase(format)) {
+            String fileName = "edumatch-" + type.name().toLowerCase() + "-" + LocalDate.now() + ".pdf";
+            byte[] body = buildReportPdf(type, startDate, endDate, csv);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(body);
+        }
 
         String fileName = "edumatch-" + type.name().toLowerCase() + "-" + LocalDate.now() + ".csv";
         byte[] body = ("\uFEFF" + csv).getBytes(StandardCharsets.UTF_8);
@@ -954,6 +977,135 @@ public class AdminController {
         }
 
         return csv.toString();
+    }
+
+    private byte[] buildReportPdf(ReportType type, LocalDate from, LocalDate to, String csv) {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            List<List<String>> rows = parseCsv(csv);
+            Document document = new Document(PageSize.A4.rotate(), 28, 28, 28, 28);
+            PdfWriter.getInstance(document, outputStream);
+            document.open();
+
+            BaseFont baseFont = createPdfBaseFont();
+            Font titleFont = new Font(baseFont, 16, Font.BOLD);
+            Font metaFont = new Font(baseFont, 10, Font.NORMAL);
+            Font headerFont = new Font(baseFont, 9, Font.BOLD);
+            Font bodyFont = new Font(baseFont, 8, Font.NORMAL);
+
+            Paragraph title = new Paragraph("EduMatch Pro - " + getReportTitle(type), titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingAfter(8);
+            document.add(title);
+
+            Paragraph meta = new Paragraph("Khoang thoi gian: " + from + " - " + to + " | Ngay tao: " + LocalDate.now(), metaFont);
+            meta.setAlignment(Element.ALIGN_CENTER);
+            meta.setSpacingAfter(16);
+            document.add(meta);
+
+            if (rows.isEmpty()) {
+                document.add(new Paragraph("Khong co du lieu bao cao.", bodyFont));
+            } else {
+                List<String> headers = rows.get(0);
+                PdfPTable table = new PdfPTable(headers.size());
+                table.setWidthPercentage(100);
+
+                for (String header : headers) {
+                    PdfPCell cell = new PdfPCell(new Phrase(header, headerFont));
+                    cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                    cell.setPadding(6);
+                    cell.setBackgroundColor(new java.awt.Color(232, 240, 254));
+                    table.addCell(cell);
+                }
+
+                for (int rowIndex = 1; rowIndex < rows.size(); rowIndex++) {
+                    List<String> row = rows.get(rowIndex);
+                    for (int colIndex = 0; colIndex < headers.size(); colIndex++) {
+                        String value = colIndex < row.size() ? row.get(colIndex) : "";
+                        PdfPCell cell = new PdfPCell(new Phrase(value, bodyFont));
+                        cell.setPadding(5);
+                        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                        table.addCell(cell);
+                    }
+                }
+
+                document.add(table);
+            }
+
+            document.close();
+            return outputStream.toByteArray();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Khong the tao file PDF bao cao", exception);
+        }
+    }
+
+    private String getReportTitle(ReportType type) {
+        return switch (type) {
+            case DASHBOARD -> "Bao cao tong quan";
+            case DISPUTES -> "Bao cao tranh chap";
+            case USERS -> "Bao cao nguoi dung";
+            case TUTORS -> "Bao cao gia su";
+        };
+    }
+
+    private BaseFont createPdfBaseFont() throws Exception {
+        String[] candidates = {
+                "C:/Windows/Fonts/arial.ttf",
+                "C:/Windows/Fonts/Arial.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+        };
+
+        for (String path : candidates) {
+            if (new File(path).exists()) {
+                return BaseFont.createFont(path, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+            }
+        }
+
+        return BaseFont.createFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+    }
+
+    private List<List<String>> parseCsv(String csv) {
+        List<List<String>> rows = new ArrayList<>();
+        List<String> row = new ArrayList<>();
+        StringBuilder cell = new StringBuilder();
+        boolean quoted = false;
+
+        for (int index = 0; index < csv.length(); index++) {
+            char current = csv.charAt(index);
+            if (current == '"') {
+                if (quoted && index + 1 < csv.length() && csv.charAt(index + 1) == '"') {
+                    cell.append('"');
+                    index++;
+                } else {
+                    quoted = !quoted;
+                }
+            } else if (current == ',' && !quoted) {
+                row.add(cell.toString());
+                cell.setLength(0);
+            } else if ((current == '\n' || current == '\r') && !quoted) {
+                if (current == '\r' && index + 1 < csv.length() && csv.charAt(index + 1) == '\n') {
+                    index++;
+                }
+                row.add(cell.toString());
+                cell.setLength(0);
+                if (!row.isEmpty() && row.stream().anyMatch(value -> value != null && !value.isBlank())) {
+                    rows.add(row);
+                }
+                row = new ArrayList<>();
+            } else {
+                cell.append(current);
+            }
+        }
+
+        if (cell.length() > 0 || !row.isEmpty()) {
+            row.add(cell.toString());
+            if (row.stream().anyMatch(value -> value != null && !value.isBlank())) {
+                rows.add(row);
+            }
+        }
+
+        return rows;
     }
 
     private Map<String, Object> buildDashboardReportPreview(

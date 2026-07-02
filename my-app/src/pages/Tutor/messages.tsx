@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import Navbar from '../../layouts/Navbar'
 import Footer from '../../layouts/Footer'
 import { getConversationsList, getConversationMessages, sendMessage, sendImageMessage, getMessageMediaUrl, isImageMessage, type ConversationResponse, type MessageResponse } from '../../api/conversations'
-// import { supabase } from '../../api/supabase'
 
 export function TutorMessages() {
   const [conversations, setConversations] = useState<ConversationResponse[]>([])

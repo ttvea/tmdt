@@ -77,7 +77,7 @@ export function AdminReports() {
   }, [])
 
   const selectedReport = reportTypes.find((item) => item.type === reportType)
-  const canExport = selectedReport?.enabled && format === 'CSV'
+  const canExport = selectedReport?.enabled && format !== 'EXCEL'
   const canPreview = selectedReport?.enabled
 
   const chartLabel = useMemo(() => {
@@ -157,10 +157,12 @@ export function AdminReports() {
         type: reportType as AdminReportType,
         from: fromDate,
         to: toDate,
+        format,
       })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
-      const fileName = `edumatch-${reportType.toLowerCase()}-${toDate || today()}.csv`
+      const extension = format === 'PDF' ? 'pdf' : 'csv'
+      const fileName = `edumatch-${reportType.toLowerCase()}-${toDate || today()}.${extension}`
       link.href = url
       link.download = fileName
       document.body.appendChild(link)
