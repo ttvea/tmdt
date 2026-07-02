@@ -8,6 +8,7 @@ const PAGE_SIZE = 9;
 
 type ClassPost = {
   id: number;
+  tutorId: number;
   title: string;
   subjectId: number;
   gradeLevelId: number;
@@ -34,6 +35,7 @@ function mapClassResponse(item: ClassResponse): ClassPost {
 
   return {
     id: item.id,
+    tutorId: item.tutorId,
     title: item.title,
     subjectId: item.subjectId,
     gradeLevelId: item.gradeLevelId,
@@ -113,12 +115,20 @@ function ClassCard({
             {classPost.totalSessions ? `${classPost.totalSessions} buổi` : "Theo lộ trình"}
           </div>
         </div>
-        <button
-          onClick={() => onEnroll(classPost)}
-          className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
-        >
-          Ứng tuyển
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={`/tutor/${classPost.tutorId}`}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Xem hồ sơ
+          </a>
+          <button
+            onClick={() => onEnroll(classPost)}
+            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
+          >
+            Ứng tuyển
+          </button>
+        </div>
       </div>
     </article>
   );
