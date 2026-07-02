@@ -3,7 +3,6 @@ import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
 import { getMyEnrollments, requestCashPayment, type EnrollmentResponse } from '../../api/classApi'
 import { OrderDetailModal } from '../../components/OrderDetailModal'
-import { supabase } from '../../api/supabase'
 
 export function StudentEnrollments() {
   const [enrollments, setEnrollments] = useState<EnrollmentResponse[]>([])

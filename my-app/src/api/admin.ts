@@ -474,6 +474,7 @@ export async function exportAdminReport(params: {
   type: AdminReportType
   from?: string
   to?: string
+  format?: 'CSV' | 'PDF'
 }): Promise<Blob> {
   const res = await api.get('/api/admin/reports/export', {
     params,
