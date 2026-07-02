@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
+import { AccountPageContainer } from '../../components/AccountPageContainer'
+import { AccountPageHeader } from '../../components/AccountPageHeader'
 import { getMyEnrollments, requestCashPayment, type EnrollmentResponse } from '../../api/classApi'
 import { createPayment } from '../../api/payment'
 import { OrderDetailModal } from '../../components/OrderDetailModal'
@@ -154,11 +156,8 @@ export function StudentEnrollments() {
 
   return (
     <AccountLayout activePath="/student/enrollments">
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Thanh toán</h1>
-          <p className="mt-1 text-sm text-slate-500">Theo dõi trạng thái đăng ký, thanh toán và đánh giá lớp học.</p>
-        </div>
+      <AccountPageContainer>
+        <AccountPageHeader title="Thanh toán" />
 
         {loading ? (
           <div className="py-12 text-center text-slate-500">Đang tải...</div>
@@ -263,7 +262,7 @@ export function StudentEnrollments() {
             })}
           </div>
         )}
-      </div>
+      </AccountPageContainer>
 
       {viewOrderId && (
         <OrderDetailModal

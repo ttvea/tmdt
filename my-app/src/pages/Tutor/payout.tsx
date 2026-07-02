@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
+import { AccountPageContainer } from '../../components/AccountPageContainer'
+import { TutorPageHeader } from '../../components/TutorPageHeader'
 import {
   getTutorBalance,
   requestPayout,
@@ -371,8 +373,8 @@ export function TutorPayout() {
 
   return (
     <AccountLayout activePath="/tutor/payout">
-      <div className="max-w-5xl mx-auto p-6">
-        <h1 className="text-2xl font-bold text-slate-800 mb-6">Rút tiền</h1>
+      <AccountPageContainer>
+        <TutorPageHeader title="Rút tiền" />
         {loading ? (
           <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">
             Đang tải dữ liệu rút tiền...
@@ -818,7 +820,10 @@ export function TutorPayout() {
             </table>
           </div>
         </div>
-      </div>
+      </AccountPageContainer>
     </AccountLayout>
   )
 }
+
+
+
