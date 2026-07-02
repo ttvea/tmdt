@@ -22,6 +22,15 @@ export const updateUserProfile = async (userId: number, formData: any): Promise<
   return response.data;
 };
 
+// Hàm đổi mật khẩu
+export const changePassword = async (userId: number, currentPassword: string, newPassword: string): Promise<string> => {
+  const response = await axiosInstance.put(`/api/users/${userId}/change-password`, {
+    currentPassword,
+    newPassword,
+  });
+  return response.data;
+};
+
 // Hàm update avatar
 export const uploadAvatar = async (userId: number, file: File): Promise<string> => {
   const formData = new FormData();

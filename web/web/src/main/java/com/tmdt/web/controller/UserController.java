@@ -1,5 +1,6 @@
 package com.tmdt.web.controller;
 
+import com.tmdt.web.dto.request.ChangePasswordRequest;
 import com.tmdt.web.dto.response.UserProfileResponse;
 import com.tmdt.web.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,17 @@ public class UserController {
     public ResponseEntity<String> updateProfile(@PathVariable Integer id, @RequestBody UserUpdateRequest request) {
         userService.updateUserProfile(id, request);
         return ResponseEntity.ok("Cập nhật thông tin thành công!");
+    }
+
+    // Đổi mật khẩu
+    @PutMapping("/{id}/change-password")
+    public ResponseEntity<String> changePassword(@PathVariable Integer id, @RequestBody ChangePasswordRequest request) {
+        try {
+            userService.changePassword(id, request);
+            return ResponseEntity.ok("Đổi mật khẩu thành công!");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     // Nhận ảnh đại diện

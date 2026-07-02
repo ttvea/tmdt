@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
-import { getUserProfile, updateUserProfile, uploadAvatar, type UserProfileResponse } from '../../api/userProfile'
+import { getUserProfile, updateUserProfile, uploadAvatar, changePassword, type UserProfileResponse } from '../../api/userProfile'
 import { getMediaUrl } from '../../api/axios'
 
 const GENDER_LABELS: Record<string, string> = {
@@ -16,6 +16,14 @@ export default function StudentProfile() {
 
   const [profile, setProfile] = useState<UserProfileResponse | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+  const [changingPassword, setChangingPassword] = useState(false)
 
   const [formData, setFormData] = useState<{
     fullName: string;
@@ -70,6 +78,33 @@ export default function StudentProfile() {
   };
 
   // Hàm xử lý khi người dùng chọn xong ảnh
+  const handleChangePassword = async () => {
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      toast.error('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('Mật khẩu mới không khớp');
+      return;
+    }
+    if (passwordData.newPassword.length < 6) {
+      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const message = await changePassword(userId, passwordData.currentPassword, passwordData.newPassword);
+      toast.success(message);
+      setShowChangePassword(false);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error: any) {
+      toast.error(error.response?.data || error.message);
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -156,7 +191,13 @@ export default function StudentProfile() {
               </div>
 
               {/* Nhóm Nút Bấm Góc Phải */}
-              <div className="mb-2 md:mb-4 flex justify-center md:justify-end w-full md:w-auto mt-3 md:mt-0">
+              <div className="mb-2 md:mb-4 flex flex-col md:flex-row justify-center md:justify-end w-full md:w-auto mt-3 md:mt-0 gap-2">
+                <button
+                  onClick={() => setShowChangePassword(true)}
+                  className="px-6 py-2 bg-[#4267b2] text-white font-semibold rounded-lg hover:bg-blue-800 transition-colors shadow-sm"
+                >
+                  Đổi mật khẩu
+                </button>
                 {!isEditing ? (
                   <button
                     onClick={() => setIsEditing(true)}
@@ -284,6 +325,71 @@ export default function StudentProfile() {
 
           </div>
         </div>
+
+        {/* ================= MODAL ĐỔI MẬT KHẨU ================= */}
+        {showChangePassword && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+              <h3 className="text-xl font-bold mb-4" style={{ color: '#4267b2' }}>
+                Đổi mật khẩu
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-slate-600 block mb-1">Mật khẩu hiện tại</label>
+                  <input
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:border-[#4267b2]"
+                    placeholder="Nhập mật khẩu hiện tại"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-600 block mb-1">Mật khẩu mới</label>
+                  <input
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:border-[#4267b2]"
+                    placeholder="Nhập mật khẩu mới"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-600 block mb-1">Xác nhận mật khẩu mới</label>
+                  <input
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:border-[#4267b2]"
+                    placeholder="Xác nhận mật khẩu mới"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowChangePassword(false)
+                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+                  }}
+                  className="px-5 py-2 bg-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-300 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleChangePassword}
+                  disabled={changingPassword}
+                  className="px-5 py-2 bg-[#4267b2] text-white font-medium rounded-lg hover:bg-blue-800 transition-colors disabled:opacity-50"
+                >
+                  {changingPassword ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AccountLayout>
   )

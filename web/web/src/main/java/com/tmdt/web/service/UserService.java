@@ -1,10 +1,12 @@
 package com.tmdt.web.service;
 
+import com.tmdt.web.dto.request.ChangePasswordRequest;
 import com.tmdt.web.dto.response.UserProfileResponse;
 import com.tmdt.web.dto.request.UserUpdateRequest;
 import com.tmdt.web.entity.User;
 import com.tmdt.web.repository.UserRep;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.cloudinary.Cloudinary;
@@ -19,6 +21,9 @@ public class UserService {
 
     @Autowired
     private Cloudinary cloudinary;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public UserProfileResponse getUserProfile(Integer userId) {
         User user = userRep.findById(userId)
@@ -56,6 +61,24 @@ public class UserService {
                 throw new RuntimeException("Giới tính không hợp lệ!");
             }
         }
+        userRep.save(user);
+    }
+
+    // Hàm đổi mật khẩu
+    @Transactional
+    public void changePassword(Integer userId, ChangePasswordRequest request) {
+        User user = userRep.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
+
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new RuntimeException("Tài khoản này đăng nhập bằng OAuth2, không thể đổi mật khẩu");
+        }
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new RuntimeException("Mật khẩu hiện tại không đúng");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRep.save(user);
     }
 
