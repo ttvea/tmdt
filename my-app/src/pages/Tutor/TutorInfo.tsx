@@ -180,7 +180,11 @@ export function TutorInfo() {
       }
 
       if (avatarFile) {
-        await uploadAvatarApi(userId, avatarFile)
+        const avatar = await uploadAvatarApi(userId, avatarFile)
+        setAvatarPreview(getMediaUrl(avatar))
+        if (userRaw) {
+          localStorage.setItem('user', JSON.stringify({ ...user, avatar, fullName, phone, birthday: request.birthday, gender }))
+        }
       }
 
       for (const certFile of certificateFiles) {

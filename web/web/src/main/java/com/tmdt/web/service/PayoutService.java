@@ -47,7 +47,7 @@ public class PayoutService {
                 .sum();
     }
 
-    private double getPendingPayoutRequestAmount(Integer tutorId) {
+    public Double getPendingPayoutRequestAmount(Integer tutorId) {
         return payoutRepository.findByTutorIdAndStatusOrderByCreatedAtDesc(tutorId, Payout.PayoutStatus.PENDING)
                 .stream()
                 .mapToDouble(Payout::getAmount)
@@ -58,6 +58,10 @@ public class PayoutService {
      * Tính tổng tiền có thể rút của gia sư (tutorEarning của các order PAID có tutorPayoutStatus = PENDING)
      */
     public Double getAvailableBalance(Integer tutorId) {
+        return getOrderPayoutBalance(tutorId);
+    }
+
+    public Double getWithdrawableBalance(Integer tutorId) {
         double orderBalance = getOrderPayoutBalance(tutorId);
         double pendingRequestAmount = getPendingPayoutRequestAmount(tutorId);
         return Math.max(0.0, orderBalance - pendingRequestAmount);
@@ -87,7 +91,7 @@ public class PayoutService {
         }
 
         // Kiểm tra số dư khả dụng
-        Double available = getAvailableBalance(tutorId);
+        Double available = getWithdrawableBalance(tutorId);
         if (available < amount) {
             throw AppException.badRequest(
                     String.format("Số dư khả dụng không đủ. Khả dụng: %.0f VND, Yêu cầu: %.0f VND", available, amount));

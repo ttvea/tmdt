@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
+import { AccountPageHeader } from '../../components/AccountPageHeader'
 import {
   getClassDetail,
   getMyEnrollments,
@@ -533,17 +534,14 @@ export function StudentClasses() {
     <AccountLayout activePath="/student/classes">
       <div className="min-h-screen bg-slate-50 px-5 py-8 text-left sm:px-8">
         <div className="mx-auto max-w-6xl">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-3xl font-bold text-blue-900">Lớp học</p>
-
-              <p className="mt-1 text-sm text-slate-500">Theo dõi các lớp đã đăng ký và quá trình học tập của bạn.</p>
-            </div>
-            <a href="/discover/classes" className="rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800">
-              Tìm lớp mới
-            </a>
-          </div>
-
+          <AccountPageHeader
+            title="Lớp học"
+            action={
+              <a href="/discover/classes" className="rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800">
+                Tìm lớp mới
+              </a>
+            }
+          />
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Tổng lớp đăng ký" value={stats.total} color="bg-blue-100 text-blue-700" path="M12 3 2 8l10 5 10-5-10-5ZM4 12v5l8 4 8-4v-5" />
             <StatCard label="Lớp đang học" value={stats.learning} color="bg-emerald-100 text-emerald-700" path="M14.752 11.168 11.555 9.04A1 1 0 0 0 10 9.873v4.254a1 1 0 0 0 1.555.832l3.197-2.127a1 1 0 0 0 0-1.664ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />

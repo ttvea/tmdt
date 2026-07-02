@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Navbar from '../../layouts/Navbar'
 import Footer from '../../layouts/Footer'
+import { AccountPageHeader } from '../../components/AccountPageHeader'
 import { getConversationsList, getConversationMessages, sendMessage, sendImageMessage, getMessageMediaUrl, isImageMessage, type ConversationResponse, type MessageResponse } from '../../api/conversations'
 
 export function StudentMessages() {
@@ -154,16 +155,14 @@ export function StudentMessages() {
       <Navbar />
 
       {/* Header */}
-      <section className="bg-white border-b border-slate-200">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-slate-900">💬 Tin nhắn</h1>
-          <p className="text-sm text-slate-600">Quản lý hội thoại với gia sư</p>
+      <section className="bg-slate-50">
+        <div className="mx-auto w-full max-w-7xl px-6 pt-8">
+          <AccountPageHeader title="Tin nhắn" />
         </div>
       </section>
-
       {/* Main Content */}
-      <section className="flex-1 py-6">
-        <div className="container mx-auto px-4">
+      <section className="flex-1 pb-8">
+        <div className="mx-auto w-full max-w-7xl px-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-4 h-[600px]">
             {/* Conversations List */}
             <div className="lg:col-span-1 bg-white rounded-lg border border-slate-200 flex flex-col overflow-hidden">

@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
+import { AccountPageContainer } from '../../components/AccountPageContainer'
 import { OrderDetailModal } from '../../components/OrderDetailModal'
+import { TutorPageHeader } from '../../components/TutorPageHeader'
 import { getMyClasses, getEnrollmentsOfClass, reviewEnrollment, confirmCashReceived, type ClassResponse, type EnrollmentResponse } from '../../api/classApi'
 
 export function TutorEnrollments() {
@@ -111,11 +113,8 @@ export function TutorEnrollments() {
 
   return (
     <AccountLayout activePath="/tutor/enrollments">
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">💳 Thanh toán</h1>
-          <p className="text-sm text-slate-500 mt-1">Quản lý đơn đăng ký và thanh toán từ học viên</p>
-        </div>
+      <AccountPageContainer>
+        <TutorPageHeader title="Thanh toán" />
 
         {/* Select class */}
         <div className="mb-6">
@@ -207,13 +206,13 @@ export function TutorEnrollments() {
                           disabled={processingId !== null}
                           className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
                         >
-                          {processingId === enrollment.id ? '...' : '✅ Xác nhận đã nhận tiền mặt'}
+                          {processingId === enrollment.id ? '...' : '✓ Xác nhận đã nhận tiền mặt'}
                         </button>
                       )}
 
                       {enrollment.status === 'PAID' && (
                         <div className="flex items-center gap-2">
-                          <div className="text-sm text-green-600 font-semibold">✅ Đã thanh toán</div>
+                          <div className="text-sm text-green-600 font-semibold">✓ Đã thanh toán</div>
                           <button
                             onClick={() => setViewOrderId(enrollment.orderId || enrollment.id)}
                             className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
@@ -230,7 +229,7 @@ export function TutorEnrollments() {
                       )}
 
                       {enrollment.status === 'REJECTED' && !enrollment.note && (
-                        <div className="text-sm text-red-600 font-semibold">✗ Đã từ chối</div>
+                        <div className="text-sm text-red-600 font-semibold">✕ Đã từ chối</div>
                       )}
 
                       {enrollment.status === 'CANCELLED' && (
@@ -243,7 +242,7 @@ export function TutorEnrollments() {
             )}
           </div>
         )}
-      </div>
+      </AccountPageContainer>
 
       {/* Order Detail Modal */}
       {viewOrderId && (
@@ -256,3 +255,5 @@ export function TutorEnrollments() {
     </AccountLayout>
   )
 }
+
+

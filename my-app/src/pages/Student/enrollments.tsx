@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
+import { AccountPageContainer } from '../../components/AccountPageContainer'
+import { AccountPageHeader } from '../../components/AccountPageHeader'
 import { getMyEnrollments, requestCashPayment, type EnrollmentResponse } from '../../api/classApi'
+import { createPayment } from '../../api/payment'
 import { OrderDetailModal } from '../../components/OrderDetailModal'
 import { createRating, getMyRatings, updateRating, type RatingResponse } from '../../api/ratings'
 
@@ -10,6 +13,7 @@ export function StudentEnrollments() {
   const [ratings, setRatings] = useState<RatingResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [cashRequesting, setCashRequesting] = useState<number | null>(null)
+  const [vnpayPaying, setVnpayPaying] = useState<number | null>(null)
   const [viewOrderId, setViewOrderId] = useState<number | null>(null)
   const [ratingTarget, setRatingTarget] = useState<EnrollmentResponse | null>(null)
   const [ratingStars, setRatingStars] = useState(5)
@@ -55,8 +59,32 @@ export function StudentEnrollments() {
     }
   }
 
+  const handleVnpayPayment = async (enrollment: EnrollmentResponse) => {
+    if (!enrollment.orderId) {
+      toast.error('Không tìm thấy hóa đơn thanh toán cho đăng ký này')
+      return
+    }
+
+    setVnpayPaying(enrollment.id)
+    try {
+      const paymentResult = await createPayment(enrollment.orderId)
+      if (paymentResult.paymentUrl) {
+        window.location.href = paymentResult.paymentUrl
+        return
+      }
+      toast.error('Không thể tạo đường dẫn thanh toán VNPAY')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Không thể tạo thanh toán VNPAY')
+    } finally {
+      setVnpayPaying(null)
+    }
+  }
+
   const getRatingForEnrollment = (enrollment: EnrollmentResponse) =>
     ratings.find((rating) => rating.enrollmentId === enrollment.id || rating.classId === enrollment.classId)
+
+  const canRateClass = (enrollment: EnrollmentResponse) =>
+    enrollment.status === 'PAID' && enrollment.classStatus === 'COMPLETED'
 
   const openRatingModal = (enrollment: EnrollmentResponse) => {
     const existingRating = getRatingForEnrollment(enrollment)
@@ -128,11 +156,8 @@ export function StudentEnrollments() {
 
   return (
     <AccountLayout activePath="/student/enrollments">
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Thanh toán</h1>
-          <p className="mt-1 text-sm text-slate-500">Theo dõi trạng thái đăng ký, thanh toán và đánh giá lớp học.</p>
-        </div>
+      <AccountPageContainer>
+        <AccountPageHeader title="Thanh toán" />
 
         {loading ? (
           <div className="py-12 text-center text-slate-500">Đang tải...</div>
@@ -165,13 +190,22 @@ export function StudentEnrollments() {
                       {enrollment.status === 'APPROVED' && (
                         <div className="mt-3">
                           <p className="mb-2 text-xs text-blue-600">Gia sư đã duyệt, bạn có thể thanh toán.</p>
-                          <button
-                            onClick={() => handleRequestCashPayment(enrollment.id)}
-                            disabled={cashRequesting !== null}
-                            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
-                          >
-                            {cashRequesting === enrollment.id ? '...' : 'Tôi đã thanh toán tiền mặt'}
-                          </button>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => handleVnpayPayment(enrollment)}
+                              disabled={vnpayPaying !== null || cashRequesting !== null}
+                              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                            >
+                              {vnpayPaying === enrollment.id ? '...' : 'Thanh toán VNPAY'}
+                            </button>
+                            <button
+                              onClick={() => handleRequestCashPayment(enrollment.id)}
+                              disabled={cashRequesting !== null || vnpayPaying !== null}
+                              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
+                            >
+                              {cashRequesting === enrollment.id ? '...' : 'Tôi đã thanh toán tiền mặt'}
+                            </button>
+                          </div>
                         </div>
                       )}
 
@@ -191,6 +225,11 @@ export function StudentEnrollments() {
                               Đã đánh giá {existingRating.stars}/5 sao
                             </p>
                           ) : null}
+                          {!existingRating && !canRateClass(enrollment) ? (
+                            <p className="mb-2 text-xs font-semibold text-slate-500">
+                              Bạn có thể đánh giá sau khi gia sư đánh dấu lớp học đã hoàn thành.
+                            </p>
+                          ) : null}
                           <div className="flex flex-wrap gap-2">
                             <button
                               onClick={() => setViewOrderId(enrollment.orderId || enrollment.id)}
@@ -199,8 +238,9 @@ export function StudentEnrollments() {
                               Xem hóa đơn
                             </button>
                             <button
-                              onClick={() => openRatingModal(enrollment)}
-                              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+                              onClick={() => (existingRating || canRateClass(enrollment)) && openRatingModal(enrollment)}
+                              disabled={!existingRating && !canRateClass(enrollment)}
+                              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
                               {existingRating ? 'Cập nhật đánh giá' : 'Đánh giá lớp học'}
                             </button>
@@ -222,7 +262,7 @@ export function StudentEnrollments() {
             })}
           </div>
         )}
-      </div>
+      </AccountPageContainer>
 
       {viewOrderId && (
         <OrderDetailModal

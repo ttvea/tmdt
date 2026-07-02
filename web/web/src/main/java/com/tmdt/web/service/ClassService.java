@@ -327,6 +327,10 @@ public class ClassService {
             }
 
             // Tính discount
+            if (!isVoucherApplicableToClass(voucher, classEntity)) {
+                throw AppException.badRequest("Voucher không áp dụng cho lớp học này");
+            }
+
             BigDecimal originalBD = BigDecimal.valueOf(originalAmount);
             if (voucher.getDiscountType() == DiscountType.PERCENT) {
                 discountAmount = originalBD.multiply(voucher.getDiscountValue())
@@ -583,6 +587,26 @@ public class ClassService {
     private boolean isTimeOverlapping(LocalTime firstStart, LocalTime firstEnd,
                                       LocalTime secondStart, LocalTime secondEnd) {
         return firstStart.isBefore(secondEnd) && firstEnd.isAfter(secondStart);
+    }
+
+    private boolean isVoucherApplicableToClass(Voucher voucher, TutorClass classEntity) {
+        if (voucher.getApplicableScope() == VoucherScope.PLATFORM) {
+            return true;
+        }
+
+        if (voucher.getApplicableScope() == VoucherScope.SPECIFIC_CLASS) {
+            return voucher.getTutorClass() != null
+                    && voucher.getTutorClass().getId().equals(classEntity.getId());
+        }
+
+        if (voucher.getApplicableScope() == VoucherScope.ALL_CLASSES) {
+            return voucher.getTutor() != null
+                    && voucher.getTutor().getUser() != null
+                    && classEntity.getTutorId() != null
+                    && Long.valueOf(voucher.getTutor().getUser().getId()).equals(classEntity.getTutorId());
+        }
+
+        return false;
     }
 
     private void validateOfflineAddress(ClassCreateRequest request) {

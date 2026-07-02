@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
+import { AccountPageContainer } from '../../components/AccountPageContainer'
+import { AccountPageHeader } from '../../components/AccountPageHeader'
 import { getStudentRefunds, type RefundResponse, REFUND_STATUS_LABELS, REFUND_REASON_LABELS } from '../../api/refund'
 
 export function StudentRefunds() {
@@ -40,11 +42,8 @@ export function StudentRefunds() {
 
   return (
     <AccountLayout activePath="/student/refunds">
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">🔄 Hoàn tiền</h1>
-          <p className="text-sm text-slate-500 mt-1">Theo dõi trạng thái yêu cầu hoàn tiền của bạn</p>
-        </div>
+      <AccountPageContainer>
+        <AccountPageHeader title="Hoàn tiền" />
 
         {loading ? (
           <div className="text-center py-12 text-slate-500">Đang tải...</div>
@@ -114,7 +113,7 @@ export function StudentRefunds() {
             ))}
           </div>
         )}
-      </div>
+      </AccountPageContainer>
     </AccountLayout>
   )
 }

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
+import { AccountPageContainer } from '../../components/AccountPageContainer'
+import { AccountPageHeader } from '../../components/AccountPageHeader'
 import { getAvailableVouchers, type VoucherResponse } from '../../api/voucher'
 
 const SCOPE_LABELS: Record<string, string> = {
@@ -47,18 +49,9 @@ export default function StudentVouchers() {
   return (
     <AccountLayout activePath="/student/vouchers">
       <div className="min-h-screen bg-[#f0f2f5] w-full text-left pb-12">
-        {/* Header */}
-        <div className="bg-white shadow-sm mb-6">
-          <div className="max-w-5xl mx-auto w-full px-6 md:px-10 py-6">
-            <h1 className="text-2xl font-bold text-slate-800">Mã giảm giá của tôi</h1>
-            <p className="text-slate-500 mt-1">
-              Các mã giảm giá khả dụng dành cho bạn
-            </p>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="max-w-5xl mx-auto w-full px-4 md:px-10">
+        <AccountPageContainer>
+          <AccountPageHeader title="Mã giảm giá của tôi" />
+          {/* Content */}
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -161,7 +154,7 @@ export default function StudentVouchers() {
               })}
             </div>
           )}
-        </div>
+        </AccountPageContainer>
       </div>
     </AccountLayout>
   )

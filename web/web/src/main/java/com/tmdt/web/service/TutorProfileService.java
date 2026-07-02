@@ -242,7 +242,6 @@ public class TutorProfileService {
                             .map(Subject::getName)
                             .toList()
             );
-
             return dto;
         });
     }

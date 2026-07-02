@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { AccountLayout } from '../../components/AccountLayout'
+import { AccountPageContainer } from '../../components/AccountPageContainer'
+import { TutorPageHeader } from '../../components/TutorPageHeader'
 import {
   getTutorBalance,
   requestPayout,
@@ -366,10 +368,13 @@ export function TutorPayout() {
     return `${months[parseInt(m) - 1]}/${y.slice(2)}`
   }
 
+  const pendingPayoutAmount = balance?.pendingPayoutAmount ?? 0
+  const withdrawableBalance = balance?.withdrawableBalance ?? balance?.availableBalance ?? 0
+
   return (
     <AccountLayout activePath="/tutor/payout">
-      <div className="max-w-5xl mx-auto p-6">
-        <h1 className="text-2xl font-bold text-slate-800 mb-6">Rút tiền</h1>
+      <AccountPageContainer>
+        <TutorPageHeader title="Rút tiền" />
         {loading ? (
           <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">
             Đang tải dữ liệu rút tiền...
@@ -377,7 +382,7 @@ export function TutorPayout() {
         ) : null}
 
         {/* Balance Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
             <p className="text-sm text-slate-500 mb-1">Số dư khả dụng</p>
             <p className="text-2xl font-bold text-green-600">
@@ -390,6 +395,15 @@ export function TutorPayout() {
               {balance ? formatCurrency(balance.totalPaidOut) : '—'}
             </p>
           </div>
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-500 mb-1">Đang chờ xử lý</p>
+            <p className="text-2xl font-bold text-amber-600">
+              {balance ? formatCurrency(pendingPayoutAmount) : '—'}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              Có thể yêu cầu thêm: {balance ? formatCurrency(withdrawableBalance) : '—'}
+            </p>
+          </div>
           <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 flex items-end justify-end">
             <button
               onClick={() => {
@@ -397,7 +411,7 @@ export function TutorPayout() {
                 setError('')
                 setSuccess('')
               }}
-              disabled={!balance || balance.availableBalance <= 0}
+              disabled={!balance || withdrawableBalance <= 0}
               className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
             >
               Yêu cầu rút tiền
@@ -525,6 +539,7 @@ export function TutorPayout() {
                   {balance && (
                     <p className="text-xs text-slate-400 mt-1">
                       Số dư khả dụng: {formatCurrency(balance.availableBalance)}
+                      {pendingPayoutAmount > 0 ? ` • Đang chờ xử lý: ${formatCurrency(pendingPayoutAmount)} • Có thể yêu cầu thêm: ${formatCurrency(withdrawableBalance)}` : ''}
                     </p>
                   )}
                 </div>
@@ -805,7 +820,10 @@ export function TutorPayout() {
             </table>
           </div>
         </div>
-      </div>
+      </AccountPageContainer>
     </AccountLayout>
   )
 }
+
+
+

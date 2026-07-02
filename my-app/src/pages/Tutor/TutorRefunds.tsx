@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
+import { AccountPageContainer } from '../../components/AccountPageContainer'
+import { TutorPageHeader } from '../../components/TutorPageHeader'
 import { getTutorRefunds, type RefundResponse, REFUND_STATUS_LABELS, REFUND_REASON_LABELS } from '../../api/refund'
 import api from '../../api/axios'
 
@@ -66,11 +68,8 @@ export function TutorRefunds() {
 
   return (
     <AccountLayout activePath="/tutor/refunds">
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">🔄 Hoàn tiền</h1>
-          <p className="text-sm text-slate-500 mt-1">Quản lý các yêu cầu hoàn tiền cần thanh toán</p>
-        </div>
+      <AccountPageContainer>
+        <TutorPageHeader title="Hoàn tiền" />
 
         {loading ? (
           <div className="text-center py-12 text-slate-500">Đang tải...</div>
@@ -124,7 +123,7 @@ export function TutorRefunds() {
                     {refund.status === 'TUTOR_PAID' && (
                       <div className="mt-3 p-3 bg-blue-50 rounded-lg">
                         <p className="text-sm text-blue-700">
-                          ✅ Bạn đã thanh toán xong. Chờ admin xác nhận hoàn tiền cho học viên.
+                          ✓ Bạn đã thanh toán xong. Chờ admin xác nhận hoàn tiền cho học viên.
                         </p>
                         {refund.vnpTransactionNo && (
                           <p className="text-xs text-blue-500 mt-1">Mã GD: {refund.vnpTransactionNo}</p>
@@ -135,7 +134,7 @@ export function TutorRefunds() {
                     {refund.status === 'COMPLETED' && (
                       <div className="mt-3 p-3 bg-green-50 rounded-lg">
                         <p className="text-sm text-green-700 font-semibold">
-                          ✅ Đã hoàn tiền xong ngày {formatDate(refund.completedAt)}
+                          ✓ Đã hoàn tiền xong ngày {formatDate(refund.completedAt)}
                         </p>
                       </div>
                     )}
@@ -145,7 +144,9 @@ export function TutorRefunds() {
             ))}
           </div>
         )}
-      </div>
+      </AccountPageContainer>
     </AccountLayout>
   )
 }
+
+

@@ -7,6 +7,7 @@ import com.tmdt.web.entity.Enrollment;
 import com.tmdt.web.entity.Rating;
 import com.tmdt.web.entity.TutorClass;
 import com.tmdt.web.entity.User;
+import com.tmdt.web.enums.ClassStatus;
 import com.tmdt.web.enums.EnrollmentStatus;
 import com.tmdt.web.repository.EnrollmentRep;
 import com.tmdt.web.repository.RatingRep;
@@ -65,6 +66,15 @@ public class RatingService {
         }
 
         User tutor = userRep.findById(request.getTutorId()).orElseThrow();
+        boolean hasPaidEnrollmentWithTutor = enrollmentRep.existsByStudentIdAndTutorIdAndStatus(
+                student.getId().longValue(),
+                tutor.getId().longValue(),
+                EnrollmentStatus.PAID
+        );
+        if (!hasPaidEnrollmentWithTutor) {
+            throw new RuntimeException("Chi hoc vien da hoc va thanh toan lop cua gia su nay moi duoc danh gia");
+        }
+
         Rating rating = Rating.builder()
                 .student(student)
                 .tutor(tutor)
@@ -139,6 +149,11 @@ public class RatingService {
 
         if (enrollment.getStatus() != EnrollmentStatus.PAID) {
             throw new RuntimeException("Chỉ có thể đánh giá lớp học đã thanh toán");
+        }
+
+        TutorClass classEntity = enrollment.getClassEntity();
+        if (classEntity == null || classEntity.getStatus() != ClassStatus.COMPLETED) {
+            throw new RuntimeException("Chi co the danh gia lop hoc sau khi lop da hoan thanh");
         }
 
         return enrollment;
