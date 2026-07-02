@@ -179,19 +179,6 @@ function DiscoverTutors() {
     return "";
   }, [categories, selectedSubjectId]);
 
-  const getSubjectName = (subjectId: string) => {
-    if (!subjectId) return "";
-
-    for (const category of categories) {
-      const selectedSubject = category.subjects.find(
-        (subject) => String(subject.id) === subjectId
-      );
-      if (selectedSubject) return selectedSubject.name;
-    }
-
-    return "";
-  };
-
   const filteredResults = useMemo(
     () => results.filter((tutor) => !verifiedOnly || tutor.isVerified),
     [results, verifiedOnly]
