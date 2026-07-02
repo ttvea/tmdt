@@ -36,6 +36,8 @@ export interface PendingOrder {
   className: string
   amount: number
   tutorEarning: number
+  tutorPayoutPaidAmount?: number
+  tutorPayoutRemainingAmount?: number
   platformFee: number
   paidAt: string | null
 }
@@ -90,6 +92,8 @@ export interface AdminPayoutItem {
   status: 'PENDING' | 'COMPLETED' | 'FAILED'
   note: string | null
   paymentMethod: string | null
+  providerTransactionId: string | null
+  providerNote: string | null
   bankName: string | null
   bankAccount: string | null
   bankHolder: string | null
@@ -113,10 +117,17 @@ export async function getAllPayouts(status?: string): Promise<AdminPayoutItem[]>
 /**
  * Admin: Duyệt payout
  */
-export async function approvePayout(payoutId: number, note?: string) {
+export interface ApprovePayoutPayload {
+  note?: string
+  paymentMethod?: 'bank_transfer' | 'vnpay_transfer'
+  providerTransactionId?: string
+  providerNote?: string
+}
+
+export async function approvePayout(payoutId: number, payload?: ApprovePayoutPayload) {
   const res = await api.post(
     `/api/admin/payouts/${payoutId}/approve`,
-    { note },
+    payload || {},
     { headers: getAuthHeader() }
   )
   return res.data

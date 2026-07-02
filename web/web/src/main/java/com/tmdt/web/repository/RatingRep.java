@@ -14,6 +14,8 @@ public interface RatingRep extends JpaRepository<Rating, Long> {
    
 
     List<Rating> findByTutorIdOrderByCreatedAtDesc(Integer tutorId);
+
+    List<Rating> findByStudentIdOrderByCreatedAtDesc(Integer studentId);
     
     
     @Query("""
@@ -26,5 +28,9 @@ public interface RatingRep extends JpaRepository<Rating, Long> {
     );
 
     boolean existsByStudentIdAndTutorId(Integer studentId, Integer tutorId);
+
+    boolean existsByStudentIdAndClassEntityId(Integer studentId, Long classId);
+
+    boolean existsByStudentIdAndEnrollmentId(Integer studentId, Long enrollmentId);
 }
 

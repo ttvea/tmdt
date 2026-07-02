@@ -62,6 +62,7 @@ public class OrderController {
             map.put("commissionRate", order.getCommissionRate());
             map.put("platformFee", order.getPlatformFee());
             map.put("tutorEarning", order.getTutorEarning());
+            map.put("tutorPayoutPaidAmount", order.getTutorPayoutPaidAmount());
             map.put("tutorPayoutStatus", order.getTutorPayoutStatus() != null ? order.getTutorPayoutStatus().name() : null);
             map.put("tutorPayoutAt", order.getTutorPayoutAt());
             map.put("status", order.getStatus().name());
@@ -96,6 +97,7 @@ public class OrderController {
             map.put("commissionRate", order.getCommissionRate());
             map.put("platformFee", order.getPlatformFee());
             map.put("tutorEarning", order.getTutorEarning());
+            map.put("tutorPayoutPaidAmount", order.getTutorPayoutPaidAmount());
             map.put("tutorPayoutStatus", order.getTutorPayoutStatus() != null ? order.getTutorPayoutStatus().name() : null);
             map.put("tutorPayoutAt", order.getTutorPayoutAt());
             map.put("status", order.getStatus().name());
