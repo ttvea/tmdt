@@ -6,13 +6,18 @@ export interface RatingResponse {
   nameStudent: string
   avatar: string | null
   tutorId: number
+  classId: number | null
+  enrollmentId: number | null
+  classTitle: string | null
   stars: number
   comment: string | null
   createdAt: string
 }
 
 export interface CreateRatingRequest {
-  tutorId: number
+  tutorId?: number
+  classId?: number
+  enrollmentId?: number
   stars: number
   comment?: string
 }
@@ -24,6 +29,11 @@ export async function getTutorRatings(tutorId: number): Promise<RatingResponse[]
 
 export async function getAverageRating(tutorId: number): Promise<number> {
   const res = await api.get(`/api/ratings/tutor/${tutorId}/average`)
+  return res.data
+}
+
+export async function getMyRatings(): Promise<RatingResponse[]> {
+  const res = await api.get('/api/ratings/me')
   return res.data
 }
 

@@ -10,6 +10,8 @@ export interface AdminSession {
 
 export interface AdminDashboardStats {
   totalRevenue: number
+  totalGrossRevenue: number
+  platformRevenue: number
   totalUsers: number
   newUsersThisWeek: number
   totalTutors: number

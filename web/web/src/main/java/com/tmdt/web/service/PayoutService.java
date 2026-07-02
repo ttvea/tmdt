@@ -26,19 +26,41 @@ public class PayoutService {
     private final OrderRep orderRepository;
     private final UserRep userRepository;
 
+    private double getTutorEarning(Order order) {
+        return order.getTutorEarning() != null ? order.getTutorEarning() : 0.0;
+    }
+
+    private double getTutorPayoutPaidAmount(Order order) {
+        return order.getTutorPayoutPaidAmount() != null ? order.getTutorPayoutPaidAmount() : 0.0;
+    }
+
+    private double getTutorPayoutRemainingAmount(Order order) {
+        return Math.max(0.0, getTutorEarning(order) - getTutorPayoutPaidAmount(order));
+    }
+
+    private double getOrderPayoutBalance(Integer tutorId) {
+        return orderRepository.findAll().stream()
+                .filter(o -> o.getTutorClass().getTutorId().equals((long) tutorId))
+                .filter(o -> o.getStatus() == Order.OrderStatus.PAID)
+                .filter(o -> o.getTutorPayoutStatus() == Order.TutorPayoutStatus.PENDING)
+                .mapToDouble(this::getTutorPayoutRemainingAmount)
+                .sum();
+    }
+
+    private double getPendingPayoutRequestAmount(Integer tutorId) {
+        return payoutRepository.findByTutorIdAndStatusOrderByCreatedAtDesc(tutorId, Payout.PayoutStatus.PENDING)
+                .stream()
+                .mapToDouble(Payout::getAmount)
+                .sum();
+    }
+
     /**
      * Tính tổng tiền có thể rút của gia sư (tutorEarning của các order PAID có tutorPayoutStatus = PENDING)
      */
     public Double getAvailableBalance(Integer tutorId) {
-        List<Order> pendingOrders = orderRepository.findAll().stream()
-                .filter(o -> o.getTutorClass().getTutorId().equals((long) tutorId))
-                .filter(o -> o.getStatus() == Order.OrderStatus.PAID)
-                .filter(o -> o.getTutorPayoutStatus() == Order.TutorPayoutStatus.PENDING)
-                .toList();
-
-        return pendingOrders.stream()
-                .mapToDouble(o -> o.getTutorEarning() != null ? o.getTutorEarning() : 0.0)
-                .sum();
+        double orderBalance = getOrderPayoutBalance(tutorId);
+        double pendingRequestAmount = getPendingPayoutRequestAmount(tutorId);
+        return Math.max(0.0, orderBalance - pendingRequestAmount);
     }
 
     /**
@@ -97,6 +119,12 @@ public class PayoutService {
      */
     @Transactional
     public Payout approvePayout(Integer payoutId, String adminNote) {
+        return approvePayout(payoutId, adminNote, "bank_transfer", null, null);
+    }
+
+    @Transactional
+    public Payout approvePayout(Integer payoutId, String adminNote, String paymentMethod,
+                                String providerTransactionId, String providerNote) {
         Payout payout = payoutRepository.findById(payoutId)
                 .orElseThrow(() -> AppException.notFound("Không tìm thấy yêu cầu rút tiền"));
 
@@ -105,9 +133,26 @@ public class PayoutService {
         }
 
         // Cập nhật payout
+        double orderBalance = getOrderPayoutBalance(payout.getTutorId());
+        if (orderBalance + 0.0001 < payout.getAmount()) {
+            throw AppException.badRequest("So du cho payout khong du de xu ly yeu cau nay");
+        }
+
+        String normalizedMethod = paymentMethod != null && !paymentMethod.isBlank()
+                ? paymentMethod.trim()
+                : "bank_transfer";
+
+        if ("vnpay_transfer".equalsIgnoreCase(normalizedMethod)
+                && (providerTransactionId == null || providerTransactionId.isBlank())) {
+            throw AppException.badRequest("Vui long nhap ma giao dich VNPAY khi xac nhan chuyen tien");
+        }
+
         payout.setStatus(Payout.PayoutStatus.COMPLETED);
         payout.setCompletedAt(new Date());
         payout.setNote(adminNote != null ? adminNote : payout.getNote());
+        payout.setPaymentMethod(normalizedMethod);
+        payout.setProviderTransactionId(providerTransactionId != null ? providerTransactionId.trim() : null);
+        payout.setProviderNote(providerNote);
         payoutRepository.save(payout);
 
         // Cập nhật các order PAID có tutorPayoutStatus = PENDING của gia sư này
@@ -126,11 +171,27 @@ public class PayoutService {
         double remaining = payout.getAmount();
         for (Order order : pendingOrders) {
             if (remaining <= 0) break;
-            double tutorEarning = order.getTutorEarning() != null ? order.getTutorEarning() : 0.0;
-            order.setTutorPayoutStatus(Order.TutorPayoutStatus.PAID);
-            order.setTutorPayoutAt(new Date());
+            double orderRemaining = getTutorPayoutRemainingAmount(order);
+            if (orderRemaining <= 0) {
+                order.setTutorPayoutStatus(Order.TutorPayoutStatus.PAID);
+                order.setTutorPayoutAt(new Date());
+                orderRepository.save(order);
+                continue;
+            }
+
+            double paidForOrder = Math.min(remaining, orderRemaining);
+            double newPaidAmount = getTutorPayoutPaidAmount(order) + paidForOrder;
+            order.setTutorPayoutPaidAmount(newPaidAmount);
+
+            if (newPaidAmount + 0.0001 >= getTutorEarning(order)) {
+                order.setTutorPayoutStatus(Order.TutorPayoutStatus.PAID);
+                order.setTutorPayoutAt(new Date());
+            } else {
+                order.setTutorPayoutStatus(Order.TutorPayoutStatus.PENDING);
+            }
+
             orderRepository.save(order);
-            remaining -= tutorEarning;
+            remaining -= paidForOrder;
         }
 
         log.info("Payout {} approved for tutor {}, amount={}", payoutId, payout.getTutorId(), payout.getAmount());

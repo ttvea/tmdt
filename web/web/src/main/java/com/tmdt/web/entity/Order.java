@@ -56,6 +56,9 @@ public class Order {
     @Column(name = "tutor_earning")
     private Double tutorEarning;
 
+    @Column(name = "tutor_payout_paid_amount")
+    private Double tutorPayoutPaidAmount;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "tutor_payout_status")
     private TutorPayoutStatus tutorPayoutStatus;

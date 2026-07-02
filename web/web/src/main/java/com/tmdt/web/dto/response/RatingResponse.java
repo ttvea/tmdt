@@ -19,6 +19,12 @@ public class RatingResponse {
 
     private Integer tutorId;
 
+    private Long classId;
+
+    private Long enrollmentId;
+
+    private String classTitle;
+
     private Integer stars;
 
     private String comment;

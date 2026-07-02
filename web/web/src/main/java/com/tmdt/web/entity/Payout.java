@@ -41,6 +41,12 @@ public class Payout {
     @Column(name = "payment_method")
     private String paymentMethod;
 
+    @Column(name = "provider_transaction_id")
+    private String providerTransactionId;
+
+    @Column(name = "provider_note")
+    private String providerNote;
+
     @Column(name = "bank_name")
     private String bankName;
 

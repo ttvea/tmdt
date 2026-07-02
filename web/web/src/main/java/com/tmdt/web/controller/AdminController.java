@@ -331,10 +331,13 @@ public class AdminController {
         long pendingEnrollments = enrollmentRep.countByStatus(EnrollmentStatus.PENDING);
         long paidEnrollments = enrollmentRep.countByStatus(EnrollmentStatus.PAID);
 
-        Double revenue = orderRep.sumPlatformFeeByStatus(Order.OrderStatus.PAID.name());
+        Double grossRevenue = orderRep.sumAmountByStatus(Order.OrderStatus.PAID.name());
+        Double platformRevenue = orderRep.sumPlatformFeeByStatus(Order.OrderStatus.PAID.name());
 
         return ResponseEntity.ok(new AdminDashboardResponse(
-                revenue != null ? revenue : 0,
+                platformRevenue != null ? platformRevenue : 0,
+                grossRevenue != null ? grossRevenue : 0,
+                platformRevenue != null ? platformRevenue : 0,
                 totalUsers,
                 newUsersThisWeek,
                 totalTutors,

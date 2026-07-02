@@ -78,6 +78,8 @@ public class PayoutController {
         result.put("id", payout.getId());
         result.put("amount", payout.getAmount());
         result.put("status", payout.getStatus().name());
+        result.put("paymentMethod", payout.getPaymentMethod());
+        result.put("providerTransactionId", payout.getProviderTransactionId());
         result.put("createdAt", payout.getCreatedAt());
         result.put("message", "Yêu cầu rút tiền đã được gửi. Vui lòng chờ admin xử lý.");
         return ResponseEntity.ok(result);
@@ -127,6 +129,10 @@ public class PayoutController {
             map.put("className", o.getTutorClass().getTitle());
             map.put("amount", o.getAmount());
             map.put("tutorEarning", o.getTutorEarning());
+            double tutorEarning = o.getTutorEarning() != null ? o.getTutorEarning() : 0.0;
+            double tutorPayoutPaidAmount = o.getTutorPayoutPaidAmount() != null ? o.getTutorPayoutPaidAmount() : 0.0;
+            map.put("tutorPayoutPaidAmount", tutorPayoutPaidAmount);
+            map.put("tutorPayoutRemainingAmount", Math.max(0.0, tutorEarning - tutorPayoutPaidAmount));
             map.put("platformFee", o.getPlatformFee());
             map.put("paidAt", o.getPaidAt());
             return map;
@@ -171,6 +177,8 @@ public class PayoutController {
             map.put("status", p.getStatus().name());
             map.put("note", p.getNote());
             map.put("paymentMethod", p.getPaymentMethod());
+            map.put("providerTransactionId", p.getProviderTransactionId());
+            map.put("providerNote", p.getProviderNote());
             map.put("bankName", p.getBankName());
             map.put("bankAccount", p.getBankAccount());
             map.put("bankHolder", p.getBankHolder());
@@ -198,11 +206,22 @@ public class PayoutController {
         }
 
         String adminNote = body != null ? (String) body.get("note") : null;
-        Payout payout = payoutService.approvePayout(payoutId, adminNote);
+        String paymentMethod = body != null ? (String) body.get("paymentMethod") : null;
+        String providerTransactionId = body != null ? (String) body.get("providerTransactionId") : null;
+        String providerNote = body != null ? (String) body.get("providerNote") : null;
+        Payout payout = payoutService.approvePayout(
+                payoutId,
+                adminNote,
+                paymentMethod,
+                providerTransactionId,
+                providerNote
+        );
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", payout.getId());
         result.put("status", payout.getStatus().name());
+        result.put("paymentMethod", payout.getPaymentMethod());
+        result.put("providerTransactionId", payout.getProviderTransactionId());
         result.put("message", "Payout đã được duyệt thành công");
         return ResponseEntity.ok(result);
     }

@@ -19,6 +19,8 @@ type StatCard = {
 
 const emptyDashboardStats: AdminDashboardStats = {
   totalRevenue: 0,
+  totalGrossRevenue: 0,
+  platformRevenue: 0,
   totalUsers: 0,
   newUsersThisWeek: 0,
   totalTutors: 0,
@@ -47,12 +49,51 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
-function buildStatCards(stats: AdminDashboardStats): StatCard[] {
+export function buildStatCards(stats: AdminDashboardStats): StatCard[] {
   return [
     {
       label: 'Tổng doanh thu',
       value: formatCurrency(stats.totalRevenue),
       detail: 'Doanh thu từ đơn hàng đã thanh toán',
+      tone: 'blue',
+    },
+    {
+      label: 'Người dùng mới',
+      value: formatNumber(stats.newUsersThisWeek),
+      detail: `${formatNumber(stats.totalUsers)} người dùng trong hệ thống`,
+      tone: 'slate',
+    },
+    {
+      label: 'Gia sư đang hoạt động',
+      value: formatNumber(stats.totalTutors),
+      detail: `${formatNumber(stats.verifiedTutors)} hồ sơ gia sư đã xác minh`,
+      tone: 'slate',
+    },
+    {
+      label: 'Chờ phê duyệt',
+      value: formatNumber(stats.pendingClasses),
+      detail: `${formatNumber(stats.pendingEnrollments)} lượt đăng ký lớp đang chờ`,
+      tone: 'yellow',
+      urgent: stats.pendingClasses > 0 || stats.pendingEnrollments > 0,
+    },
+  ]
+}
+
+function buildOverviewStatCards(stats: AdminDashboardStats): StatCard[] {
+  const grossRevenue = stats.totalGrossRevenue ?? 0
+  const platformRevenue = stats.platformRevenue ?? stats.totalRevenue ?? 0
+
+  return [
+    {
+      label: 'Tổng học phí',
+      value: formatCurrency(grossRevenue),
+      detail: 'Tổng tiền học viên đã thanh toán',
+      tone: 'blue',
+    },
+    {
+      label: 'Hoa hồng nền tảng',
+      value: formatCurrency(platformRevenue),
+      detail: 'Phí 10% nền tảng giữ lại',
       tone: 'blue',
     },
     {
@@ -103,7 +144,7 @@ export function AdminDashboard() {
       .finally(() => setIsChecking(false))
   }, [])
 
-  const statCards = buildStatCards(dashboard)
+  const statCards = buildOverviewStatCards(dashboard)
 
   if (isChecking) {
     return (
@@ -129,7 +170,7 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      <section className="grid grid-cols-4 gap-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {statCards.map((card) => (
           <StatCard key={card.label} card={card} />
         ))}

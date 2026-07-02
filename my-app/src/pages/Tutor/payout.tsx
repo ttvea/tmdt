@@ -636,7 +636,9 @@ export function TutorPayout() {
                       <td className="px-5 py-3 text-slate-800">{order.className}</td>
                       <td className="px-5 py-3 text-right text-slate-800">{formatCurrency(order.amount)}</td>
                       <td className="px-5 py-3 text-right text-slate-500">{formatCurrency(order.platformFee)}</td>
-                      <td className="px-5 py-3 text-right text-green-600 font-medium">{formatCurrency(order.tutorEarning)}</td>
+                      <td className="px-5 py-3 text-right text-green-600 font-medium">
+                        {formatCurrency(order.tutorPayoutRemainingAmount ?? order.tutorEarning)}
+                      </td>
                       <td className="px-5 py-3 text-right text-slate-500">{formatDate(order.paidAt)}</td>
                     </tr>
                   ))
