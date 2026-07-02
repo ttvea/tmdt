@@ -10,6 +10,15 @@ import {
   type PendingOrder,
 } from '../../api/payout'
 import { getTutorRevenue, getTutorRevenueMonthly, type TutorRevenueResponse, type MonthlyRevenueItem } from '../../api/order'
+import {
+  getFeeSummary,
+  getPendingFees,
+  getFeeHistory,
+  payPlatformFee,
+  type FeeSummary,
+  type PendingFeeItem,
+  type FeeHistoryItem,
+} from '../../api/platformFee'
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('vi-VN', {
@@ -208,6 +217,12 @@ export function TutorPayout() {
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
 
+  // Platform fee state
+  const [feeSummary, setFeeSummary] = useState<FeeSummary | null>(null)
+  const [pendingFees, setPendingFees] = useState<PendingFeeItem[]>([])
+  const [feeHistory, setFeeHistory] = useState<FeeHistoryItem[]>([])
+  const [payingFeeId, setPayingFeeId] = useState<number | null>(null)
+
   // Form state
   const [amount, setAmount] = useState('')
   const [bankName, setBankName] = useState('')
@@ -263,6 +278,36 @@ export function TutorPayout() {
     }
   }
 
+  const loadPlatformFeeData = async () => {
+    try {
+      const [summary, pending, hist] = await Promise.all([
+        getFeeSummary(),
+        getPendingFees(),
+        getFeeHistory(),
+      ])
+      setFeeSummary(summary)
+      setPendingFees(pending)
+      setFeeHistory(hist)
+    } catch (err: any) {
+      console.error('Failed to load platform fee data:', err)
+    }
+  }
+
+  const handlePayFee = async (feePaymentId: number) => {
+    try {
+      setPayingFeeId(feePaymentId)
+      const result = await payPlatformFee(feePaymentId)
+      if (result.paymentUrl) {
+        window.location.href = result.paymentUrl
+      }
+    } catch (err: any) {
+      console.error('Failed to pay platform fee:', err)
+      alert(err?.response?.data?.message || 'Có lỗi xảy ra khi thanh toán phí nền tảng')
+    } finally {
+      setPayingFeeId(null)
+    }
+  }
+
   useEffect(() => {
     loadData()
   }, [])
@@ -270,6 +315,10 @@ export function TutorPayout() {
   useEffect(() => {
     loadRevenue()
   }, [fromDate, toDate])
+
+  useEffect(() => {
+    loadPlatformFeeData()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -596,6 +645,115 @@ export function TutorPayout() {
             </table>
           </div>
         </div>
+
+        {/* Platform Fee Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-800">
+              Phí nền tảng chưa thanh toán
+              {feeSummary && feeSummary.pendingCount > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
+                  {feeSummary.pendingCount} khoản
+                </span>
+              )}
+            </h2>
+            {feeSummary && feeSummary.totalPendingFee > 0 && (
+              <span className="text-orange-600 font-bold">
+                Tổng: {formatCurrency(feeSummary.totalPendingFee)}
+              </span>
+            )}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500">
+                  <th className="text-left px-5 py-3 font-medium">Mã</th>
+                  <th className="text-right px-5 py-3 font-medium">Số tiền</th>
+                  <th className="text-left px-5 py-3 font-medium">Trạng thái</th>
+                  <th className="text-right px-5 py-3 font-medium">Ngày tạo</th>
+                  <th className="text-center px-5 py-3 font-medium">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingFees.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-8 text-center text-slate-400">
+                      Không có phí nền tảng nào cần thanh toán
+                    </td>
+                  </tr>
+                ) : (
+                  pendingFees.map((fee) => (
+                    <tr key={fee.id} className="border-t border-slate-100 hover:bg-slate-50">
+                      <td className="px-5 py-3 text-slate-500">#{fee.id}</td>
+                      <td className="px-5 py-3 text-right font-medium text-orange-600">
+                        {formatCurrency(fee.amount)}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          Chờ thanh toán
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right text-slate-500">{formatDate(fee.createdAt)}</td>
+                      <td className="px-5 py-3 text-center">
+                        <button
+                          onClick={() => handlePayFee(fee.id)}
+                          disabled={payingFeeId === fee.id}
+                          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-xs font-medium"
+                        >
+                          {payingFeeId === fee.id ? 'Đang xử lý...' : 'Thanh toán VNPAY'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Lịch sử thanh toán phí nền tảng */}
+        {feeHistory.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h2 className="text-lg font-semibold text-slate-800">Lịch sử thanh toán phí nền tảng</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500">
+                    <th className="text-left px-5 py-3 font-medium">Mã</th>
+                    <th className="text-right px-5 py-3 font-medium">Số tiền</th>
+                    <th className="text-left px-5 py-3 font-medium">Trạng thái</th>
+                    <th className="text-left px-5 py-3 font-medium">Mã GD VNPAY</th>
+                    <th className="text-right px-5 py-3 font-medium">Ngày thanh toán</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {feeHistory.map((item) => (
+                    <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50">
+                      <td className="px-5 py-3 text-slate-500">#{item.id}</td>
+                      <td className="px-5 py-3 text-right font-medium text-slate-800">
+                        {formatCurrency(item.amount)}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          item.status === 'PAID' ? 'bg-green-100 text-green-800' :
+                          item.status === 'FAILED' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {item.status === 'PAID' ? 'Đã thanh toán' :
+                           item.status === 'FAILED' ? 'Thất bại' : 'Chờ thanh toán'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-slate-500">{item.vnpTransactionNo || '—'}</td>
+                      <td className="px-5 py-3 text-right text-slate-500">{formatDate(item.paidAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Payout History */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200">

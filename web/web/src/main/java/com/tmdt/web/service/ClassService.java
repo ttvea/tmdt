@@ -12,7 +12,10 @@ import com.tmdt.web.enums.*;
 import com.tmdt.web.exception.AppException;
 import com.tmdt.web.mapper.ClassMapper;
 import com.tmdt.web.repository.*;
+import com.tmdt.web.service.PlatformFeeService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -36,6 +39,10 @@ public class ClassService {
     private final PaymentRep paymentRepository;
     private final VoucherRep voucherRepository;
     private final VoucherUsageRep voucherUsageRepository;
+    private final PaymentService paymentService;
+    private final PlatformFeeService platformFeeService;
+
+    private static final Logger log = LoggerFactory.getLogger(ClassService.class);
 
     @Transactional
     public ClassResponse createClass(ClassCreateRequest request, Long tutorId) {
@@ -471,11 +478,17 @@ public class ClassService {
 
         // Cập nhật Order status sang PAID
         orderRepository.findByStudentIdAndClassId(enrollment.getStudentId().intValue(), classEntity.getId()).ifPresent(order -> {
+            // Áp dụng chia doanh thu (10% phí nền tảng, 90% gia sư)
+            paymentService.applyRevenueSplit(order);
+
             order.setStatus(Order.OrderStatus.PAID);
             order.setPaidAt(new Date());
+            // Gia sư đã nhận tiền mặt từ học viên, set tutorPayoutStatus = PAID
+            order.setTutorPayoutStatus(Order.TutorPayoutStatus.PAID);
+            order.setTutorPayoutAt(new Date());
             orderRepository.save(order);
 
-            // Tạo Payment record CASH (provider=VNPAY do DB constraint, phân biệt qua transactionId)
+            // Tạo Payment record CASH
             Payment payment = new Payment();
             payment.setOrder(order);
             payment.setProvider(Payment.PaymentProvider.VNPAY);
@@ -483,6 +496,13 @@ public class ClassService {
             payment.setTransactionId("CASH");
             payment.setPaidAt(new Date());
             paymentRepository.save(payment);
+
+            // Tạo PlatformFeePayment để ghi nhận khoản phí nền tảng 10% cần thanh toán
+            try {
+                platformFeeService.createFeePayment(order);
+            } catch (Exception e) {
+                log.warn("Could not create PlatformFeePayment for orderId={}: {}", order.getId(), e.getMessage());
+            }
         });
 
         return classMapper.toEnrollmentResponse(enrollment);
