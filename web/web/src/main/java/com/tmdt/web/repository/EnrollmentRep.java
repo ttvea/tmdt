@@ -21,6 +21,20 @@ public interface EnrollmentRep extends JpaRepository<Enrollment, Long> {
 
     Optional<Enrollment> findByClassEntityIdAndStudentId(Long classId, Long studentId);
 
+    @Query("""
+        SELECT CASE WHEN COUNT(e) > 0 THEN true ELSE false END
+        FROM Enrollment e
+        JOIN e.classEntity c
+        WHERE e.studentId = :studentId
+          AND c.tutorId = :tutorId
+          AND e.status = :status
+    """)
+    boolean existsByStudentIdAndTutorIdAndStatus(
+            @Param("studentId") Long studentId,
+            @Param("tutorId") Long tutorId,
+            @Param("status") EnrollmentStatus status
+    );
+
     Page<Enrollment> findByClassEntityId(Long classId, Pageable pageable);
 
     Page<Enrollment> findByClassEntityIdAndStatus(Long classId, EnrollmentStatus status, Pageable pageable);

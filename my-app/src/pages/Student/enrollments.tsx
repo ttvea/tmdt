@@ -58,6 +58,9 @@ export function StudentEnrollments() {
   const getRatingForEnrollment = (enrollment: EnrollmentResponse) =>
     ratings.find((rating) => rating.enrollmentId === enrollment.id || rating.classId === enrollment.classId)
 
+  const canRateClass = (enrollment: EnrollmentResponse) =>
+    enrollment.status === 'PAID' && enrollment.classStatus === 'COMPLETED'
+
   const openRatingModal = (enrollment: EnrollmentResponse) => {
     const existingRating = getRatingForEnrollment(enrollment)
     setRatingTarget(enrollment)
@@ -191,6 +194,11 @@ export function StudentEnrollments() {
                               Đã đánh giá {existingRating.stars}/5 sao
                             </p>
                           ) : null}
+                          {!existingRating && !canRateClass(enrollment) ? (
+                            <p className="mb-2 text-xs font-semibold text-slate-500">
+                              Bạn có thể đánh giá sau khi gia sư đánh dấu lớp học đã hoàn thành.
+                            </p>
+                          ) : null}
                           <div className="flex flex-wrap gap-2">
                             <button
                               onClick={() => setViewOrderId(enrollment.orderId || enrollment.id)}
@@ -199,8 +207,9 @@ export function StudentEnrollments() {
                               Xem hóa đơn
                             </button>
                             <button
-                              onClick={() => openRatingModal(enrollment)}
-                              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+                              onClick={() => (existingRating || canRateClass(enrollment)) && openRatingModal(enrollment)}
+                              disabled={!existingRating && !canRateClass(enrollment)}
+                              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
                               {existingRating ? 'Cập nhật đánh giá' : 'Đánh giá lớp học'}
                             </button>

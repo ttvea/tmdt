@@ -155,6 +155,8 @@ public class ClassMapper {
         return EnrollmentResponse.builder()
                 .id(e.getId())
                 .classId(e.getClassEntity().getId())
+                .tutorId(e.getClassEntity().getTutorId())
+                .classStatus(e.getClassEntity().getStatus())
                 .classTitle(e.getClassEntity().getTitle())
                 .studentId(e.getStudentId())
                 .studentName(student != null ? student.getFullName() : null)
