@@ -42,10 +42,14 @@ public class PayoutController {
             @RequestHeader("Authorization") String authHeader) {
         Long userId = getUserId(authHeader);
         Double available = payoutService.getAvailableBalance(userId.intValue());
+        Double pending = payoutService.getPendingPayoutRequestAmount(userId.intValue());
+        Double withdrawable = payoutService.getWithdrawableBalance(userId.intValue());
         Double paidOut = payoutService.getTotalPaidOut(userId.intValue());
 
         Map<String, Object> result = new HashMap<>();
         result.put("availableBalance", available);
+        result.put("pendingPayoutAmount", pending);
+        result.put("withdrawableBalance", withdrawable);
         result.put("totalPaidOut", paidOut);
         return ResponseEntity.ok(result);
     }

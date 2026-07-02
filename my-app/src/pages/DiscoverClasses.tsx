@@ -9,6 +9,7 @@ const PAGE_SIZE = 9;
 type ClassPost = {
   id: number;
   tutorId: number;
+  tutorName: string | null;
   title: string;
   subjectId: number;
   gradeLevelId: number;
@@ -36,6 +37,7 @@ function mapClassResponse(item: ClassResponse): ClassPost {
   return {
     id: item.id,
     tutorId: item.tutorId,
+    tutorName: item.tutorName || null,
     title: item.title,
     subjectId: item.subjectId,
     gradeLevelId: item.gradeLevelId,
@@ -85,6 +87,15 @@ function ClassCard({
         <h3 className="line-clamp-2 w-full text-lg font-bold leading-6 text-slate-950">
           {classPost.title}
         </h3>
+        <a
+          href={`/tutor/${classPost.tutorId}`}
+          className="mt-2 inline-flex max-w-full items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+        >
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">
+            {(classPost.tutorName || "G").charAt(0).toUpperCase()}
+          </span>
+          <span className="truncate">{classPost.tutorName || `Gia sư #${classPost.tutorId}`}</span>
+        </a>
       </div>
 
       <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-600">{classPost.description}</p>
@@ -126,7 +137,7 @@ function ClassCard({
             onClick={() => onEnroll(classPost)}
             className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
           >
-            Ứng tuyển
+            Đăng ký học
           </button>
         </div>
       </div>

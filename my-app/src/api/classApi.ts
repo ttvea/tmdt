@@ -37,6 +37,7 @@ export interface ScheduleResponse {
 export interface ClassResponse {
   id: number
   tutorId: number
+  tutorName: string | null
   title: string
   description: string
   categoryId: number

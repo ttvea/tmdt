@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
 import { getMyEnrollments, requestCashPayment, type EnrollmentResponse } from '../../api/classApi'
+import { createPayment } from '../../api/payment'
 import { OrderDetailModal } from '../../components/OrderDetailModal'
 import { createRating, getMyRatings, updateRating, type RatingResponse } from '../../api/ratings'
 
@@ -10,6 +11,7 @@ export function StudentEnrollments() {
   const [ratings, setRatings] = useState<RatingResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [cashRequesting, setCashRequesting] = useState<number | null>(null)
+  const [vnpayPaying, setVnpayPaying] = useState<number | null>(null)
   const [viewOrderId, setViewOrderId] = useState<number | null>(null)
   const [ratingTarget, setRatingTarget] = useState<EnrollmentResponse | null>(null)
   const [ratingStars, setRatingStars] = useState(5)
@@ -52,6 +54,27 @@ export function StudentEnrollments() {
       toast.error(err?.response?.data?.message || 'Có lỗi xảy ra')
     } finally {
       setCashRequesting(null)
+    }
+  }
+
+  const handleVnpayPayment = async (enrollment: EnrollmentResponse) => {
+    if (!enrollment.orderId) {
+      toast.error('Không tìm thấy hóa đơn thanh toán cho đăng ký này')
+      return
+    }
+
+    setVnpayPaying(enrollment.id)
+    try {
+      const paymentResult = await createPayment(enrollment.orderId)
+      if (paymentResult.paymentUrl) {
+        window.location.href = paymentResult.paymentUrl
+        return
+      }
+      toast.error('Không thể tạo đường dẫn thanh toán VNPAY')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Không thể tạo thanh toán VNPAY')
+    } finally {
+      setVnpayPaying(null)
     }
   }
 
@@ -168,13 +191,22 @@ export function StudentEnrollments() {
                       {enrollment.status === 'APPROVED' && (
                         <div className="mt-3">
                           <p className="mb-2 text-xs text-blue-600">Gia sư đã duyệt, bạn có thể thanh toán.</p>
-                          <button
-                            onClick={() => handleRequestCashPayment(enrollment.id)}
-                            disabled={cashRequesting !== null}
-                            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
-                          >
-                            {cashRequesting === enrollment.id ? '...' : 'Tôi đã thanh toán tiền mặt'}
-                          </button>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => handleVnpayPayment(enrollment)}
+                              disabled={vnpayPaying !== null || cashRequesting !== null}
+                              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                            >
+                              {vnpayPaying === enrollment.id ? '...' : 'Thanh toán VNPAY'}
+                            </button>
+                            <button
+                              onClick={() => handleRequestCashPayment(enrollment.id)}
+                              disabled={cashRequesting !== null || vnpayPaying !== null}
+                              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
+                            >
+                              {cashRequesting === enrollment.id ? '...' : 'Tôi đã thanh toán tiền mặt'}
+                            </button>
+                          </div>
                         </div>
                       )}
 

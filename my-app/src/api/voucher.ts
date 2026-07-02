@@ -25,9 +25,10 @@ export interface VoucherResponse {
 /**
  * Lấy danh sách voucher khả dụng cho học viên
  */
-export async function getAvailableVouchers(): Promise<VoucherResponse[]> {
+export async function getAvailableVouchers(classId?: number): Promise<VoucherResponse[]> {
   const res = await api.get('/api/vouchers/available', {
     headers: getAuthHeader(),
+    params: classId ? { classId } : undefined,
   })
   return res.data
 }

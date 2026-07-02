@@ -16,6 +16,7 @@ import java.util.List;
 public class ClassResponse {
     private Long id;
     private Long tutorId;
+    private String tutorName;
     private String title;
     private String description;
     private Integer categoryId;

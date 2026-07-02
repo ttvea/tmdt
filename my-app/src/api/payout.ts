@@ -27,6 +27,8 @@ export interface PayoutHistoryItem {
 
 export interface BalanceInfo {
   availableBalance: number
+  pendingPayoutAmount: number
+  withdrawableBalance: number
   totalPaidOut: number
 }
 

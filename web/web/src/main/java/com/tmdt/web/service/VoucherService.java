@@ -247,18 +247,29 @@ public class VoucherService {
     /**
      * Lấy danh sách voucher khả dụng cho học viên (chưa sử dụng, còn hạn, còn lượt)
      */
-    public List<VoucherResponse> getAvailableVouchersForStudent(Long studentId) {
+    public List<VoucherResponse> getAvailableVouchersForStudent(Long studentId, Long classId) {
         // Lấy danh sách voucher đã dùng của học viên
         List<Long> usedVoucherIds = voucherUsageRepository.findUsedVoucherIdsByStudentId(studentId);
 
         // Lấy tất cả voucher đang active, còn hạn, còn lượt
         List<Voucher> activeVouchers = voucherRepository.findActiveVouchers(LocalDateTime.now());
+        TutorClass classEntity = null;
+        if (classId != null) {
+            classEntity = tutorClassRepository.findById(classId)
+                    .orElseThrow(() -> AppException.notFound("Lớp học không tồn tại"));
+        }
 
         // Lọc ra những voucher học viên chưa dùng
+        TutorClass targetClass = classEntity;
         return activeVouchers.stream()
                 .filter(v -> !usedVoucherIds.contains(v.getId()))
+                .filter(v -> targetClass == null || isVoucherApplicableToClass(v, targetClass))
                 .map(this::toResponse)
                 .toList();
+    }
+
+    public List<VoucherResponse> getAvailableVouchersForStudent(Long studentId) {
+        return getAvailableVouchersForStudent(studentId, null);
     }
 
     /**
@@ -354,6 +365,26 @@ public class VoucherService {
                 && request.getStartDate().isAfter(request.getEndDate())) {
             throw AppException.badRequest("Ngày bắt đầu không được sau ngày kết thúc");
         }
+    }
+
+    private boolean isVoucherApplicableToClass(Voucher voucher, TutorClass classEntity) {
+        if (voucher.getApplicableScope() == VoucherScope.PLATFORM) {
+            return true;
+        }
+
+        if (voucher.getApplicableScope() == VoucherScope.SPECIFIC_CLASS) {
+            return voucher.getTutorClass() != null
+                    && voucher.getTutorClass().getId().equals(classEntity.getId());
+        }
+
+        if (voucher.getApplicableScope() == VoucherScope.ALL_CLASSES) {
+            return voucher.getTutor() != null
+                    && voucher.getTutor().getUser() != null
+                    && classEntity.getTutorId() != null
+                    && Long.valueOf(voucher.getTutor().getUser().getId()).equals(classEntity.getTutorId());
+        }
+
+        return false;
     }
 
     private VoucherResponse toResponse(Voucher voucher) {
