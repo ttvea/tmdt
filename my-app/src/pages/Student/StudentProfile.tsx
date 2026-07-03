@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
 import { getUserProfile, updateUserProfile, uploadAvatar, type UserProfileResponse } from '../../api/userProfile'
@@ -9,6 +9,13 @@ const GENDER_LABELS: Record<string, string> = {
   female: 'Nữ',
 }
 
+type FormData = {
+  fullName: string
+  phone: string
+  gender: string
+  birthday: number | string
+}
+
 export default function StudentProfile() {
   const userRaw = localStorage.getItem('user')
   const user = userRaw ? JSON.parse(userRaw) : null
@@ -16,20 +23,14 @@ export default function StudentProfile() {
 
   const [profile, setProfile] = useState<UserProfileResponse | null>(null)
   const [isEditing, setIsEditing] = useState(false)
-
-  const [formData, setFormData] = useState<{
-    fullName: string;
-    phone: string;
-    gender: string;
-    birthday: number | string;
-  }>({
+  const [formData, setFormData] = useState<FormData>({
     fullName: '',
     phone: '',
     gender: '',
-    birthday: 2000
+    birthday: 2000,
   })
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!userId) return
@@ -40,251 +41,328 @@ export default function StudentProfile() {
           fullName: data.fullName || '',
           phone: data.phone || '',
           gender: data.gender || '',
-          birthday: data.birthday || 2000
+          birthday: data.birthday || 2000,
         })
       })
-      .catch(() => { })
+      .catch(() => toast.error('Không thể tải hồ sơ học viên'))
   }, [userId])
 
+  const resetForm = () => {
+    if (!profile) return
+    setFormData({
+      fullName: profile.fullName || '',
+      phone: profile.phone || '',
+      gender: profile.gender || '',
+      birthday: profile.birthday || 2000,
+    })
+    setIsEditing(false)
+  }
+
   const handleSave = () => {
-    console.log("Dữ liệu chuẩn bị gửi đi:", formData);
     updateUserProfile(userId, formData)
       .then((message) => {
-        toast.success(message);
-        setIsEditing(false);
+        toast.success(message)
+        setIsEditing(false)
 
         if (profile) {
-          setProfile({
+          const updatedProfile = {
             ...profile,
             fullName: formData.fullName,
             phone: formData.phone,
             gender: formData.gender,
-            birthday: formData.birthday
-          });
+            birthday: formData.birthday,
+          }
+          setProfile(updatedProfile)
+          if (userRaw) {
+            localStorage.setItem('user', JSON.stringify({ ...user, fullName: formData.fullName, phone: formData.phone }))
+          }
         }
       })
       .catch((error) => {
-        console.error("Lỗi cập nhật:", error);
-        toast.error("Cập nhật thất bại: " + (error.response?.data || error.message));
-      });
-  };
+        toast.error('Cập nhật thất bại: ' + (error.response?.data || error.message))
+      })
+  }
 
-  // Hàm xử lý khi người dùng chọn xong ảnh
+
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const file = event.target.files?.[0]
+    if (!file) return
 
     try {
-      // Gọi API ném file xuống backend
-      const newAvatarUrl = await uploadAvatar(userId, file);
-
-      // Nếu thành công, cập nhật ngay ảnh trên màn hình
+      const newAvatarUrl = await uploadAvatar(userId, file)
       if (profile) {
-        setProfile({ ...profile, avatar: newAvatarUrl });
+        setProfile({ ...profile, avatar: newAvatarUrl })
       }
-      toast.success("Cập nhật ảnh đại diện thành công!");
+      if (userRaw) {
+        localStorage.setItem('user', JSON.stringify({ ...user, avatar: newAvatarUrl }))
+      }
+      toast.success('Cập nhật ảnh đại diện thành công')
     } catch (error: any) {
-      toast.error("Lỗi khi tải ảnh lên: " + (error.response?.data || error.message));
+      toast.error('Lỗi khi tải ảnh lên: ' + (error.response?.data || error.message))
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
-  };
+  }
 
-  if (!profile) return (
-    <AccountLayout>
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    </AccountLayout>
-  )
+  if (!profile) {
+    return (
+      <AccountLayout>
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-blue-100 border-b-blue-700"></div>
+        </div>
+      </AccountLayout>
+    )
+  }
 
   const avatarUrl = getMediaUrl(profile.avatar)
+  const displayName = profile.fullName || 'Học viên ẩn danh'
+  const initial = displayName.charAt(0).toUpperCase()
+  const completionItems = [
+    Boolean(profile.fullName),
+    Boolean(profile.email),
+    Boolean(profile.phone),
+    Boolean(profile.gender),
+    Boolean(profile.birthday),
+  ]
+  const completionPercent = Math.round((completionItems.filter(Boolean).length / completionItems.length) * 100)
 
   return (
     <AccountLayout activePath="/student/profile">
-      <div className="min-h-screen bg-[#f0f2f5] w-full text-left pb-12">
-
-        {/* ================= HEADER TRẮNG ================= */}
-        <div className="bg-white shadow-sm mb-8">
-          <div className="max-w-5xl mx-auto w-full">
-
-            {/* 1. ẢNH BÌA XANH */}
-            <div className="h-28 md:h-40 bg-[#4267b2] w-full"></div>
-
-            {/* 2. AVATAR, TÊN VÀ NÚT */}
-            <div className="px-6 md:px-10 pb-4 flex flex-col md:flex-row md:items-end justify-between relative">
-
-              <div className="flex flex-col md:flex-row md:items-end gap-4 md:gap-6">
-
-                <div className="-mt-[70px] md:-mt-[90px] relative z-10 w-[140px] h-[140px] md:w-[180px] md:h-[180px] shrink-0 mx-auto md:mx-0">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    ref={fileInputRef}
-                    onChange={handleAvatarChange}
-                  />
-
-                  <div className="w-full h-full rounded-full border-4 border-white bg-slate-200 flex items-center justify-center text-5xl font-bold text-[#4267b2] overflow-hidden shadow-sm">
+      <div className="min-h-screen bg-slate-100 px-5 py-8 text-left sm:px-8">
+        <div className="mx-auto max-w-7xl space-y-6">
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="relative">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-blue-100 bg-blue-50 shadow-sm sm:h-28 sm:w-28">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                    />
                     {avatarUrl ? (
-                      <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                      <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
                     ) : (
-                      profile.fullName?.charAt(0)
+                      <div className="flex h-full w-full items-center justify-center text-5xl font-bold text-blue-700">
+                        {initial}
+                      </div>
                     )}
-                  </div>
-
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute bottom-0 right-0 w-10 h-10 bg-white hover:bg-slate-50 text-blue-600 rounded-full border-2 border-white flex items-center justify-center transition-all shadow-[0_2px_8px_rgba(0,0,0,0.15)] z-20"
-                    title="Thay đổi ảnh đại diện"
-                  >
-                    {/* Icon máy ảnh */}
-                    <i className="fa-solid fa-camera text-lg"></i>
-                  </button>
-                </div>
-
-                {/* KHỐI TÊN */}
-                <div className="mb-2 md:mb-5 text-center md:text-left">
-                  <h1
-                    className="text-xl md:text-2xl font-bold tracking-tight m-0 leading-none"
-                    style={{ color: '#111827' }}
-                  >
-                    {profile.fullName || 'Học viên ẩn danh'}
-                  </h1>
-                  <p className="text-[#0084ff] font-medium mt-1.5 m-0 text-[15px]">
-                    Học viên
-                  </p>
-                </div>
-              </div>
-
-              {/* Nhóm Nút Bấm Góc Phải */}
-              <div className="mb-2 md:mb-4 flex justify-center md:justify-end w-full md:w-auto mt-3 md:mt-0">
-                {!isEditing ? (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="px-6 py-2 bg-[#00a859] text-white font-semibold rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 shadow-sm"
-                  >
-                    Chỉnh sửa hồ sơ <i className="fa-solid fa-pen text-sm"></i>
-                  </button>
-                ) : (
-                  <div className="flex gap-2 w-full md:w-auto">
                     <button
-                      onClick={() => setIsEditing(false)}
-                      className="flex-1 md:flex-none px-8 py-2 bg-[#d32f2f] text-white font-semibold rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-xl bg-blue-700 text-white shadow-lg transition hover:bg-blue-800"
+                      title="Cập nhật ảnh đại diện"
                     >
-                      Hủy
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      className="flex-1 md:flex-none px-8 py-2 bg-[#00a859] text-white font-semibold rounded-lg hover:bg-green-600 transition-colors shadow-sm"
-                    >
-                      Lưu thay đổi
+                      <i className="fa-solid fa-camera text-sm"></i>
                     </button>
                   </div>
-                )}
-              </div>
 
+                  <div>
+                    <h1 className="m-0 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+                      {displayName}
+                    </h1>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium text-slate-500">
+                      <span className="inline-flex items-center gap-2">
+                        <i className="fa-regular fa-envelope text-blue-600"></i>
+                        {profile.email || 'Chưa cập nhật email'}
+                      </span>
+                      <span className="inline-flex items-center gap-2">
+                        <i className="fa-solid fa-phone text-blue-600"></i>
+                        {profile.phone || 'Chưa cập nhật số điện thoại'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {!isEditing ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(true)}
+                      className="inline-flex h-10 items-center gap-2 rounded-xl bg-blue-700 px-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800"
+                    >
+                      <i className="fa-solid fa-pen"></i>
+                      Chỉnh sửa hồ sơ
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={resetForm}
+                        className="inline-flex h-10 items-center rounded-xl border border-slate-300 bg-white px-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        className="inline-flex h-10 items-center rounded-xl bg-emerald-600 px-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
+                      >
+                        Lưu thay đổi
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </section>
 
-        {/* ================= KHU VỰC THÔNG TIN CÁ NHÂN ================= */}
-        <div className="max-w-5xl mx-auto w-full px-4 md:px-10">
+          <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-wide text-blue-700">Hồ sơ học viên</p>
+                  <h2 className="mt-1 text-2xl font-bold text-slate-950">Thông tin cá nhân</h2>
+                </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">
+                  Cập nhật {completionPercent}%
+                </span>
+              </div>
 
-          <h2 className="text-xl md:text-2xl font-bold mb-4" style={{ color: '#b8860b' }}>
-            Thông tin cá nhân
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-
-            <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <label className="text-[15px] font-medium text-slate-500 block mb-2">Họ và tên</label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-lg font-medium text-slate-900 outline-none focus:border-[#00a859]"
+              <div className="grid gap-4 md:grid-cols-2">
+                <ProfileField
+                  label="Họ và tên"
+                  icon="fa-regular fa-user"
+                  editing={isEditing}
+                  value={profile.fullName}
+                  input={
+                    <input
+                      type="text"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      className={inputClass}
+                    />
+                  }
                 />
-              ) : (
-                <p className="text-xl md:text-2xl font-medium" style={{ color: '#111827' }}>
-                  {profile.fullName || '—'}
-                </p>
-              )}
-            </div>
-
-            <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <label className="text-[15px] font-medium text-slate-500 block mb-2">Email</label>
-              {isEditing ? (
-                <input
-                  type="email"
+                <ProfileField
+                  label="Email"
+                  icon="fa-regular fa-envelope"
                   value={profile.email}
-                  readOnly
-                  className="w-full border border-slate-300 bg-slate-50 rounded-lg px-3 py-2 text-lg font-medium text-slate-600 outline-none cursor-not-allowed"
+                  input={<input type="email" value={profile.email} readOnly className={`${inputClass} cursor-not-allowed bg-slate-50 text-slate-500`} />}
                 />
-              ) : (
-                <p className="text-xl md:text-2xl font-medium truncate" style={{ color: '#111827' }} title={profile.email}>
-                  {profile.email || '—'}
-                </p>
-              )}
-            </div>
-
-            <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
-              <label className="text-[15px] font-medium text-slate-500 block mb-2">Số Điện Thoại</label>
-              {isEditing ? (
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-lg font-medium text-slate-900 outline-none focus:border-[#00a859]"
+                <ProfileField
+                  label="Số điện thoại"
+                  icon="fa-solid fa-phone"
+                  editing={isEditing}
+                  value={profile.phone}
+                  input={
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className={inputClass}
+                    />
+                  }
                 />
-              ) : (
-                <p className="text-xl md:text-2xl font-medium" style={{ color: '#111827' }}>
-                  {profile.phone || '—'}
-                </p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 md:gap-5">
-
-              <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <label className="text-[15px] font-medium text-slate-500 block mb-2">Giới Tính</label>
-                {isEditing ? (
-                  <select
-                    value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-lg font-medium text-slate-900 outline-none focus:border-[#00a859] cursor-pointer"
-                  >
-                    <option value="">Chọn</option>
-                    <option value="male">Nam</option>
-                    <option value="female">Nữ</option>
-                  </select>
-                ) : (
-                  <p className="text-xl md:text-2xl font-medium" style={{ color: '#111827' }}>
-                    {GENDER_LABELS[profile.gender] || '—'}
-                  </p>
-                )}
-              </div>
-
-              <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <label className="text-[15px] font-medium text-slate-500 block mb-2">Năm sinh</label>
-                {isEditing ? (
-                  <input
-                    type="number"
-                    value={formData.birthday}
-                    onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-lg font-medium text-slate-900 outline-none focus:border-[#00a859]"
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <ProfileField
+                    label="Giới tính"
+                    icon="fa-solid fa-venus-mars"
+                    editing={isEditing}
+                    value={GENDER_LABELS[profile.gender]}
+                    input={
+                      <select
+                        value={formData.gender}
+                        onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                        className={inputClass}
+                      >
+                        <option value="">Chọn</option>
+                        <option value="male">Nam</option>
+                        <option value="female">Nữ</option>
+                      </select>
+                    }
                   />
-                ) : (
-                  <p className="text-xl md:text-2xl font-medium" style={{ color: '#111827' }}>
-                    {profile.birthday || '—'}
-                  </p>
-                )}
+                  <ProfileField
+                    label="Năm sinh"
+                    icon="fa-regular fa-calendar"
+                    editing={isEditing}
+                    value={profile.birthday}
+                    input={
+                      <input
+                        type="number"
+                        value={formData.birthday}
+                        onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+                        className={inputClass}
+                      />
+                    }
+                  />
+                </div>
               </div>
-
             </div>
 
-          </div>
+            <aside className="space-y-6">
+              <div className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
+                    <i className="fa-solid fa-shield-halved"></i>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-950">Mức độ hoàn thiện</h3>
+                    <p className="text-sm text-slate-500">Bổ sung thông tin để hồ sơ đáng tin cậy hơn.</p>
+                  </div>
+                </div>
+                <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-blue-700" style={{ width: `${completionPercent}%` }} />
+                </div>
+                <p className="mt-2 text-sm font-semibold text-blue-700">{completionPercent}% hồ sơ đã hoàn thiện</p>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="mb-4 font-bold text-slate-950">Bảo mật tài khoản</h3>
+                <div className="space-y-3 text-sm text-slate-600">
+                  <InfoLine icon="fa-solid fa-key" text="Mật khẩu có thể thay đổi bất cứ lúc nào." />
+                  <InfoLine icon="fa-solid fa-image" text="Ảnh đại diện giúp gia sư dễ nhận diện bạn hơn." />
+                  <InfoLine icon="fa-solid fa-circle-check" text="Email được dùng để nhận thông báo hệ thống." />
+                </div>
+              </div>
+            </aside>
+          </section>
         </div>
+
       </div>
     </AccountLayout>
   )
 }
+
+const inputClass =
+  'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-base font-semibold text-slate-950 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100'
+
+function ProfileField({
+  label,
+  icon,
+  value,
+  editing,
+  input,
+}: {
+  label: string
+  icon: string
+  value: string | number | null | undefined
+  editing?: boolean
+  input: React.ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-500">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-blue-700 shadow-sm">
+          <i className={icon}></i>
+        </span>
+        {label}
+      </div>
+      {editing ? input : <p className="truncate text-xl font-bold text-slate-950">{value || '—'}</p>}
+    </div>
+  )
+}
+
+function InfoLine({ icon, text }: { icon: string; text: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 text-blue-700">
+        <i className={icon}></i>
+      </span>
+      <span>{text}</span>
+    </div>
+  )
+}
+

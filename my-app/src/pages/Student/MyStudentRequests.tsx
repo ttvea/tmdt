@@ -3,6 +3,8 @@ import { toast } from 'react-toastify'
 import { getMyStudentRequests, type StudentRequestsWithApplications } from '../../api/studentRequests'
 import { StudentRequestCard } from '../../components/StudentRequestCard'
 import { AccountLayout } from '../../components/AccountLayout'
+import { AccountPageContainer } from '../../components/AccountPageContainer'
+import { AccountPageHeader } from '../../components/AccountPageHeader'
 
 type FilterStatus = 'ALL' | 'ACTIVE' | 'MATCHED'
 
@@ -65,12 +67,9 @@ export function MyStudentRequests() {
 
   return (
     <AccountLayout activePath="/student/my-requests">
-      <div className="space-y-6">
+      <AccountPageContainer className="space-y-6">
         {/* Header */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Bảng tin của tôi</h1>
-          <p className="text-slate-600">Quản lý tất cả bảng tin tìm gia sư của bạn</p>
-        </div>
+        <AccountPageHeader title="Bảng tin của tôi" />
 
         {/* Statistics */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -202,7 +201,7 @@ export function MyStudentRequests() {
             ))}
           </div>
         )}
-      </div>
+      </AccountPageContainer>
     </AccountLayout>
   )
 }

@@ -1,19 +1,31 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
+import { AccountPageContainer } from '../../components/AccountPageContainer'
+import { AccountPageHeader } from '../../components/AccountPageHeader'
 import { getMyEnrollments, requestCashPayment, type EnrollmentResponse } from '../../api/classApi'
+import { createPayment } from '../../api/payment'
 import { OrderDetailModal } from '../../components/OrderDetailModal'
-// import { supabase } from '../../api/supabase'
+import { createRating, getMyRatings, updateRating, type RatingResponse } from '../../api/ratings'
 
 export function StudentEnrollments() {
   const [enrollments, setEnrollments] = useState<EnrollmentResponse[]>([])
+  const [ratings, setRatings] = useState<RatingResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [cashRequesting, setCashRequesting] = useState<number | null>(null)
+  const [vnpayPaying, setVnpayPaying] = useState<number | null>(null)
   const [viewOrderId, setViewOrderId] = useState<number | null>(null)
+  const [ratingTarget, setRatingTarget] = useState<EnrollmentResponse | null>(null)
+  const [ratingStars, setRatingStars] = useState(5)
+  const [ratingComment, setRatingComment] = useState('')
+  const [ratingSubmitting, setRatingSubmitting] = useState(false)
 
   const fetchData = () => {
-    getMyEnrollments(0, 50)
-      .then((data) => setEnrollments(data.content))
+    Promise.all([getMyEnrollments(0, 50), getMyRatings()])
+      .then(([enrollmentData, ratingData]) => {
+        setEnrollments(enrollmentData.content)
+        setRatings(ratingData)
+      })
       .catch(() => toast.error('Không thể tải danh sách đăng ký'))
       .finally(() => setLoading(false))
   }
@@ -22,17 +34,11 @@ export function StudentEnrollments() {
     fetchData()
   }, [])
 
-  // Polling every 3 seconds for realtime updates
   useEffect(() => {
     const interval = setInterval(() => {
       void getMyEnrollments(0, 50)
         .then((data) => {
-          setEnrollments((prev) => {
-            if (JSON.stringify(data.content) !== JSON.stringify(prev)) {
-              return data.content
-            }
-            return prev
-          })
+          setEnrollments((prev) => JSON.stringify(data.content) !== JSON.stringify(prev) ? data.content : prev)
         })
         .catch(() => {})
     }, 3000)
@@ -44,12 +50,83 @@ export function StudentEnrollments() {
     setCashRequesting(enrollmentId)
     try {
       await requestCashPayment(enrollmentId)
-      toast.success('Đã yêu cầu thanh toán tiền mặt! Vui lòng chờ gia sư xác nhận.')
+      toast.success('Đã yêu cầu thanh toán tiền mặt. Vui lòng chờ gia sư xác nhận.')
       fetchData()
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Có lỗi xảy ra')
     } finally {
       setCashRequesting(null)
+    }
+  }
+
+  const handleVnpayPayment = async (enrollment: EnrollmentResponse) => {
+    if (!enrollment.orderId) {
+      toast.error('Không tìm thấy hóa đơn thanh toán cho đăng ký này')
+      return
+    }
+
+    setVnpayPaying(enrollment.id)
+    try {
+      const paymentResult = await createPayment(enrollment.orderId)
+      if (paymentResult.paymentUrl) {
+        window.location.href = paymentResult.paymentUrl
+        return
+      }
+      toast.error('Không thể tạo đường dẫn thanh toán VNPAY')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Không thể tạo thanh toán VNPAY')
+    } finally {
+      setVnpayPaying(null)
+    }
+  }
+
+  const getRatingForEnrollment = (enrollment: EnrollmentResponse) =>
+    ratings.find((rating) => rating.enrollmentId === enrollment.id || rating.classId === enrollment.classId)
+
+  const canRateClass = (enrollment: EnrollmentResponse) =>
+    enrollment.status === 'PAID' && enrollment.classStatus === 'COMPLETED'
+
+  const openRatingModal = (enrollment: EnrollmentResponse) => {
+    const existingRating = getRatingForEnrollment(enrollment)
+    setRatingTarget(enrollment)
+    setRatingStars(existingRating?.stars ?? 5)
+    setRatingComment(existingRating?.comment ?? '')
+  }
+
+  const closeRatingModal = () => {
+    setRatingTarget(null)
+    setRatingStars(5)
+    setRatingComment('')
+  }
+
+  const handleSubmitRating = async () => {
+    if (!ratingTarget) return
+
+    const existingRating = getRatingForEnrollment(ratingTarget)
+    setRatingSubmitting(true)
+    try {
+      if (existingRating) {
+        await updateRating(existingRating.id, {
+          stars: ratingStars,
+          comment: ratingComment.trim(),
+        })
+        toast.success('Đã cập nhật đánh giá lớp học')
+      } else {
+        await createRating({
+          classId: ratingTarget.classId,
+          enrollmentId: ratingTarget.id,
+          stars: ratingStars,
+          comment: ratingComment.trim(),
+        })
+        toast.success('Cảm ơn bạn đã đánh giá lớp học')
+      }
+
+      setRatings(await getMyRatings())
+      closeRatingModal()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.response?.data || 'Không thể gửi đánh giá')
+    } finally {
+      setRatingSubmitting(false)
     }
   }
 
@@ -71,7 +148,7 @@ export function StudentEnrollments() {
       CANCELLED: 'Đã hủy',
     }
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${colors[status] || 'bg-slate-100 text-slate-700'}`}>
+      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${colors[status] || 'bg-slate-100 text-slate-700'}`}>
         {labels[status] || status}
       </span>
     )
@@ -79,95 +156,191 @@ export function StudentEnrollments() {
 
   return (
     <AccountLayout activePath="/student/enrollments">
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">💳 Thanh toán</h1>
-          <p className="text-sm text-slate-500 mt-1">Theo dõi trạng thái đăng ký và thanh toán lớp học</p>
-        </div>
+      <AccountPageContainer>
+        <AccountPageHeader title="Thanh toán" />
 
         {loading ? (
-          <div className="text-center py-12 text-slate-500">Đang tải...</div>
+          <div className="py-12 text-center text-slate-500">Đang tải...</div>
         ) : enrollments.length === 0 ? (
-          <div className="bg-white rounded-lg border border-slate-200 p-12 text-center">
-            <div className="text-4xl mb-3">📋</div>
+          <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
             <p className="text-slate-600">Bạn chưa đăng ký lớp học nào</p>
             <a
               href="/discover/classes"
-              className="inline-block mt-3 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+              className="mt-3 inline-block rounded-lg bg-blue-600 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
             >
               Tìm lớp học
             </a>
           </div>
         ) : (
           <div className="space-y-4">
-            {enrollments.map((enrollment) => (
-              <div key={enrollment.id} className="bg-white rounded-lg border border-slate-200 p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-900">{enrollment.classTitle}</h3>
-                    <div className="flex items-center gap-3 mt-2">
-                      {statusBadge(enrollment.status)}
-                      <span className="text-xs text-slate-400">
-                        Đăng ký: {new Date(enrollment.createdAt).toLocaleDateString('vi-VN')}
-                      </span>
+            {enrollments.map((enrollment) => {
+              const existingRating = getRatingForEnrollment(enrollment)
+              return (
+                <div key={enrollment.id} className="rounded-lg border border-slate-200 bg-white p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-slate-900">{enrollment.classTitle}</h3>
+                      <div className="mt-2 flex items-center gap-3">
+                        {statusBadge(enrollment.status)}
+                        <span className="text-xs text-slate-400">
+                          Đăng ký: {new Date(enrollment.createdAt).toLocaleDateString('vi-VN')}
+                        </span>
+                      </div>
+
+                      {enrollment.status === 'APPROVED' && (
+                        <div className="mt-3">
+                          <p className="mb-2 text-xs text-blue-600">Gia sư đã duyệt, bạn có thể thanh toán.</p>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => handleVnpayPayment(enrollment)}
+                              disabled={vnpayPaying !== null || cashRequesting !== null}
+                              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                            >
+                              {vnpayPaying === enrollment.id ? '...' : 'Thanh toán VNPAY'}
+                            </button>
+                            <button
+                              onClick={() => handleRequestCashPayment(enrollment.id)}
+                              disabled={cashRequesting !== null || vnpayPaying !== null}
+                              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
+                            >
+                              {cashRequesting === enrollment.id ? '...' : 'Tôi đã thanh toán tiền mặt'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {enrollment.status === 'CASH_REQUESTED' && (
+                        <p className="mt-2 text-xs text-purple-600">Đã gửi yêu cầu, chờ gia sư xác nhận.</p>
+                      )}
+
+                      {enrollment.status === 'PAID' && (
+                        <div className="mt-3">
+                          {enrollment.paidAt ? (
+                            <p className="mb-2 text-xs text-green-600">
+                              Đã thanh toán ngày {new Date(enrollment.paidAt).toLocaleDateString('vi-VN')}
+                            </p>
+                          ) : null}
+                          {existingRating ? (
+                            <p className="mb-2 text-xs font-semibold text-amber-600">
+                              Đã đánh giá {existingRating.stars}/5 sao
+                            </p>
+                          ) : null}
+                          {!existingRating && !canRateClass(enrollment) ? (
+                            <p className="mb-2 text-xs font-semibold text-slate-500">
+                              Bạn có thể đánh giá sau khi gia sư đánh dấu lớp học đã hoàn thành.
+                            </p>
+                          ) : null}
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => setViewOrderId(enrollment.orderId || enrollment.id)}
+                              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                            >
+                              Xem hóa đơn
+                            </button>
+                            <button
+                              onClick={() => (existingRating || canRateClass(enrollment)) && openRatingModal(enrollment)}
+                              disabled={!existingRating && !canRateClass(enrollment)}
+                              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                            >
+                              {existingRating ? 'Cập nhật đánh giá' : 'Đánh giá lớp học'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {enrollment.status === 'PENDING' && (
+                        <p className="mt-2 text-xs text-yellow-600">Đang chờ gia sư xác nhận.</p>
+                      )}
+
+                      {enrollment.status === 'REJECTED' && enrollment.note && (
+                        <p className="mt-2 text-xs text-red-600">Lý do: {enrollment.note}</p>
+                      )}
                     </div>
-                    {enrollment.status === 'APPROVED' && (
-                      <div className="mt-3">
-                        <p className="text-xs text-blue-600 mb-2">
-                          ⏳ Gia sư đã duyệt, bạn có thể thanh toán
-                        </p>
-                        <button
-                          onClick={() => handleRequestCashPayment(enrollment.id)}
-                          disabled={cashRequesting !== null}
-                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          {cashRequesting === enrollment.id ? '...' : '💰 Tôi đã thanh toán tiền mặt'}
-                        </button>
-                      </div>
-                    )}
-                    {enrollment.status === 'CASH_REQUESTED' && (
-                      <p className="text-xs text-purple-600 mt-2">
-                        ⏳ Đã gửi yêu cầu, chờ gia sư xác nhận
-                      </p>
-                    )}
-                    {enrollment.status === 'PAID' && enrollment.paidAt && (
-                      <div className="mt-2">
-                        <p className="text-xs text-green-600 mb-2">
-                          ✅ Đã thanh toán ngày {new Date(enrollment.paidAt).toLocaleDateString('vi-VN')}
-                        </p>
-                        <button
-                          onClick={() => setViewOrderId(enrollment.orderId || enrollment.id)}
-                          className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
-                        >
-                          📄 Xem hóa đơn
-                        </button>
-                      </div>
-                    )}
-                    {enrollment.status === 'PENDING' && (
-                      <p className="text-xs text-yellow-600 mt-2">
-                        ⏳ Đang chờ gia sư xác nhận
-                      </p>
-                    )}
-                    {enrollment.status === 'REJECTED' && enrollment.note && (
-                      <p className="text-xs text-red-600 mt-2">
-                        Lý do: {enrollment.note}
-                      </p>
-                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
-      </div>
+      </AccountPageContainer>
 
-      {/* Order Detail Modal */}
       {viewOrderId && (
         <OrderDetailModal
           isOpen={true}
           orderId={viewOrderId}
           onClose={() => setViewOrderId(null)}
         />
+      )}
+
+      {ratingTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-950">Đánh giá lớp học</h2>
+                <p className="mt-1 text-sm text-slate-500">{ratingTarget.classTitle}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeRatingModal}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+                aria-label="Đóng"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-6">
+              <label className="mb-2 block text-sm font-semibold text-slate-800">Mức độ hài lòng</label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRatingStars(star)}
+                    className={`flex h-11 w-11 items-center justify-center rounded-lg border text-2xl transition ${
+                      star <= ratingStars
+                        ? 'border-amber-300 bg-amber-50 text-amber-500'
+                        : 'border-slate-200 bg-white text-slate-300 hover:border-amber-200'
+                    }`}
+                    aria-label={`${star} sao`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="mt-5 block">
+              <span className="mb-2 block text-sm font-semibold text-slate-800">Nhận xét</span>
+              <textarea
+                value={ratingComment}
+                onChange={(event) => setRatingComment(event.target.value)}
+                rows={4}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                placeholder="Chia sẻ trải nghiệm học tập của bạn..."
+              />
+            </label>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeRatingModal}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitRating}
+                disabled={ratingSubmitting}
+                className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {ratingSubmitting ? 'Đang lưu...' : getRatingForEnrollment(ratingTarget) ? 'Cập nhật' : 'Gửi đánh giá'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </AccountLayout>
   )

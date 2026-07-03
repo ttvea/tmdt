@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import Navbar from '../../layouts/Navbar'
 import Footer from '../../layouts/Footer'
+import { TutorPageHeader } from '../../components/TutorPageHeader'
 import { getConversationsList, getConversationMessages, sendMessage, sendImageMessage, getMessageMediaUrl, isImageMessage, type ConversationResponse, type MessageResponse } from '../../api/conversations'
-// import { supabase } from '../../api/supabase'
 
 export function TutorMessages() {
   const [conversations, setConversations] = useState<ConversationResponse[]>([])
@@ -155,15 +155,15 @@ export function TutorMessages() {
       <Navbar />
 
       {/* Header */}
-      <section className="bg-white border-b border-slate-200">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-3xl font-bold text-blue-900">Tin nhắn</h1>
+      <section className="bg-slate-50">
+        <div className="mx-auto w-full max-w-7xl px-6 pt-8">
+          <TutorPageHeader title="Tin nhắn" />
         </div>
       </section>
 
       {/* Main Content */}
-      <section className="flex-1 py-6">
-        <div className="container mx-auto px-4">
+      <section className="flex-1 pb-8">
+        <div className="mx-auto w-full max-w-7xl px-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-4 h-[600px]">
             {/* Conversations List */}
             <div className="lg:col-span-1 bg-white rounded-lg border border-slate-200 flex flex-col overflow-hidden">
@@ -393,3 +393,4 @@ export function TutorMessages() {
     </div>
   )
 }
+

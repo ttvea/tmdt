@@ -166,13 +166,27 @@ public class ClassService {
         TutorClass classEntity = classRepository.findByIdAndTutorId(classId, tutorId)
                 .orElseThrow(() -> AppException.notFound("Không tìm thấy lớp học"));
 
-        if (newStatus == ClassStatus.CLOSED && classEntity.getStatus() == ClassStatus.OPEN) {
+        if (classEntity.getApprovalStatus() != ApprovalStatus.APPROVED) {
+            throw AppException.badRequest("Lop hoc chua duoc duyet");
+        }
+
+        if (newStatus == ClassStatus.CLOSED) {
+            if (classEntity.getStatus() != ClassStatus.OPEN) {
+                throw AppException.badRequest("Chi co the bat dau lop dang tuyen sinh");
+            }
+
             long activeStudents = enrollmentRepository.countByClassEntityIdAndStatusIn(
                     classEntity.getId(), List.of(EnrollmentStatus.APPROVED, EnrollmentStatus.PAID));
 
             if (activeStudents < 1) {
-                throw AppException.badRequest("Cần ít nhất 1 học viên để bắt đầu lớp");
+                throw AppException.badRequest("Can it nhat 1 hoc vien de bat dau lop");
             }
+        } else if (newStatus == ClassStatus.COMPLETED) {
+            if (classEntity.getStatus() != ClassStatus.CLOSED) {
+                throw AppException.badRequest("Chi co the ket thuc lop dang day");
+            }
+        } else {
+            throw AppException.badRequest("Trang thai lop hoc khong hop le");
         }
 
         classEntity.setStatus(newStatus);
@@ -327,6 +341,10 @@ public class ClassService {
             }
 
             // Tính discount
+            if (!isVoucherApplicableToClass(voucher, classEntity)) {
+                throw AppException.badRequest("Voucher không áp dụng cho lớp học này");
+            }
+
             BigDecimal originalBD = BigDecimal.valueOf(originalAmount);
             if (voucher.getDiscountType() == DiscountType.PERCENT) {
                 discountAmount = originalBD.multiply(voucher.getDiscountValue())
@@ -583,6 +601,26 @@ public class ClassService {
     private boolean isTimeOverlapping(LocalTime firstStart, LocalTime firstEnd,
                                       LocalTime secondStart, LocalTime secondEnd) {
         return firstStart.isBefore(secondEnd) && firstEnd.isAfter(secondStart);
+    }
+
+    private boolean isVoucherApplicableToClass(Voucher voucher, TutorClass classEntity) {
+        if (voucher.getApplicableScope() == VoucherScope.PLATFORM) {
+            return true;
+        }
+
+        if (voucher.getApplicableScope() == VoucherScope.SPECIFIC_CLASS) {
+            return voucher.getTutorClass() != null
+                    && voucher.getTutorClass().getId().equals(classEntity.getId());
+        }
+
+        if (voucher.getApplicableScope() == VoucherScope.ALL_CLASSES) {
+            return voucher.getTutor() != null
+                    && voucher.getTutor().getUser() != null
+                    && classEntity.getTutorId() != null
+                    && Long.valueOf(voucher.getTutor().getUser().getId()).equals(classEntity.getTutorId());
+        }
+
+        return false;
     }
 
     private void validateOfflineAddress(ClassCreateRequest request) {

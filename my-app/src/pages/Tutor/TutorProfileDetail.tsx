@@ -6,7 +6,7 @@ import { getTutorProfile, type TutorProfileResponse } from '../../api/tutorProfi
 import { getMediaUrl } from '../../api/axios'
 import { getTutorRatings, getAverageRating, createRating, updateRating, deleteRating, type RatingResponse } from '../../api/ratings'
 import { createOrGetConversation } from '../../api/conversations'
-import { getTutorClasses, type ClassResponse } from '../../api/classApi'
+import { getMyEnrollments, getTutorClasses, type ClassResponse } from '../../api/classApi'
 import { ConsultationModal } from '../../components/ConsultationModal'
 import { getTutorVouchers, claimVoucher, type VoucherResponse } from '../../api/voucher'
 import { getTutorRevenue, type TutorRevenueResponse } from '../../api/order'
@@ -162,6 +162,7 @@ export function TutorProfileDetail() {
   const [editingStars, setEditingStars] = useState(5)
   const [editingComment, setEditingComment] = useState('')
   const [savingRating, setSavingRating] = useState(false)
+  const [canRateTutor, setCanRateTutor] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showCertificateModal, setShowCertificateModal] = useState(false)
   const [tutorVouchers, setTutorVouchers] = useState<VoucherResponse[]>([])
@@ -332,6 +333,21 @@ export function TutorProfileDetail() {
         }
 
         setProfile(mappedProfile)
+        if (detectedUserId) {
+          try {
+            const enrollments = await getMyEnrollments(0, 100)
+            const hasPaidEnrollment = enrollments.content.some(
+              (enrollment) => enrollment.tutorId === apiResponse.userId && enrollment.status === 'PAID'
+            )
+            setCanRateTutor(hasPaidEnrollment)
+          } catch (enrollmentErr) {
+            console.error('Không thể kiểm tra điều kiện đánh giá:', enrollmentErr)
+            setCanRateTutor(false)
+          }
+        } else {
+          setCanRateTutor(false)
+        }
+
         // fetch ratings and average
         try {
           const ratings = await getTutorRatings(Number(tutorId))
@@ -726,36 +742,44 @@ export function TutorProfileDetail() {
                 <hr className="my-3" />
                 <div className="mt-4">
                   <h4 className="font-semibold mb-2">Đánh giá gia sư</h4>
-                  <div className="mb-2 flex items-center gap-2">
-                    {[1,2,3,4,5].map((s) => (
+                  {canRateTutor || existingRatingId ? (
+                    <>
+                      <div className="mb-2 flex items-center gap-2">
+                        {[1,2,3,4,5].map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => setNewStars(s)}
+                            className={`text-2xl ${s <= newStars ? 'text-yellow-400' : 'text-slate-300'}`}
+                            aria-label={`Chọn ${s} sao`}
+                            type="button"
+                          >
+                            ★
+                          </button>
+                        ))}
+                        <span className="text-sm text-slate-600">{newStars} sao</span>
+                      </div>
+
+                      <textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Viết nhận xét của bạn..."
+                        className="w-full border border-slate-200 rounded p-2 mb-2 text-sm"
+                        rows={3}
+                      />
+
                       <button
-                        key={s}
-                        onClick={() => setNewStars(s)}
-                        className={`text-2xl ${s <= newStars ? 'text-yellow-400' : 'text-slate-300'}`}
-                        aria-label={`Chọn ${s} sao`}
-                        type="button"
+                        onClick={handleSubmitRating}
+                        disabled={submittingRating}
+                        className="w-full bg-green-600 text-white py-2 rounded font-semibold hover:bg-green-700 disabled:opacity-60"
                       >
-                        ★
+                        {existingRatingId ? 'Cập nhật đánh giá' : 'Gửi đánh giá'}
                       </button>
-                    ))}
-                    <span className="text-sm text-slate-600">{newStars} sao</span>
-                  </div>
-
-                  <textarea
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Viết nhận xét của bạn..."
-                    className="w-full border border-slate-200 rounded p-2 mb-2 text-sm"
-                    rows={3}
-                  />
-
-                  <button
-                    onClick={handleSubmitRating}
-                    disabled={submittingRating}
-                    className="w-full bg-green-600 text-white py-2 rounded font-semibold hover:bg-green-700 disabled:opacity-60"
-                  >
-                    {existingRatingId ? 'Cập nhật đánh giá' : 'Gửi đánh giá'}
-                  </button>
+                    </>
+                  ) : (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800">
+                      Bạn chỉ có thể đánh giá gia sư sau khi đã học và thanh toán ít nhất một lớp của gia sư này.
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -69,9 +69,10 @@ public class VoucherController {
      */
     @GetMapping("/available")
     public ResponseEntity<List<VoucherResponse>> getAvailableVouchers(
-            @RequestHeader("Authorization") String authHeader) {
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(required = false) Long classId) {
         Long currentUserId = getUserId(authHeader);
-        return ResponseEntity.ok(voucherService.getAvailableVouchersForStudent(currentUserId));
+        return ResponseEntity.ok(voucherService.getAvailableVouchersForStudent(currentUserId, classId));
     }
 
     /**

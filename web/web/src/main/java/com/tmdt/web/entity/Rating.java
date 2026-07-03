@@ -27,6 +27,14 @@ public class Rating {
     @JoinColumn(name = "tutor_id")
     private User tutor;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "class_id")
+    private TutorClass classEntity;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "enrollment_id")
+    private Enrollment enrollment;
+
     @Column(nullable = false)
     private Integer stars; // 1 -> 5
 

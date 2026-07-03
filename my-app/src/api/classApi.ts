@@ -37,6 +37,7 @@ export interface ScheduleResponse {
 export interface ClassResponse {
   id: number
   tutorId: number
+  tutorName: string | null
   title: string
   description: string
   categoryId: number
@@ -156,6 +157,8 @@ export type EnrollmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
 export interface EnrollmentResponse {
   id: number
   classId: number
+  tutorId: number
+  classStatus: ClassStatus
   classTitle: string
   studentId: number
   studentName: string | null

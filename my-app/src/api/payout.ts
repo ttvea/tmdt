@@ -27,6 +27,8 @@ export interface PayoutHistoryItem {
 
 export interface BalanceInfo {
   availableBalance: number
+  pendingPayoutAmount: number
+  withdrawableBalance: number
   totalPaidOut: number
 }
 
@@ -36,6 +38,8 @@ export interface PendingOrder {
   className: string
   amount: number
   tutorEarning: number
+  tutorPayoutPaidAmount?: number
+  tutorPayoutRemainingAmount?: number
   platformFee: number
   paidAt: string | null
 }
@@ -90,11 +94,34 @@ export interface AdminPayoutItem {
   status: 'PENDING' | 'COMPLETED' | 'FAILED'
   note: string | null
   paymentMethod: string | null
+  providerTransactionId: string | null
+  providerNote: string | null
   bankName: string | null
   bankAccount: string | null
   bankHolder: string | null
   createdAt: string
   completedAt: string | null
+}
+
+export interface AdminPaymentTransaction {
+  id: string
+  type: 'COURSE_PAYMENT' | 'TUTOR_PAYOUT'
+  direction: 'IN' | 'OUT'
+  amount: number
+  platformFee: number | null
+  tutorEarning: number | null
+  status: string
+  method: string | null
+  transactionId: string | null
+  orderId: number | null
+  classId: number | null
+  classTitle: string | null
+  studentId: number | null
+  studentName: string | null
+  tutorId: number | null
+  tutorName: string | null
+  createdAt: string | null
+  paidAt: string | null
 }
 
 /**
@@ -113,10 +140,27 @@ export async function getAllPayouts(status?: string): Promise<AdminPayoutItem[]>
 /**
  * Admin: Duyệt payout
  */
-export async function approvePayout(payoutId: number, note?: string) {
+export interface ApprovePayoutPayload {
+  note?: string
+  paymentMethod?: 'bank_transfer' | 'vnpay_transfer'
+  providerTransactionId?: string
+  providerNote?: string
+}
+
+export async function getAdminPaymentTransactions(type?: string): Promise<AdminPaymentTransaction[]> {
+  const params: any = {}
+  if (type) params.type = type
+  const res = await api.get('/api/admin/payment-transactions', {
+    headers: getAuthHeader(),
+    params,
+  })
+  return res.data
+}
+
+export async function approvePayout(payoutId: number, payload?: ApprovePayoutPayload) {
   const res = await api.post(
     `/api/admin/payouts/${payoutId}/approve`,
-    { note },
+    payload || {},
     { headers: getAuthHeader() }
   )
   return res.data

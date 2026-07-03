@@ -92,12 +92,18 @@ public class ClassMapper {
                         .map(Category::getName).orElse(null)
                 : null;
 
+        String tutorName = entity.getTutorId() != null
+                ? userRep.findById(entity.getTutorId().intValue())
+                        .map(User::getFullName).orElse(null)
+                : null;
+
     long actualStudents = enrollmentRepository.countByClassEntityIdAndStatusIn(
             entity.getId(), List.of(EnrollmentStatus.APPROVED, EnrollmentStatus.PAID));
 
     return ClassResponse.builder()
                 .id(entity.getId())
                 .tutorId(entity.getTutorId())
+                .tutorName(tutorName)
                 .title(entity.getTitle())
                 .description(entity.getDescription())
                 .categoryId(entity.getCategoryId())
@@ -155,6 +161,8 @@ public class ClassMapper {
         return EnrollmentResponse.builder()
                 .id(e.getId())
                 .classId(e.getClassEntity().getId())
+                .tutorId(e.getClassEntity().getTutorId())
+                .classStatus(e.getClassEntity().getStatus())
                 .classTitle(e.getClassEntity().getTitle())
                 .studentId(e.getStudentId())
                 .studentName(student != null ? student.getFullName() : null)

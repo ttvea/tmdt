@@ -2,7 +2,6 @@ package com.tmdt.web.controller;
 
 import com.tmdt.web.dto.request.CreateRatingRequest;
 import com.tmdt.web.dto.request.UpdateRatingRequest;
-import com.tmdt.web.entity.Rating;
 import com.tmdt.web.repository.UserRep;
 import com.tmdt.web.service.RatingService;
 import lombok.RequiredArgsConstructor;
@@ -60,6 +59,19 @@ public class RatingController {
                 )
         );
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getMyRatings(
+            @AuthenticationPrincipal User springUser
+    ) {
+        String email = springUser.getUsername();
+        com.tmdt.web.entity.User user =
+                userRep.findByEmail(email)
+                        .orElseThrow();
+
+        return ResponseEntity.ok(ratingService.getStudentRatings(user.getId()));
+    }
+
     @PutMapping("/{ratingId}")
     public ResponseEntity<?> updateRating(
             @PathVariable Long ratingId,
@@ -73,13 +85,11 @@ public class RatingController {
                 userRep.findByEmail(email)
                         .orElseThrow();
 
-        Rating rating = ratingService.updateRating(
+        return ResponseEntity.ok(ratingService.updateRating(
                 ratingId,
                 user.getId(),
                 request
-        );
-
-        return ResponseEntity.ok(rating);
+        ));
     }
     @DeleteMapping("/{ratingId}")
     public ResponseEntity<?> deleteRating(
