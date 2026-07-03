@@ -8,6 +8,7 @@ import {
 } from '../../api/classApi'
 import { getAllSubjects, type SubjectOption } from '../../api/tutorProfile'
 import { getAllGradeLevels, type GradeLevelOption } from '../../api/classApi'
+import { getTutorRatings, type RatingResponse } from '../../api/ratings'
 
 function getClassIdFromUrl(): number {
   const parts = window.location.pathname.split('/')
@@ -39,6 +40,10 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('vi-VN')
 }
 
+function formatRatingDate(iso: string) {
+  return new Date(iso).toLocaleDateString('vi-VN')
+}
+
 function formatFee(fee: number) {
   return fee.toLocaleString('vi-VN') + 'đ/Khóa'
 }
@@ -66,7 +71,10 @@ export function ClassDetail() {
   const [actionMenuId, setActionMenuId] = useState<number | null>(null)
   const [subjectMap, setSubjectMap] = useState<Record<number, string>>({})
   const [gradeMap, setGradeMap] = useState<Record<number, string>>({})
+  const [classRatings, setClassRatings] = useState<RatingResponse[]>([])
   const [isStartingClass, setIsStartingClass] = useState(false)
+  const [isCompletingClass, setIsCompletingClass] = useState(false)
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false)
 
   useEffect(() => {
     getAllSubjects().then(data => {
@@ -87,6 +95,11 @@ export function ClassDetail() {
     ]).then(([classData, enrollData]) => {
       setCls(classData)
       setEnrollments(enrollData.content)
+      getTutorRatings(classData.tutorId)
+        .then((ratings) => {
+          setClassRatings(ratings.filter((rating) => rating.classId === classData.id))
+        })
+        .catch(() => setClassRatings([]))
       setLoading(false)
     }).catch(() => {
       setError('Không thể tải thông tin lớp học.')
@@ -136,6 +149,22 @@ export function ClassDetail() {
     }
   }
 
+  const handleCompleteClass = async () => {
+    if (!cls || isCompletingClass) return
+
+    setIsCompletingClass(true)
+    try {
+      const updated = await updateClassStatus(cls.id, 'COMPLETED')
+      setCls(updated)
+      setShowCompleteConfirm(false)
+      toast.success('Lớp học đã kết thúc. Học viên đã thanh toán có thể đánh giá lớp học.')
+    } catch {
+      toast.error('Không thể kết thúc lớp học. Vui lòng thử lại.')
+    } finally {
+      setIsCompletingClass(false)
+    }
+  }
+
   if (loading) return (
     <AccountLayout activePath="/tutor/classes">
       <div className="flex items-center justify-center min-h-screen text-slate-400">
@@ -171,6 +200,11 @@ export function ClassDetail() {
   const canStartClass = cls.approvalStatus === 'APPROVED'
     && cls.status === 'OPEN'
     && cls.currentStudents >= 1
+  const canCompleteClass = cls.approvalStatus === 'APPROVED'
+    && cls.status === 'CLOSED'
+  const averageRating = classRatings.length > 0
+    ? classRatings.reduce((sum, rating) => sum + rating.stars, 0) / classRatings.length
+    : 0
 
   return (
     <AccountLayout activePath="/tutor/classes">
@@ -209,6 +243,15 @@ export function ClassDetail() {
                   className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors shadow-sm"
                 >
                   {isStartingClass ? 'Đang bắt đầu...' : 'Bắt đầu lớp học'}
+                </button>
+              )}
+              {canCompleteClass && (
+                <button
+                  onClick={() => setShowCompleteConfirm(true)}
+                  disabled={isCompletingClass}
+                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors shadow-sm"
+                >
+                  {isCompletingClass ? 'Đang kết thúc...' : 'Kết thúc lớp học'}
                 </button>
               )}
             </div>
@@ -411,8 +454,116 @@ export function ClassDetail() {
             </div>
           </div>
 
+          <section className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Đánh giá từ học viên</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Nhận xét của học viên sau khi lớp học đã hoàn thành.
+                </p>
+              </div>
+              <div className="rounded-xl bg-amber-50 px-4 py-2 text-right">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Điểm trung bình</p>
+                <p className="text-xl font-bold text-amber-600">
+                  {classRatings.length > 0 ? averageRating.toFixed(1) : '0.0'}
+                  <span className="text-sm font-semibold text-amber-500"> / 5</span>
+                </p>
+              </div>
+            </div>
+
+            {classRatings.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm font-medium text-slate-500">
+                Chưa có đánh giá nào cho lớp học này.
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {classRatings.map((rating) => (
+                  <article key={rating.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                          {initials(rating.nameStudent || 'Học viên')}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-900">{rating.nameStudent || 'Học viên'}</p>
+                          <p className="text-xs text-slate-500">{formatRatingDate(rating.createdAt)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-amber-500">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <svg key={star} className="h-4 w-4" fill={star <= rating.stars ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m12 3 2.76 5.59 6.17.9-4.46 4.35 1.05 6.14L12 17.08l-5.52 2.9 1.05-6.14-4.46-4.35 6.17-.9L12 3Z" />
+                          </svg>
+                        ))}
+                      </div>
+                    </div>
+                    {rating.comment ? (
+                      <p className="mt-3 text-sm leading-6 text-slate-700">{rating.comment}</p>
+                    ) : (
+                      <p className="mt-3 text-sm italic text-slate-400">Học viên chưa để lại nhận xét.</p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
         </div>
       </div>
+
+      {showCompleteConfirm && (
+        <CompleteClassModal
+          classTitle={cls.title}
+          loading={isCompletingClass}
+          onConfirm={handleCompleteClass}
+          onCancel={() => setShowCompleteConfirm(false)}
+        />
+      )}
     </AccountLayout>
+  )
+}
+
+function CompleteClassModal({ classTitle, loading, onConfirm, onCancel }: {
+  classTitle: string
+  loading: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">Kết thúc lớp học?</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Lớp "{classTitle}" sẽ chuyển sang trạng thái hoàn thành. Học viên đã thanh toán sẽ có thể gửi đánh giá cho lớp học này.
+            </p>
+          </div>
+        </div>
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? 'Đang kết thúc...' : 'Kết thúc lớp'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

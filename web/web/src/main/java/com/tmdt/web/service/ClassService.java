@@ -166,13 +166,27 @@ public class ClassService {
         TutorClass classEntity = classRepository.findByIdAndTutorId(classId, tutorId)
                 .orElseThrow(() -> AppException.notFound("Không tìm thấy lớp học"));
 
-        if (newStatus == ClassStatus.CLOSED && classEntity.getStatus() == ClassStatus.OPEN) {
+        if (classEntity.getApprovalStatus() != ApprovalStatus.APPROVED) {
+            throw AppException.badRequest("Lop hoc chua duoc duyet");
+        }
+
+        if (newStatus == ClassStatus.CLOSED) {
+            if (classEntity.getStatus() != ClassStatus.OPEN) {
+                throw AppException.badRequest("Chi co the bat dau lop dang tuyen sinh");
+            }
+
             long activeStudents = enrollmentRepository.countByClassEntityIdAndStatusIn(
                     classEntity.getId(), List.of(EnrollmentStatus.APPROVED, EnrollmentStatus.PAID));
 
             if (activeStudents < 1) {
-                throw AppException.badRequest("Cần ít nhất 1 học viên để bắt đầu lớp");
+                throw AppException.badRequest("Can it nhat 1 hoc vien de bat dau lop");
             }
+        } else if (newStatus == ClassStatus.COMPLETED) {
+            if (classEntity.getStatus() != ClassStatus.CLOSED) {
+                throw AppException.badRequest("Chi co the ket thuc lop dang day");
+            }
+        } else {
+            throw AppException.badRequest("Trang thai lop hoc khong hop le");
         }
 
         classEntity.setStatus(newStatus);

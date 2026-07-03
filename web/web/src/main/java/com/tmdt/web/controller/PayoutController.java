@@ -1,10 +1,12 @@
 package com.tmdt.web.controller;
 
 import com.tmdt.web.entity.Order;
+import com.tmdt.web.entity.Payment;
 import com.tmdt.web.entity.Payout;
 import com.tmdt.web.entity.User;
 import com.tmdt.web.exception.AppException;
 import com.tmdt.web.repository.OrderRep;
+import com.tmdt.web.repository.PaymentRep;
 import com.tmdt.web.repository.PayoutRep;
 import com.tmdt.web.repository.UserRep;
 import com.tmdt.web.service.JwtService;
@@ -23,6 +25,7 @@ public class PayoutController {
     private final PayoutService payoutService;
     private final PayoutRep payoutRepository;
     private final OrderRep orderRepository;
+    private final PaymentRep paymentRepository;
     private final JwtService jwtService;
     private final UserRep userRep;
 
@@ -32,6 +35,16 @@ public class PayoutController {
         return (long) userRep.findByEmail(email)
                 .orElseThrow(() -> AppException.notFound("Không tìm thấy người dùng"))
                 .getId();
+    }
+
+    private User requireAdmin(String authHeader) {
+        Long userId = getUserId(authHeader);
+        User user = userRep.findById(userId.intValue())
+                .orElseThrow(() -> AppException.notFound("Khong tim thay nguoi dung"));
+        if (user.getRole() != User.RoleAcc.ADMIN) {
+            throw AppException.forbidden("Chi admin moi co quyen truy cap");
+        }
+        return user;
     }
 
     /**
@@ -197,6 +210,81 @@ public class PayoutController {
     /**
      * API: Admin duyệt payout (xác nhận đã chuyển tiền)
      */
+    @GetMapping("/api/admin/payment-transactions")
+    public ResponseEntity<List<Map<String, Object>>> getPaymentTransactions(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(required = false) String type) {
+        requireAdmin(authHeader);
+
+        String filterType = type != null && !type.isBlank() ? type.trim().toUpperCase() : null;
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        if (filterType == null || filterType.equals("COURSE_PAYMENT")) {
+            for (Payment payment : paymentRepository.findAll()) {
+                Order order = payment.getOrder();
+                if (order == null) continue;
+
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", "PAY-" + payment.getId());
+                map.put("type", "COURSE_PAYMENT");
+                map.put("direction", "IN");
+                map.put("amount", order.getAmount());
+                map.put("platformFee", order.getPlatformFee());
+                map.put("tutorEarning", order.getTutorEarning());
+                map.put("status", payment.getStatus() != null ? payment.getStatus().name() : order.getStatus().name());
+                map.put("method", payment.getProvider() != null ? payment.getProvider().name() : "UNKNOWN");
+                map.put("transactionId", payment.getTransactionId());
+                map.put("orderId", order.getId());
+                map.put("classId", order.getTutorClass() != null ? order.getTutorClass().getId() : null);
+                map.put("classTitle", order.getTutorClass() != null ? order.getTutorClass().getTitle() : null);
+                map.put("studentId", order.getStudentId());
+                map.put("studentName", userRep.findById(order.getStudentId()).map(User::getFullName).orElse("Unknown"));
+                Integer tutorId = order.getTutorClass() != null ? order.getTutorClass().getTutorId().intValue() : null;
+                map.put("tutorId", tutorId);
+                map.put("tutorName", tutorId != null ? userRep.findById(tutorId).map(User::getFullName).orElse("Unknown") : "Unknown");
+                map.put("createdAt", order.getDateCreate());
+                map.put("paidAt", payment.getPaidAt() != null ? payment.getPaidAt() : order.getPaidAt());
+                result.add(map);
+            }
+        }
+
+        if (filterType == null || filterType.equals("TUTOR_PAYOUT")) {
+            for (Payout payout : payoutRepository.findAll()) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", "PO-" + payout.getId());
+                map.put("type", "TUTOR_PAYOUT");
+                map.put("direction", "OUT");
+                map.put("amount", payout.getAmount());
+                map.put("platformFee", null);
+                map.put("tutorEarning", payout.getAmount());
+                map.put("status", payout.getStatus().name());
+                map.put("method", payout.getPaymentMethod());
+                map.put("transactionId", payout.getProviderTransactionId());
+                map.put("orderId", null);
+                map.put("classId", null);
+                map.put("classTitle", null);
+                map.put("studentId", null);
+                map.put("studentName", null);
+                map.put("tutorId", payout.getTutorId());
+                map.put("tutorName", userRep.findById(payout.getTutorId()).map(User::getFullName).orElse("Unknown"));
+                map.put("createdAt", payout.getCreatedAt());
+                map.put("paidAt", payout.getCompletedAt());
+                result.add(map);
+            }
+        }
+
+        result.sort((a, b) -> {
+            Date left = (Date) Optional.ofNullable(a.get("paidAt")).orElse(a.get("createdAt"));
+            Date right = (Date) Optional.ofNullable(b.get("paidAt")).orElse(b.get("createdAt"));
+            if (left == null && right == null) return 0;
+            if (left == null) return 1;
+            if (right == null) return -1;
+            return right.compareTo(left);
+        });
+
+        return ResponseEntity.ok(result);
+    }
+
     @PostMapping("/api/admin/payouts/{payoutId}/approve")
     public ResponseEntity<Map<String, Object>> approvePayout(
             @RequestHeader("Authorization") String authHeader,

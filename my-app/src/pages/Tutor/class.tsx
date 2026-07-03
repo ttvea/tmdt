@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
-import { getMyClasses, getAllGradeLevels, type ClassResponse, type ApprovalStatus, type ClassStatus, type GradeLevelOption } from '../../api/classApi'
+import { getMyClasses, getAllGradeLevels, updateClassStatus, type ClassResponse, type ApprovalStatus, type ClassStatus, type GradeLevelOption } from '../../api/classApi'
 import { getAllSubjects, getTutorProfile, type SubjectOption } from '../../api/tutorProfile'
 
 type DisplayStatus = 'pending' | 'recruiting' | 'teaching' | 'completed' | 'rejected'
@@ -60,6 +61,8 @@ export function TutorClasses() {
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [completeTarget, setCompleteTarget] = useState<ClassResponse | null>(null)
+  const [completingId, setCompletingId] = useState<number | null>(null)
   const [subjectMap, setSubjectMap] = useState<Record<number, string>>({})
   const [gradeMap, setGradeMap] = useState<Record<number, string>>({})
   const [profileVerified, setProfileVerified] = useState(false)
@@ -131,6 +134,23 @@ export function TutorClasses() {
     setClasses(prev => prev.filter(c => c.id !== id))
     setStatsClasses(prev => prev.filter(c => c.id !== id))
     setDeleteId(null)
+  }
+
+  const handleCompleteClass = async (classId: number) => {
+    if (completingId) return
+
+    setCompletingId(classId)
+    try {
+      const updated = await updateClassStatus(classId, 'COMPLETED')
+      setClasses(prev => prev.map(c => c.id === classId ? updated : c))
+      setStatsClasses(prev => prev.map(c => c.id === classId ? updated : c))
+      setCompleteTarget(null)
+      toast.success('Lớp học đã kết thúc. Học viên đã thanh toán có thể đánh giá lớp học.')
+    } catch {
+      toast.error('Không thể kết thúc lớp học. Vui lòng thử lại.')
+    } finally {
+      setCompletingId(null)
+    }
   }
 
   return (
@@ -280,6 +300,14 @@ export function TutorClasses() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                               </svg>
                             </button>
+                            {cls.approvalStatus === 'APPROVED' && cls.status === 'CLOSED' && (
+                              <button onClick={() => setCompleteTarget(cls)}
+                                className="text-slate-400 hover:text-emerald-600 transition-colors" title="Kết thúc lớp học">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                </svg>
+                              </button>
+                            )}
                             <button onClick={() => setDeleteId(cls.id)}
                               className="text-slate-400 hover:text-red-500 transition-colors" title="Xóa">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -328,6 +356,16 @@ export function TutorClasses() {
           onCancel={() => setDeleteId(null)}
         />
       )}
+      {completeTarget && (
+        <ConfirmModal
+          message={`Kết thúc lớp "${completeTarget.title}"? Sau khi kết thúc, học viên đã thanh toán có thể đánh giá lớp học.`}
+          confirmLabel={completingId === completeTarget.id ? 'Đang kết thúc...' : 'Kết thúc lớp'}
+          tone="success"
+          loading={completingId === completeTarget.id}
+          onConfirm={() => handleCompleteClass(completeTarget.id)}
+          onCancel={() => setCompleteTarget(null)}
+        />
+      )}
     </AccountLayout>
   )
 }
@@ -360,16 +398,27 @@ function PageBtn({ children, onClick, active, disabled }: {
   )
 }
 
-function ConfirmModal({ message, onConfirm, onCancel }: {
-  message: string; onConfirm: () => void; onCancel: () => void
+function ConfirmModal({ message, onConfirm, onCancel, confirmLabel = 'XÃ³a', tone = 'danger', loading = false }: {
+  message: string
+  onConfirm: () => void
+  onCancel: () => void
+  confirmLabel?: string
+  tone?: 'danger' | 'success'
+  loading?: boolean
 }) {
+  const isSuccess = tone === 'success'
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          <div className={`w-10 h-10 rounded-full ${isSuccess ? 'bg-emerald-100' : 'bg-red-100'} flex items-center justify-center shrink-0`}>
+            <svg className={`w-5 h-5 ${isSuccess ? 'text-emerald-600' : 'text-red-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isSuccess ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              )}
             </svg>
           </div>
           <p className="text-sm font-semibold text-slate-800">{message}</p>
@@ -379,9 +428,11 @@ function ConfirmModal({ message, onConfirm, onCancel }: {
             className="flex-1 py-2.5 rounded-lg border border-slate-300 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
             Hủy
           </button>
-          <button onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors">
-            Xóa
+          <button onClick={onConfirm} disabled={loading}
+            className={`flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
+              isSuccess ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-500 hover:bg-red-600'
+            }`}>
+            {confirmLabel}
           </button>
         </div>
       </div>

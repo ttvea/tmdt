@@ -103,6 +103,27 @@ export interface AdminPayoutItem {
   completedAt: string | null
 }
 
+export interface AdminPaymentTransaction {
+  id: string
+  type: 'COURSE_PAYMENT' | 'TUTOR_PAYOUT'
+  direction: 'IN' | 'OUT'
+  amount: number
+  platformFee: number | null
+  tutorEarning: number | null
+  status: string
+  method: string | null
+  transactionId: string | null
+  orderId: number | null
+  classId: number | null
+  classTitle: string | null
+  studentId: number | null
+  studentName: string | null
+  tutorId: number | null
+  tutorName: string | null
+  createdAt: string | null
+  paidAt: string | null
+}
+
 /**
  * Admin: Lấy tất cả yêu cầu payout
  */
@@ -124,6 +145,16 @@ export interface ApprovePayoutPayload {
   paymentMethod?: 'bank_transfer' | 'vnpay_transfer'
   providerTransactionId?: string
   providerNote?: string
+}
+
+export async function getAdminPaymentTransactions(type?: string): Promise<AdminPaymentTransaction[]> {
+  const params: any = {}
+  if (type) params.type = type
+  const res = await api.get('/api/admin/payment-transactions', {
+    headers: getAuthHeader(),
+    params,
+  })
+  return res.data
 }
 
 export async function approvePayout(payoutId: number, payload?: ApprovePayoutPayload) {
