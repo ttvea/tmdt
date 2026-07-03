@@ -4,8 +4,10 @@ import { AdminLayout } from '../../components/AdminLayout'
 import { getCurrentAdmin, type AdminSession } from '../../api/admin'
 import {
   approvePayout,
+  getAdminPaymentTransactions,
   getAllPayouts,
   rejectPayout,
+  type AdminPaymentTransaction,
   type AdminPayoutItem,
 } from '../../api/payout'
 
@@ -50,16 +52,48 @@ function getStatusBadge(status: string) {
 
 function getPaymentMethodLabel(method: string | null) {
   if (method === 'vnpay_transfer') return 'VNPay'
+  if (method === 'VNPAY') return 'VNPay'
+  if (method === 'CASH') return 'Tiền mặt'
   if (method === 'bank_transfer') return 'Chuyển khoản'
   return '-'
+}
+
+function getTransactionTypeLabel(type: string) {
+  if (type === 'COURSE_PAYMENT') return 'Học viên thanh toán'
+  if (type === 'TUTOR_PAYOUT') return 'Chi trả gia sư'
+  return type
+}
+
+function getTransactionStatusBadge(status: string) {
+  const styles: Record<string, string> = {
+    SUCCESS: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200',
+    COMPLETED: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200',
+    PENDING: 'bg-amber-100 text-amber-800 ring-1 ring-amber-200',
+    FAILED: 'bg-rose-100 text-rose-800 ring-1 ring-rose-200',
+  }
+  const labels: Record<string, string> = {
+    SUCCESS: 'Thành công',
+    COMPLETED: 'Hoàn tất',
+    PENDING: 'Chờ xử lý',
+    FAILED: 'Thất bại',
+  }
+
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${styles[status] || 'bg-slate-100 text-slate-700'}`}>
+      {labels[status] || status}
+    </span>
+  )
 }
 
 export function AdminPayouts() {
   const [admin, setAdmin] = useState<AdminSession | null>(null)
   const [checking, setChecking] = useState(true)
   const [payouts, setPayouts] = useState<AdminPayoutItem[]>([])
+  const [transactions, setTransactions] = useState<AdminPaymentTransaction[]>([])
   const [loading, setLoading] = useState(true)
+  const [transactionsLoading, setTransactionsLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState('')
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [rejectModal, setRejectModal] = useState<{ id: number; tutorName: string } | null>(null)
   const [rejectReason, setRejectReason] = useState('')
@@ -97,9 +131,26 @@ export function AdminPayouts() {
     }
   }
 
+  const loadTransactions = async () => {
+    try {
+      setTransactionsLoading(true)
+      const data = await getAdminPaymentTransactions(transactionTypeFilter || undefined)
+      setTransactions(data)
+    } catch (err) {
+      console.error('Failed to load payment transactions:', err)
+      setTransactions([])
+    } finally {
+      setTransactionsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!checking) loadPayouts()
   }, [statusFilter, checking])
+
+  useEffect(() => {
+    if (!checking) loadTransactions()
+  }, [transactionTypeFilter, checking])
 
   const openTransferModal = (payout: AdminPayoutItem) => {
     setTransferModal(payout)
@@ -134,6 +185,7 @@ export function AdminPayouts() {
       })
       closeTransferModal()
       loadPayouts()
+      loadTransactions()
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Có lỗi xảy ra khi xác nhận thanh toán.')
     } finally {
@@ -149,6 +201,7 @@ export function AdminPayouts() {
       setRejectModal(null)
       setRejectReason('')
       loadPayouts()
+      loadTransactions()
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Có lỗi xảy ra khi từ chối yêu cầu.')
     } finally {
@@ -274,6 +327,108 @@ export function AdminPayouts() {
           </table>
         </div>
       </div>
+
+      <section className="mt-6 overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Lịch sử giao dịch</h2>
+            <p className="mt-1 text-sm text-slate-500">Theo dõi các khoản học viên thanh toán và các khoản chi trả cho gia sư.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: '', label: 'Tất cả' },
+              { key: 'COURSE_PAYMENT', label: 'Học viên thanh toán' },
+              { key: 'TUTOR_PAYOUT', label: 'Chi trả gia sư' },
+            ].map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setTransactionTypeFilter(item.key)}
+                className={`inline-flex h-9 items-center rounded border px-3 text-xs font-bold transition-colors ${
+                  transactionTypeFilter === item.key
+                    ? 'border-blue-700 bg-blue-700 text-white'
+                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1180px] text-sm">
+            <thead>
+              <tr className="border-b border-slate-300 bg-blue-50">
+                <TableHead>Mã GD</TableHead>
+                <TableHead>Loại</TableHead>
+                <TableHead>Hướng</TableHead>
+                <TableHead>Lớp học</TableHead>
+                <TableHead>Học viên</TableHead>
+                <TableHead>Gia sư</TableHead>
+                <TableHead align="right">Số tiền</TableHead>
+                <TableHead align="right">Phí nền tảng</TableHead>
+                <TableHead>Phương thức</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead align="right">Thời gian</TableHead>
+              </tr>
+            </thead>
+            <tbody>
+              {transactionsLoading ? (
+                <tr>
+                  <td colSpan={11} className="px-5 py-12 text-center text-sm font-semibold text-slate-400">
+                    Đang tải lịch sử giao dịch...
+                  </td>
+                </tr>
+              ) : transactions.length === 0 ? (
+                <tr>
+                  <td colSpan={11} className="px-5 py-12 text-center text-sm font-semibold text-slate-400">
+                    Chưa có giao dịch nào
+                  </td>
+                </tr>
+              ) : (
+                transactions.map((transaction) => (
+                  <tr key={transaction.id} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="px-5 py-3 font-mono text-xs font-bold text-blue-700">
+                      {transaction.transactionId || transaction.id}
+                    </td>
+                    <td className="px-5 py-3 text-sm font-semibold text-slate-800">
+                      {getTransactionTypeLabel(transaction.type)}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                        transaction.direction === 'IN'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-rose-100 text-rose-700'
+                      }`}>
+                        {transaction.direction === 'IN' ? 'Tiền vào' : 'Tiền ra'}
+                      </span>
+                    </td>
+                    <td className="max-w-[210px] truncate px-5 py-3 text-sm text-slate-700">
+                      {transaction.classTitle || '-'}
+                    </td>
+                    <td className="px-5 py-3 text-sm text-slate-600">{transaction.studentName || '-'}</td>
+                    <td className="px-5 py-3 text-sm font-semibold text-slate-800">{transaction.tutorName || '-'}</td>
+                    <td className={`px-5 py-3 text-right text-sm font-bold ${
+                      transaction.direction === 'IN' ? 'text-emerald-700' : 'text-rose-700'
+                    }`}>
+                      {transaction.direction === 'IN' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                    </td>
+                    <td className="px-5 py-3 text-right text-sm font-semibold text-blue-700">
+                      {transaction.platformFee != null ? formatCurrency(transaction.platformFee) : '-'}
+                    </td>
+                    <td className="px-5 py-3 text-sm text-slate-600">{getPaymentMethodLabel(transaction.method)}</td>
+                    <td className="px-5 py-3">{getTransactionStatusBadge(transaction.status)}</td>
+                    <td className="px-5 py-3 text-right text-sm text-slate-500">
+                      {formatDate(transaction.paidAt || transaction.createdAt)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {transferModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4">

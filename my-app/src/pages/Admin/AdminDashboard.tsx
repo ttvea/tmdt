@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import {
   getAdminDashboard,
   getCurrentAdmin,
+  getAdminReportPreview,
+  type AdminReportChartPoint,
   type AdminDashboardStats,
   type AdminSession,
 } from '../../api/admin'
@@ -35,8 +37,6 @@ const emptyDashboardStats: AdminDashboardStats = {
   paidEnrollments: 0,
 }
 
-const emptyBars = [0, 0, 0, 0, 0, 0, 0]
-
 function formatNumber(value: number) {
   return value.toLocaleString('vi-VN')
 }
@@ -47,6 +47,20 @@ function formatCurrency(value: number) {
     currency: 'VND',
     maximumFractionDigits: 0,
   }).format(value)
+}
+
+function formatCompactCurrency(value: number) {
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tỷ`
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} tr`
+  if (value >= 1_000) return `${Math.round(value / 1_000)}k`
+  return formatNumber(value)
+}
+
+function toDateInput(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 export function buildStatCards(stats: AdminDashboardStats): StatCard[] {
@@ -121,6 +135,7 @@ function buildOverviewStatCards(stats: AdminDashboardStats): StatCard[] {
 export function AdminDashboard() {
   const [admin, setAdmin] = useState<AdminSession | null>(null)
   const [dashboard, setDashboard] = useState<AdminDashboardStats>(emptyDashboardStats)
+  const [revenueChart, setRevenueChart] = useState<AdminReportChartPoint[]>([])
   const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
@@ -130,10 +145,23 @@ export function AdminDashboard() {
       return
     }
 
-    Promise.all([getCurrentAdmin(token), getAdminDashboard(token).catch(() => emptyDashboardStats)])
-      .then(([adminData, dashboardData]) => {
+    const today = new Date()
+    const from = new Date(today)
+    from.setDate(today.getDate() - 29)
+
+    Promise.all([
+      getCurrentAdmin(token),
+      getAdminDashboard(token).catch(() => emptyDashboardStats),
+      getAdminReportPreview({
+        type: 'DASHBOARD',
+        from: toDateInput(from),
+        to: toDateInput(today),
+      }).catch(() => ({ metrics: [], chart: [], rows: [] })),
+    ])
+      .then(([adminData, dashboardData, reportPreview]) => {
         setAdmin(adminData)
         setDashboard(dashboardData)
+        setRevenueChart(reportPreview.chart || [])
         localStorage.setItem('user', JSON.stringify(adminData))
       })
       .catch(() => {
@@ -178,32 +206,7 @@ export function AdminDashboard() {
 
       <section className="mt-5 grid grid-cols-[minmax(0,2fr)_minmax(280px,0.9fr)] gap-5">
         <div className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="m-0 text-xl font-semibold text-slate-950">Xu hướng Hành vi Người dùng</h2>
-            <div className="flex items-center gap-4 text-xs font-medium text-slate-700">
-              <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-blue-700" /> Học sinh Hoạt động</span>
-              <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-slate-500" /> Phiên học Gia sư</span>
-            </div>
-          </div>
-          <div className="flex h-[250px] flex-col justify-end">
-            <div className="relative flex h-[175px] items-end justify-between border-b border-slate-300 px-3">
-              <div className="absolute inset-x-0 bottom-20 border-t border-slate-200" />
-              {emptyBars.map((height, index) => (
-                <div key={index} className="flex h-full w-11 items-end justify-center">
-                  <div className="w-5 rounded-t bg-blue-700" style={{ height: `${height * 100}%` }} />
-                  <div className="ml-1 w-5 rounded-t bg-slate-300" style={{ height: `${Math.max(height - 0.16, 0) * 100}%` }} />
-                </div>
-              ))}
-              <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-slate-500">
-                Chưa có dữ liệu biểu đồ
-              </div>
-            </div>
-            <div className="grid grid-cols-7 px-3 pt-3 text-center text-xs font-medium text-slate-700">
-              {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'].map((day) => (
-                <span key={day}>{day}</span>
-              ))}
-            </div>
-          </div>
+          <RevenueTrendChart data={revenueChart} />
           <div className="mt-5 grid grid-cols-3 border-t border-slate-300 pt-5">
             <Metric label="Tổng lớp học" value={formatNumber(dashboard.totalClasses)} />
             <Metric label="Lớp đang tuyển" value={formatNumber(dashboard.openClasses)} />
@@ -286,6 +289,132 @@ function StatCard({ card }: { card: StatCard }) {
       <p className="mt-1.5 text-2xl font-bold tracking-normal text-slate-950">{card.value}</p>
       <p className="mt-2 text-xs text-slate-600">{card.detail}</p>
     </article>
+  )
+}
+
+function RevenueTrendChart({ data }: { data: AdminReportChartPoint[] }) {
+  const chartData = data.length > 0 ? data : [{ label: '-', value: 0 }]
+  const maxValue = Math.max(...chartData.map((item) => item.value), 1)
+  const total = chartData.reduce((sum, item) => sum + item.value, 0)
+  const average = chartData.length > 0 ? total / chartData.length : 0
+  const highest = Math.max(...chartData.map((item) => item.value), 0)
+  const hasData = chartData.some((item) => item.value > 0)
+  const width = 680
+  const height = 260
+  const left = 44
+  const right = 28
+  const top = 28
+  const bottom = 42
+  const innerWidth = width - left - right
+  const innerHeight = height - top - bottom
+  const points = chartData.map((item, index) => {
+    const x = left + (index * innerWidth) / Math.max(chartData.length - 1, 1)
+    const y = top + innerHeight - (item.value / maxValue) * innerHeight
+    return { ...item, x, y }
+  })
+  const linePoints = points.map((point) => `${point.x},${point.y}`).join(' ')
+  const areaPoints = `${left},${top + innerHeight} ${linePoints} ${left + innerWidth},${top + innerHeight}`
+
+  return (
+    <div>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="m-0 text-xl font-semibold text-slate-950">Xu hướng doanh thu nền tảng</h2>
+          <p className="mt-1 text-sm text-slate-500">Dữ liệu phí nền tảng từ các đơn hàng đã thanh toán trong 30 ngày gần nhất.</p>
+        </div>
+        <div className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">
+          <span className="h-2.5 w-2.5 rounded-full bg-blue-700" />
+          Hoa hồng nền tảng
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <ChartSummary label="Tổng kỳ này" value={formatCurrency(total)} />
+        <ChartSummary label="Cao nhất" value={formatCurrency(highest)} />
+        <ChartSummary label="Trung bình" value={formatCurrency(Math.round(average))} />
+      </div>
+
+      <div className="relative mt-5 overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-blue-50/70 to-white p-3">
+        <svg className="h-[290px] w-full" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Biểu đồ xu hướng doanh thu nền tảng">
+          <defs>
+            <linearGradient id="dashboardRevenueArea" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="#2563eb" stopOpacity="0.24" />
+              <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+
+          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+            const y = top + innerHeight - ratio * innerHeight
+            return (
+              <g key={ratio}>
+                <line x1={left} x2={width - right} y1={y} y2={y} stroke="#dbe3ef" strokeDasharray={ratio === 0 ? '0' : '5 6'} />
+                <text x={left - 8} y={y + 4} textAnchor="end" className="fill-slate-500 text-[10px] font-semibold">
+                  {formatCompactCurrency(Math.round(maxValue * ratio))}
+                </text>
+              </g>
+            )
+          })}
+
+          {points.map((point, index) => {
+            const barWidth = Math.max(8, innerWidth / Math.max(points.length, 1) - 10)
+            const barHeight = (point.value / maxValue) * innerHeight
+            return (
+              <rect
+                key={`bar-${point.label}-${index}`}
+                x={point.x - barWidth / 2}
+                y={top + innerHeight - barHeight}
+                width={barWidth}
+                height={barHeight}
+                rx="5"
+                fill="#93c5fd"
+                opacity="0.45"
+              />
+            )
+          })}
+
+          <polygon points={areaPoints} fill="url(#dashboardRevenueArea)" />
+          <polyline points={linePoints} fill="none" stroke="#075ec8" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+
+          {points.map((point, index) => (
+            <g key={`point-${point.label}-${index}`}>
+              <circle cx={point.x} cy={point.y} r="5.5" fill="#fff" stroke="#075ec8" strokeWidth="3" />
+              {point.value > 0 && (
+                <text x={point.x} y={Math.max(point.y - 12, 14)} textAnchor="middle" className="fill-blue-800 text-[10px] font-bold">
+                  {formatCompactCurrency(point.value)}
+                </text>
+              )}
+            </g>
+          ))}
+
+          {points.map((point, index) => {
+            if (index !== 0 && index !== points.length - 1 && index % 2 !== 0) return null
+            return (
+              <text key={`label-${point.label}-${index}`} x={point.x} y={height - 10} textAnchor="middle" className="fill-slate-600 text-[10px] font-semibold">
+                {point.label}
+              </text>
+            )
+          })}
+        </svg>
+
+        {!hasData && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/65">
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-4 text-center shadow-sm">
+              <p className="text-sm font-bold text-slate-700">Chưa có doanh thu trong khoảng thời gian này</p>
+              <p className="mt-1 text-xs text-slate-500">Biểu đồ sẽ tự cập nhật khi có đơn hàng thanh toán thành công.</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ChartSummary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-blue-100 bg-blue-50/70 px-4 py-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-blue-700">{label}</p>
+      <p className="mt-1 text-lg font-bold text-slate-950">{value}</p>
+    </div>
   )
 }
 

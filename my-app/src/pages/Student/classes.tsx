@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'react-toastify'
 import { AccountLayout } from '../../components/AccountLayout'
 import { AccountPageHeader } from '../../components/AccountPageHeader'
 import {
@@ -9,6 +10,7 @@ import {
 } from '../../api/classApi'
 import { getMediaUrl } from '../../api/axios'
 import { getTutorProfile } from '../../api/tutorProfile'
+import { createRating, getMyRatings, updateRating, type RatingResponse } from '../../api/ratings'
 
 type ClassTab = 'all' | 'learning' | 'waiting-start' | 'pending' | 'completed' | 'inactive'
 
@@ -239,9 +241,15 @@ export function StudentClassCard({ item }: { item: StudentClassItem }) {
 function StudentClassRow({
   item,
   onView,
+  onRate,
+  existingRating,
+  canRate,
 }: {
   item: StudentClassItem
   onView: (item: StudentClassItem) => void
+  onRate: (item: StudentClassItem) => void
+  existingRating?: RatingResponse
+  canRate: boolean
 }) {
   const { enrollment, classDetail, teacherName } = item
   const itemTab = getItemTab(item)
@@ -301,7 +309,7 @@ function StudentClassRow({
       </td>
 
       <td className="px-5 py-4 text-right whitespace-nowrap">
-        <div className="ml-auto grid w-[136px] grid-cols-[36px_92px] items-center justify-end gap-2">
+        <div className="ml-auto flex items-center justify-end gap-2">
           <button
             type="button"
             title="Xem chi tiết lớp học"
@@ -313,21 +321,33 @@ function StudentClassRow({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
             </svg>
           </button>
+          {(canRate || existingRating) && (
+            <button
+              type="button"
+              title={existingRating ? 'Cập nhật đánh giá' : 'Đánh giá lớp học'}
+              onClick={() => onRate(item)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-amber-500 transition hover:bg-amber-50 hover:text-amber-600"
+            >
+              <svg className="h-5 w-5" fill={existingRating ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m12 3 2.76 5.59 6.17.9-4.46 4.35 1.05 6.14L12 17.08l-5.52 2.9 1.05-6.14-4.46-4.35 6.17-.9L12 3Z" />
+              </svg>
+            </button>
+          )}
           {itemTab === 'learning' ? (
             <a
               href="/student/schedule"
-              className="inline-flex w-[92px] items-center justify-center rounded-lg bg-blue-700 px-3 py-2 text-center text-xs font-semibold text-white hover:bg-blue-800"
+              className="inline-flex min-w-[92px] items-center justify-center rounded-lg bg-blue-700 px-3 py-2 text-center text-xs font-semibold text-white hover:bg-blue-800"
             >
               Xem lịch
             </a>
           ) : isWaitingClassStart(item) ? (
-            <span className="inline-flex w-[92px] items-center justify-center rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-semibold text-amber-700">
+            <span className="inline-flex min-w-[92px] items-center justify-center rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-semibold text-amber-700">
               Chờ bắt đầu
             </span>
           ) : itemTab === 'pending' ? (
             <a
               href="/student/enrollments"
-              className="inline-flex w-[92px] items-center justify-center rounded-lg border border-blue-600 px-3 py-2 text-center text-xs font-semibold text-blue-700 hover:bg-blue-50"
+              className="inline-flex min-w-[92px] items-center justify-center rounded-lg border border-blue-600 px-3 py-2 text-center text-xs font-semibold text-blue-700 hover:bg-blue-50"
             >
               Thanh toán
             </a>
@@ -496,17 +516,120 @@ function StatCard({
   )
 }
 
+function ClassRatingModal({
+  item,
+  stars,
+  comment,
+  submitting,
+  existingRating,
+  onStarsChange,
+  onCommentChange,
+  onSubmit,
+  onClose,
+}: {
+  item: StudentClassItem
+  stars: number
+  comment: string
+  submitting: boolean
+  existingRating?: RatingResponse
+  onStarsChange: (stars: number) => void
+  onCommentChange: (comment: string) => void
+  onSubmit: () => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-950">Đánh giá lớp học</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {item.classDetail?.title || item.enrollment.classTitle}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+            aria-label="Đóng"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="mt-6">
+          <label className="mb-2 block text-sm font-semibold text-slate-800">Mức độ hài lòng</label>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                onClick={() => onStarsChange(star)}
+                className={`flex h-11 w-11 items-center justify-center rounded-lg border text-2xl transition ${
+                  star <= stars
+                    ? 'border-amber-300 bg-amber-50 text-amber-500'
+                    : 'border-slate-200 bg-white text-slate-300 hover:border-amber-200'
+                }`}
+                aria-label={`${star} sao`}
+              >
+                ★
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <label className="mt-5 block">
+          <span className="mb-2 block text-sm font-semibold text-slate-800">Nhận xét</span>
+          <textarea
+            value={comment}
+            onChange={(event) => onCommentChange(event.target.value)}
+            rows={4}
+            className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            placeholder="Chia sẻ trải nghiệm học tập của bạn..."
+          />
+        </label>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={submitting}
+            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitting ? 'Đang lưu...' : existingRating ? 'Cập nhật' : 'Gửi đánh giá'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function StudentClasses() {
   const [items, setItems] = useState<StudentClassItem[]>([])
+  const [ratings, setRatings] = useState<RatingResponse[]>([])
   const [activeTab, setActiveTab] = useState<ClassTab>('all')
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedItem, setSelectedItem] = useState<StudentClassItem | null>(null)
+  const [ratingTarget, setRatingTarget] = useState<StudentClassItem | null>(null)
+  const [ratingStars, setRatingStars] = useState(5)
+  const [ratingComment, setRatingComment] = useState('')
+  const [ratingSubmitting, setRatingSubmitting] = useState(false)
 
   useEffect(() => {
-    loadStudentClasses()
-      .then(setItems)
+    Promise.all([loadStudentClasses(), getMyRatings()])
+      .then(([classItems, ratingData]) => {
+        setItems(classItems)
+        setRatings(ratingData)
+      })
       .catch(() => setError('Không thể tải danh sách lớp học. Vui lòng thử lại.'))
       .finally(() => setLoading(false))
   }, [])
@@ -529,6 +652,59 @@ export function StudentClasses() {
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE))
   const pageItems = filteredItems.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+
+  const getRatingForItem = (item: StudentClassItem) =>
+    ratings.find((rating) =>
+      rating.enrollmentId === item.enrollment.id
+      || rating.classId === item.enrollment.classId
+    )
+
+  const canRateItem = (item: StudentClassItem) =>
+    item.enrollment.status === 'PAID' && item.classDetail?.status === 'COMPLETED'
+
+  const openRatingModal = (item: StudentClassItem) => {
+    const existingRating = getRatingForItem(item)
+    setRatingTarget(item)
+    setRatingStars(existingRating?.stars ?? 5)
+    setRatingComment(existingRating?.comment ?? '')
+  }
+
+  const closeRatingModal = () => {
+    setRatingTarget(null)
+    setRatingStars(5)
+    setRatingComment('')
+  }
+
+  const handleSubmitRating = async () => {
+    if (!ratingTarget) return
+
+    const existingRating = getRatingForItem(ratingTarget)
+    setRatingSubmitting(true)
+    try {
+      if (existingRating) {
+        await updateRating(existingRating.id, {
+          stars: ratingStars,
+          comment: ratingComment.trim(),
+        })
+        toast.success('Đã cập nhật đánh giá lớp học')
+      } else {
+        await createRating({
+          classId: ratingTarget.enrollment.classId,
+          enrollmentId: ratingTarget.enrollment.id,
+          stars: ratingStars,
+          comment: ratingComment.trim(),
+        })
+        toast.success('Cảm ơn bạn đã đánh giá lớp học')
+      }
+
+      setRatings(await getMyRatings())
+      closeRatingModal()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.response?.data || 'Không thể gửi đánh giá')
+    } finally {
+      setRatingSubmitting(false)
+    }
+  }
 
   return (
     <AccountLayout activePath="/student/classes">
@@ -615,6 +791,9 @@ export function StudentClasses() {
                           key={item.enrollment.id}
                           item={item}
                           onView={setSelectedItem}
+                          onRate={openRatingModal}
+                          existingRating={getRatingForItem(item)}
+                          canRate={canRateItem(item)}
                         />
                       ))}
                     </tbody>
@@ -656,6 +835,20 @@ export function StudentClasses() {
         <StudentClassDetailModal
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
+        />
+      ) : null}
+
+      {ratingTarget ? (
+        <ClassRatingModal
+          item={ratingTarget}
+          stars={ratingStars}
+          comment={ratingComment}
+          submitting={ratingSubmitting}
+          existingRating={getRatingForItem(ratingTarget)}
+          onStarsChange={setRatingStars}
+          onCommentChange={setRatingComment}
+          onSubmit={handleSubmitRating}
+          onClose={closeRatingModal}
         />
       ) : null}
     </AccountLayout>
